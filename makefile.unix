@@ -727,10 +727,10 @@ ARCH  = linux
 # use SDL.
 
 # X11 (including Glide & OpenGL if enabled below)
-DISPLAY_METHOD = x11
+#DISPLAY_METHOD = x11
 
 # SDL library 
-# DISPLAY_METHOD = SDL
+DISPLAY_METHOD = SDL
 
 # SVGALib, only supported under Linux
 # DISPLAY_METHOD = svgalib
