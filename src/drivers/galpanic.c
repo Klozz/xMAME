@@ -2,9 +2,11 @@
 
 Gals Panic       1990 Kaneko
 Fantasia         1994 Comad
+Super Model      1994 Comad
 New Fantasia     1995 Comad
 Fantasy '95      1995 Hi-max Technology Inc. (Running on a Comad PCB)
 Miss World '96   1996 Comad
+Ms/Mr World '96  1996 Comad
 Fantasia II      1997 Comad
 Gals Hustler     1997 Ace International
 
@@ -114,12 +116,20 @@ Fantasia etc. games are locking up when the girl 'changes' due to not liking
 the way we handle OKI status reads.. however these reads are correct according to
 tests done with a real chip so there must be something odd going on on this hardware
 
+From Miss World 96 manual/dipswitch sheet:
+
+A/B/C Three Versions depending on nude grade
+ A-Version is the extreme hottest nude models
+ B-Version is the more attractive nude models
+ C-Version is very beautiful bikini models
+
+An example of this can be seen in Fantasia II with type A & B
+ The current set of Super Model is an example of type C
+
 ***************************************************************************/
 
 #include "driver.h"
-#include "machine/kaneko16.h"
-#include "machine/random.h"
-#include "vidhrdw/generic.h"
+#include "includes/kaneko16.h"
 #include "sound/okim6295.h"
 
 
@@ -418,7 +428,7 @@ static ADDRESS_MAP_START( supmodel_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x4fffff) AM_READ(MRA16_ROM)
 	AM_RANGE(0x500000, 0x51ffff) AM_READ(MRA16_RAM)
 	AM_RANGE(0x520000, 0x53ffff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x580000, 0x583fff) AM_READ(MRA16_RAM)
+/*  AM_RANGE(0x580000, 0x583fff) AM_READ(MRA16_RAM) */
 	AM_RANGE(0x600000, 0x600fff) AM_READ(MRA16_RAM)
 	AM_RANGE(0x680000, 0x68001f) AM_READ(MRA16_RAM)
 	AM_RANGE(0x700000, 0x700fff) AM_READ(MRA16_RAM)
@@ -436,7 +446,7 @@ static ADDRESS_MAP_START( supmodel_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x4fffff) AM_WRITE(MWA16_ROM)
 	AM_RANGE(0x500000, 0x51ffff) AM_WRITE(MWA16_RAM) AM_BASE(&galpanic_fgvideoram) AM_SIZE(&galpanic_fgvideoram_size)
 	AM_RANGE(0x520000, 0x53ffff) AM_WRITE(galpanic_bgvideoram_w) AM_BASE(&galpanic_bgvideoram)
-	AM_RANGE(0x580000, 0x583fff) AM_WRITE(galpanic_bgvideoram_mirror_w)
+/*  AM_RANGE(0x580000, 0x583fff) AM_WRITE(galpanic_bgvideoram_mirror_w) // can't be right, causes half the display to vanish at times! */
 	AM_RANGE(0x600000, 0x600fff) AM_WRITE(galpanic_paletteram_w) AM_BASE(&paletteram16)	/* 1024 colors, but only 512 seem to be used */
 	AM_RANGE(0x680000, 0x68001f) AM_WRITE(MWA16_RAM)
 	AM_RANGE(0x700000, 0x700fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
@@ -1041,7 +1051,7 @@ static MACHINE_DRIVER_START( supmodel )
 	MDRV_VIDEO_UPDATE(comad)
 
 	/* sound hardware */
-	MDRV_SOUND_REPLACE("oki", OKIM6295, 8000)
+	MDRV_SOUND_REPLACE("oki", OKIM6295, 12000)
 	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -1275,7 +1285,7 @@ ROM_START( missmw96 )
 	ROM_LOAD16_BYTE( "mmw96_08.bin",  0x200000, 0x80000, CRC(1dc72b07) SHA1(fdbdf8298fe98d74ed2a76abf60f60af1c27a65d) )
 	ROM_LOAD16_BYTE( "mmw96_04.bin",  0x200001, 0x80000, CRC(fc3e18fa) SHA1(b3ad254aab982dc75a10c2cf2b3815c2fdbba914) )
 	ROM_LOAD16_BYTE( "mmw96_07.bin",  0x300000, 0x80000, CRC(001572bf) SHA1(cdf59c624baaeaea70985ee6f2f2fed08a8dfa61) )
-	ROM_LOAD16_BYTE( "mmw96_03.bin",  0x300001, 0x80000, BAD_DUMP CRC(8ad14003) SHA1(4bd2ef31956f5d9d4e592ac9786cd1a17e6a9b06) ) /* one of them is bad anyway .. */
+	ROM_LOAD16_BYTE( "mmw96_03.bin",  0x300001, 0x80000, CRC(22204025) SHA1(442e7f754c65c598983d6f897a60870d7759c823) )
 
 	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )	/* sprites */
 	ROM_LOAD( "mmw96_11.bin",  0x00000, 0x80000, CRC(7d491f8c) SHA1(63f580bd65579cac70b90eaa0e7f2413ef1597b8) )
@@ -1299,6 +1309,30 @@ ROM_START( fantsia2 )
 	ROM_LOAD16_BYTE( "scr5.f14",     0x300001, 0x80000, CRC(d5f88b83) SHA1(518a1f6732149f2851bbedca61f7313c39beb91b) )
 	ROM_LOAD16_BYTE( "scr8.g20",     0x400000, 0x80000, CRC(694ae2b3) SHA1(82b7a565290fce07c8393af4718fd1e6136928e9) )
 	ROM_LOAD16_BYTE( "scr7.f20",     0x400001, 0x80000, CRC(6068712c) SHA1(80a136d76dca566772e34d832ac11b8c7d6ce9ab) )
+
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )	/* sprites */
+	ROM_LOAD( "obj1.1i",      0x00000, 0x80000, CRC(52e6872a) SHA1(7e5274b9a415ee0e536cd3b87f73d3eae9644669) )
+	ROM_LOAD( "obj2.2i",      0x80000, 0x80000, CRC(ea6e3861) SHA1(463b40f5441231a0451571a0b8afe1ed0fd4b164) )
+
+	ROM_REGION( 0x140000, REGION_SOUND1, 0 )	/* OKIM6295 samples */
+	/* 00000-2ffff is fixed, 30000-3ffff is bank switched from all the ROMs */
+	ROM_LOAD( "music2.1b",    0x00000, 0x80000, CRC(23cc4f9c) SHA1(06b5342c25de966ce590917c571e5b19af1fef7d) )
+	ROM_RELOAD(               0x40000, 0x80000 )
+	ROM_LOAD( "music1.1a",    0xc0000, 0x80000, CRC(864167c2) SHA1(c454b26b6dea993e6bd64546f92beef05e46d7d7) )
+ROM_END
+
+ROM_START( fntsia2a )
+	ROM_REGION( 0x500000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_LOAD16_BYTE( "fnt2-22.bin",    0x000000, 0x80000, CRC(a3a92c4b) SHA1(6affdcb57e1e0a77c7cc33135dafe86843e9e3d8) )
+	ROM_LOAD16_BYTE( "fnt2-17.bin",    0x000001, 0x80000, CRC(d0ce4493) SHA1(9cec088e6630555b6d584df23236c279909820cf) )
+	ROM_LOAD16_BYTE( "fnt2-21.bin",    0x100000, 0x80000, CRC(e989c2e7) SHA1(c9eea2a89843cdd9db4a4a0539d0315c125e3e02) )
+	ROM_LOAD16_BYTE( "fnt2-16.bin",    0x100001, 0x80000, CRC(8c06d372) SHA1(14fe2c8450f0f2e11e204dd524bfe32a72ddc144) )
+	ROM_LOAD16_BYTE( "fnt2-20.bin",    0x200000, 0x80000, CRC(6e9f1e65) SHA1(b6f1eb1a52de18ed5b17de3ef365e5c041d15314) )
+	ROM_LOAD16_BYTE( "fnt2-15.bin",    0x200001, 0x80000, CRC(85cbeb2b) SHA1(a213b461019ddb3b319b9815a76c6fb2ecfbe937) )
+	ROM_LOAD16_BYTE( "fnt2-19.bin",    0x300000, 0x80000, CRC(7953226a) SHA1(955c779eae496688be2ed416d879d6e83c888368) )
+	ROM_LOAD16_BYTE( "fnt2-14.bin",    0x300001, 0x80000, CRC(10d8ccff) SHA1(bf4c49d85556edf49289631ee6178d3fb7dea2cc) )
+	ROM_LOAD16_BYTE( "fnt2-18.bin",    0x400000, 0x80000, CRC(4cdaeda3) SHA1(f5b478e49b59496865982409517654f48296565d) )
+	ROM_LOAD16_BYTE( "fnt2-13.bin",    0x400001, 0x80000, CRC(68c7f042) SHA1(ed3c864f3d91377fec78f19897ba0b0d2bcf0d2b) )
 
 	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )	/* sprites */
 	ROM_LOAD( "obj1.1i",      0x00000, 0x80000, CRC(52e6872a) SHA1(7e5274b9a415ee0e536cd3b87f73d3eae9644669) )
@@ -1399,8 +1433,9 @@ GAME( 1994, fantasia, 0,        comad,    fantasia, 0, ROT90, "Comad & New Japan
 GAME( 1994, supmodel, 0,        supmodel, fantasia, 0, ROT90, "Comad & New Japan System", "Super Model",GAME_NO_COCKTAIL ) /* 'official' or hack of fantasia? */
 GAME( 1995, newfant,  0,        comad,    fantasia, 0, ROT90, "Comad & New Japan System", "New Fantasia", GAME_NO_COCKTAIL )
 GAME( 1995, fantsy95, 0,        comad,    fantasia, 0, ROT90, "Hi-max Technology Inc.", "Fantasy '95", GAME_NO_COCKTAIL )
-GAME( 1996, missw96,  0,        comad,    missw96,  0, ROT0,  "Comad", "Miss World '96 Nude", GAME_NO_COCKTAIL )
-GAME( 1996, missmw96, missw96,  comad,    missw96,  0, ROT0,  "Comad", "Miss Mister World '96 Nude", GAME_NO_COCKTAIL )
-GAME( 1997, fantsia2, 0,        fantsia2, missw96,  0, ROT0,  "Comad", "Fantasia II", GAME_NO_COCKTAIL )
+GAME( 1996, missw96,  0,        comad,    missw96,  0, ROT0,  "Comad", "Miss World '96 (Nude)", GAME_NO_COCKTAIL )
+GAME( 1996, missmw96, missw96,  comad,    missw96,  0, ROT0,  "Comad", "Miss Mister World '96 (Nude)", GAME_NO_COCKTAIL )
+GAME( 1997, fantsia2, 0,        fantsia2, missw96,  0, ROT0,  "Comad", "Fantasia II (Explicit)", GAME_NO_COCKTAIL )
+GAME( 1997, fntsia2a, fantsia2, fantsia2, missw96,  0, ROT0,  "Comad", "Fantasia II (Less Explicit)", GAME_NO_COCKTAIL )
 GAME( 1997, galhustl, 0,        galhustl, galhustl, 0, ROT0,  "ACE International", "Gals Hustler", 0 )
-GAME( 1995, zipzap,   0,        zipzap,   zipzap,   0, ROT90, "Barko Corp", "Zip & Zap",GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )
+GAME( 1995, zipzap,   0,        zipzap,   zipzap,   0, ROT90, "Barko Corp", "Zip & Zap", GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )

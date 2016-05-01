@@ -18,5 +18,24 @@ Atari Sprint 4 + Ultra Tank driver
 #define SPRINT4_CRASH_DATA      NODE_09
 #define SPRINT4_ATTRACT_EN      NODE_10
 
+/*----------- defined in sndhrdw/sprint4.c -----------*/
 
 extern struct discrete_sound_block sprint4_discrete_interface[];
+
+
+/*----------- defined in vidhrdw/sprint4.c -----------*/
+
+extern UINT8* sprint4_videoram;
+extern int sprint4_collision[4];
+
+extern PALETTE_INIT( sprint4 );
+extern PALETTE_INIT( ultratnk );
+
+extern VIDEO_EOF( sprint4 );
+extern VIDEO_EOF( ultratnk );
+extern VIDEO_START( sprint4 );
+extern VIDEO_START( ultratnk );
+extern VIDEO_UPDATE( sprint4 );
+extern VIDEO_UPDATE( ultratnk );
+
+extern WRITE8_HANDLER( sprint4_video_ram_w );

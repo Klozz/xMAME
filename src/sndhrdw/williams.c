@@ -30,7 +30,6 @@
 #include "sound/okim6295.h"
 #include "sound/hc55516.h"
 #include "sound/dac.h"
-#include "state.h"
 
 
 /***************************************************************************
@@ -145,7 +144,7 @@ ADDRESS_MAP_END
 
 
 /* PIA structure */
-static struct pia6821_interface cvsd_pia_intf =
+static const pia6821_interface cvsd_pia_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ DAC_0_data_w, cvsd_talkback_w, 0, 0,
@@ -272,10 +271,7 @@ void williams_cvsd_init(int pianum)
 		offs_t offset = 0x8000 * ((bank >> 2) & 3) + 0x20000 * (bank & 3);
 		memory_configure_bank(5, bank, 1, &ROM[0x10000 + offset], 0);
 	}
-
-	/* reset the chip */
-	williams_cvsd_reset_w(1);
-	williams_cvsd_reset_w(0);
+	memory_set_bank(5, 0);
 
 	/* reset the IRQ state */
 	pia_set_input_ca1(williams_pianum, 1);
@@ -319,10 +315,6 @@ void williams_narc_init(void)
 	}
 	memory_set_bankptr(8, &ROM[0x10000 + 0x4000 + 0x8000 + 0x10000 + 0x20000 * 3]);
 
-	/* reset the chip */
-	williams_narc_reset_w(1);
-	williams_narc_reset_w(0);
-
 	/* register for save states */
 	state_save_register_global(williams_sound_int_state);
 	state_save_register_global(audio_talkback);
@@ -360,10 +352,6 @@ void williams_adpcm_init(void)
 	memcpy(ROM + 0x0e0000, ROM + 0x060000, 0x20000);
 	memcpy(ROM + 0x0a0000, ROM + 0x060000, 0x20000);
 	memcpy(ROM + 0x020000, ROM + 0x060000, 0x20000);
-
-	/* reset the chip */
-	williams_adpcm_reset_w(1);
-	williams_adpcm_reset_w(0);
 
 	/* register for save states */
 	state_save_register_global(williams_sound_int_state);

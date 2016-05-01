@@ -1,6 +1,4 @@
-#include "state.h"
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "namcos2.h" /* for game-specific hacks */
 #include "namcoic.h"
 
@@ -61,8 +59,7 @@ namco_tilemap_init( int gfxbank, void *maskBaseAddr,
 	mTilemapInfo.maskBaseAddr = maskBaseAddr;
 	mTilemapInfo.cb = cb;
 	mTilemapInfo.videoram = auto_malloc( 0x10000*2 );
-	if( mTilemapInfo.videoram )
-	{
+
 		/* four scrolling tilemaps */
 		mTilemapInfo.tmap[0] = tilemap_create(get_tile_info0,tilemap_scan_rows,TILEMAP_BITMASK,8,8,64,64);
 		mTilemapInfo.tmap[1] = tilemap_create(get_tile_info1,tilemap_scan_rows,TILEMAP_BITMASK,8,8,64,64);
@@ -82,14 +79,12 @@ namco_tilemap_init( int gfxbank, void *maskBaseAddr,
 		/* define offsets for scrolling */
 		for( i=0; i<4; i++ )
 		{
-			const int adj[4] = { 4,2,1,0 };
+			static const int adj[4] = { 4,2,1,0 };
 			int dx = 44+adj[i];
 			tilemap_set_scrolldx( mTilemapInfo.tmap[i], -dx, -(-288-dx) );
 			tilemap_set_scrolldy( mTilemapInfo.tmap[i], -24, -(-224-24) );
 		}
 		return 0;
-	}
-	return -1;
 } /* namco_tilemap_init */
 
 void
@@ -888,10 +883,7 @@ namco_obj_init( int gfxbank, int palXOR, int (*codeToTile)( int code ) )
 		mpCodeToTile = DefaultCodeToTile;
 	}
 	spriteram16 = auto_malloc(0x20000);
-	if( spriteram16 )
-	{
-		memset( spriteram16, 0, 0x20000 ); /* needed for Nebulas Ray */
-	}
+	memset( spriteram16, 0, 0x20000 ); /* needed for Nebulas Ray */
 	memset( mSpritePos,0x00,sizeof(mSpritePos) );
 } /* namcosC355_init */
 
@@ -1101,8 +1093,7 @@ namco_roz_init( int gfxbank, int maskregion )
 	rozbank16 = auto_malloc(0x10);
 	rozvideoram16 = auto_malloc(0x20000);
 	rozcontrol16 = auto_malloc(0x20);
-	if( rozbank16 && rozvideoram16 && rozcontrol16 )
-	{
+
 		for( i=0; i<ROZ_TILEMAP_COUNT; i++ )
 		{
 			mRozTilemap[i] = tilemap_create(
@@ -1118,8 +1109,6 @@ namco_roz_init( int gfxbank, int maskregion )
 			}
 		}
 		return 0;
-	}
-	return -1;
 } /* namco_roz_init */
 
 struct RozParam
@@ -1485,7 +1474,7 @@ WRITE32_HANDLER( namco_rozvideoram32_le_w )
  *      0x1fffd             always 0xffff 0xffff?
  */
 static UINT16 *mpRoadRAM; /* at 0x880000 in Final Lap; at 0xa00000 in Lucky&Wild */
-static unsigned char *mpRoadDirty;
+static UINT8 *mpRoadDirty;
 static int mbRoadSomethingIsDirty;
 static int mRoadGfxBank;
 static tilemap *mpRoadTilemap;
@@ -1596,16 +1585,15 @@ namco_road_init( int gfxbank )
 	mbRoadNeedTransparent = 0;
 	mRoadGfxBank = gfxbank;
 	mpRoadDirty = auto_malloc(ROAD_TILE_COUNT_MAX);
-	if( mpRoadDirty )
 	{
 		memset( mpRoadDirty,0x00,ROAD_TILE_COUNT_MAX );
 		mbRoadSomethingIsDirty = 0;
 		mpRoadRAM = auto_malloc(0x20000);
-		if( mpRoadRAM )
 		{
-			gfx_element *pGfx = decodegfx( 0x10000+(UINT8 *)mpRoadRAM, &RoadTileLayout );
+			gfx_element *pGfx = allocgfx( &RoadTileLayout );
 			if( pGfx )
 			{
+				decodegfx(pGfx, 0x10000+(UINT8 *)mpRoadRAM, 0, pGfx->total_elements);
 				pGfx->colortable = &Machine->remapped_colortable[0xf00];
 				pGfx->total_colors = 0x3f;
 
@@ -1618,8 +1606,8 @@ namco_road_init( int gfxbank )
 
 				if( mpRoadTilemap )
 				{
-					state_save_register_UINT8 ("namco_road", 0, "RoadDirty", mpRoadDirty, ROAD_TILE_COUNT_MAX);
-					state_save_register_UINT16("namco_road", 0, "RoadRAM",   mpRoadRAM,   0x20000 / 2);
+					state_save_register_global_pointer(mpRoadDirty, ROAD_TILE_COUNT_MAX);
+					state_save_register_global_pointer(mpRoadRAM,   0x20000 / 2);
 					state_save_register_func_postload(RoadMarkAllDirty);
 
 					return 0;

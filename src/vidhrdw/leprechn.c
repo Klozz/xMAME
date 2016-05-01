@@ -8,7 +8,7 @@
 
 #include "driver.h"
 #include "machine/6522via.h"
-#include "vidhrdw/generic.h"
+#include "includes/leprechn.h"
 
 
 static UINT8 x,y,color;
@@ -40,8 +40,6 @@ VIDEO_START( leprechn )
 
 	/* allocate our own dirty buffer */
 	videoram = auto_malloc(videoram_size);
-	if (!videoram)
-		return 1;
 
 	return video_start_generic_bitmapped();
 }

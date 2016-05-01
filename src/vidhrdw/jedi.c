@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "jedi.h"
 
 
@@ -19,7 +18,7 @@ UINT8 *jedi_PIXIRAM;
 static UINT32 jedi_vscroll;
 static UINT32 jedi_hscroll;
 static UINT32 jedi_alpha_bank;
-static int video_off, smooth_table;
+static UINT8 video_off, smooth_table;
 static UINT8 *fgdirty, *bgdirty;
 static mame_bitmap *fgbitmap, *mobitmap, *bgbitmap, *bgexbitmap;
 
@@ -31,12 +30,17 @@ static mame_bitmap *fgbitmap, *mobitmap, *bgbitmap, *bgexbitmap;
  *
  *************************************/
 
+static void jedi_postload(void)
+{
+	memset(fgdirty, 1, videoram_size);
+	memset(bgdirty, 1, jedi_backgroundram_size);
+}
+
+
 VIDEO_START( jedi )
 {
 	/* allocate dirty buffer for the foreground characters */
 	fgdirty = dirtybuffer = auto_malloc(videoram_size);
-	if (!fgdirty)
-		return 1;
 	memset(fgdirty, 1, videoram_size);
 
 	/* allocate an 8bpp bitmap for the raw foreground characters */
@@ -52,8 +56,6 @@ VIDEO_START( jedi )
 
 	/* allocate dirty buffer for the background characters */
 	bgdirty = auto_malloc(jedi_backgroundram_size);
-	if (!bgdirty)
-		return 1;
 	memset(bgdirty, 1, jedi_backgroundram_size);
 
 	/* the background area is 256x256, doubled by the hardware*/
@@ -68,6 +70,15 @@ VIDEO_START( jedi )
 
 	/* reserve color 1024 for black (disabled display) */
 	palette_set_color(1024, 0, 0, 0);
+
+	/* register for saving */
+	state_save_register_global(jedi_vscroll);
+	state_save_register_global(jedi_hscroll);
+	state_save_register_global(jedi_alpha_bank);
+	state_save_register_global(video_off);
+	state_save_register_global(smooth_table);
+	state_save_register_func_postload(jedi_postload);
+
 	return 0;
 }
 

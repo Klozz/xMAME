@@ -4,13 +4,18 @@
 
     Validity checks on internal data structures.
 
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
 ***************************************************************************/
 
+#include "osdepend.h"
 #include "driver.h"
+#include "hash.h"
 #include <ctype.h>
 #include <stdarg.h>
 #include "ui_text.h"
-#include "zlib.h"
+#include <zlib.h>
 
 
 /*************************************
@@ -39,14 +44,15 @@
  *
  *************************************/
 
+typedef struct _quark_entry quark_entry;
 struct _quark_entry
 {
 	UINT32 crc;
 	struct _quark_entry *next;
 };
-typedef struct _quark_entry quark_entry;
 
 
+typedef struct _quark_table quark_table;
 struct _quark_table
 {
 	UINT32 entries;
@@ -54,7 +60,6 @@ struct _quark_table
 	quark_entry *entry;
 	quark_entry **hash;
 };
-typedef struct _quark_table quark_table;
 
 
 
@@ -70,6 +75,7 @@ static quark_table *description_table;
 static quark_table *roms_table;
 static quark_table *inputs_table;
 static quark_table *defstr_table;
+static int total_drivers;
 
 
 
@@ -205,20 +211,32 @@ static void build_quarks(void)
 static int validate_driver(int drivnum, const machine_config *drv)
 {
 	const game_driver *driver = drivers[drivnum];
+	const game_driver *clone_of;
 	quark_entry *entry;
 	int error = FALSE;
 	const char *s;
 	UINT32 crc;
 
+	/* determine the clone */
+	clone_of = driver_get_clone(driver);
+
+	/* if we have at least 100 drivers, validate the clone */
+	/* (100 is arbitrary, but tries to avoid tiny.mak dependencies) */
+	if (total_drivers > 100 && !clone_of && strcmp(driver->parent, "0"))
+	{
+		printf("%s: %s is a non-existant clone\n", driver->source_file, driver->parent);
+		error = TRUE;
+	}
+
 	/* look for recursive cloning */
-	if (driver->clone_of == driver)
+	if (clone_of == driver)
 	{
 		printf("%s: %s is set as a clone of itself\n", driver->source_file, driver->name);
 		error = TRUE;
 	}
 
 	/* look for clones that are too deep */
-	if (driver->clone_of && driver->clone_of->clone_of && (driver->clone_of->clone_of->flags & NOT_A_DRIVER) == 0)
+	if (clone_of != NULL && (clone_of = driver_get_clone(clone_of)) != NULL && (clone_of->flags & NOT_A_DRIVER) == 0)
 	{
 		printf("%s: %s is a clone of a clone\n", driver->source_file, driver->name);
 		error = TRUE;
@@ -311,6 +329,7 @@ static int validate_roms(int drivnum, const machine_config *drv, UINT32 *region_
 	const char *last_name = "???";
 	int cur_region = -1;
 	int error = FALSE;
+	int items_since_region = 1;
 
 	/* reset region info */
 	memset(region_length, 0, REGION_MAX * sizeof(*region_length));
@@ -322,6 +341,11 @@ static int validate_roms(int drivnum, const machine_config *drv, UINT32 *region_
 		if (ROMENTRY_ISREGION(romp))
 		{
 			int type = ROMREGION_GETTYPE(romp);
+
+			/* if we haven't seen any items since the last region, print a warning */
+			if (items_since_region == 0)
+				printf("%s: %s has empty ROM region (warning)\n", driver->source_file, driver->name);
+			items_since_region = (ROMREGION_ISERASE(romp) || ROMREGION_ISDISPOSE(romp)) ? 1 : 0;
 
 			/* check for an invalid region */
 			if (type >= REGION_MAX || type <= REGION_INVALID)
@@ -353,6 +377,8 @@ static int validate_roms(int drivnum, const machine_config *drv, UINT32 *region_
 			const char *hash;
 			const char *s;
 
+			items_since_region++;
+
 			/* track the last filename we found */
 			last_name = ROM_GETNAME(romp);
 
@@ -375,12 +401,21 @@ static int validate_roms(int drivnum, const machine_config *drv, UINT32 *region_
 		}
 
 		/* for any non-region ending entries, make sure they don't extend past the end */
-		if (!ROMENTRY_ISREGIONEND(romp) && cur_region != -1 && ROM_GETOFFSET(romp) + ROM_GETLENGTH(romp) > region_length[cur_region])
+		if (!ROMENTRY_ISREGIONEND(romp) && cur_region != -1)
 		{
-			printf("%s: %s has ROM %s extending past the defined memory region\n", driver->source_file, driver->name, last_name);
-			error = TRUE;
+			items_since_region++;
+
+			if (ROM_GETOFFSET(romp) + ROM_GETLENGTH(romp) > region_length[cur_region])
+			{
+				printf("%s: %s has ROM %s extending past the defined memory region\n", driver->source_file, driver->name, last_name);
+				error = TRUE;
+			}
 		}
 	}
+
+	/* final check for empty regions */
+	if (items_since_region == 0)
+		printf("%s: %s has empty ROM region (warning)\n", driver->source_file, driver->name);
 
 	return error;
 }
@@ -414,6 +449,17 @@ static int validate_cpu(int drivnum, const machine_config *drv, const UINT32 *re
 		if (cputype_get_interface(cpu->cpu_type)->get_info == dummy_get_info)
 		{
 			printf("%s: %s uses non-present CPU\n", driver->source_file, driver->name);
+			error = TRUE;
+			continue;
+		}
+
+		/* check the CPU for incompleteness */
+		if (!cputype_get_info_fct(cpu->cpu_type, CPUINFO_PTR_GET_CONTEXT)
+			|| !cputype_get_info_fct(cpu->cpu_type, CPUINFO_PTR_SET_CONTEXT)
+			|| !cputype_get_info_fct(cpu->cpu_type, CPUINFO_PTR_RESET)
+			|| !cputype_get_info_fct(cpu->cpu_type, CPUINFO_PTR_EXECUTE))
+		{
+			printf("%s: %s uses an incomplete CPU\n", driver->source_file, driver->name);
 			error = TRUE;
 			continue;
 		}
@@ -529,6 +575,49 @@ static int validate_cpu(int drivnum, const machine_config *drv, const UINT32 *re
 
 /*************************************
  *
+ *  Validate display
+ *
+ *************************************/
+
+static int validate_display(int drivnum, const machine_config *drv)
+{
+	const game_driver *driver = drivers[drivnum];
+	int error = FALSE;
+
+	/* check for empty palette */
+	if (drv->total_colors == 0 && !(drv->video_attributes & VIDEO_RGB_DIRECT))
+	{
+		printf("%s: %s has zero palette entries\n", driver->source_file, driver->name);
+		error = TRUE;
+	}
+
+	/* sanity check dimensions */
+	if ((drv->screen_width <= 0) || (drv->screen_height <= 0))
+	{
+		printf("%s: %s has invalid display dimensions\n", driver->source_file, driver->name);
+		error = TRUE;
+	}
+
+	/* sanity check display area */
+	if (!(drv->video_attributes & VIDEO_TYPE_VECTOR))
+	{
+		if ((drv->default_visible_area.max_x < drv->default_visible_area.min_x)
+			|| (drv->default_visible_area.max_y < drv->default_visible_area.min_y)
+			|| (drv->default_visible_area.max_x >= drv->screen_width)
+			|| (drv->default_visible_area.max_y >= drv->screen_height))
+		{
+			printf("%s: %s has an invalid display area\n", driver->source_file, driver->name);
+			error = TRUE;
+		}
+	}
+
+	return error;
+}
+
+
+
+/*************************************
+ *
  *  Validate graphics
  *
  *************************************/
@@ -555,7 +644,7 @@ static int validate_gfx(int drivnum, const machine_config *drv, const UINT32 *re
 			int len, avail, plane, start;
 
 			/* determine which plane is the largest */
-			start = 0;
+ 			start = 0;
 			for (plane = 0; plane < MAX_GFX_PLANES; plane++)
 				if (gfx->gfxlayout->planeoffset[plane] > start)
 					start = gfx->gfxlayout->planeoffset[plane];
@@ -839,7 +928,7 @@ static int validate_sound(int drivnum, const machine_config *drv)
  *
  *************************************/
 
-int mame_validitychecks(void)
+int mame_validitychecks(int game)
 {
 	cycles_t prep = 0;
 	cycles_t expansion = 0;
@@ -847,6 +936,7 @@ int mame_validitychecks(void)
 	cycles_t rom_checks = 0;
 	cycles_t cpu_checks = 0;
 	cycles_t gfx_checks = 0;
+	cycles_t display_checks = 0;
 	cycles_t input_checks = 0;
 	cycles_t sound_checks = 0;
 #ifdef MESS
@@ -880,6 +970,10 @@ int mame_validitychecks(void)
 	build_quarks();
 	prep += osd_profiling_ticks();
 
+	/* count drivers first */
+	for (drivnum = 0; drivers[drivnum]; drivnum++) ;
+	total_drivers = drivnum;
+
 	/* iterate over all drivers */
 	for (drivnum = 0; drivers[drivnum]; drivnum++)
 	{
@@ -887,9 +981,10 @@ int mame_validitychecks(void)
 		UINT32 region_length[REGION_MAX];
 		machine_config drv;
 
-#ifndef MAME_DEBUG
+/* ASG -- trying this for a while to see if submission failures increase */
+#if 1
 		/* non-debug builds only care about games in the same driver */
-		if (Machine->gamedrv && strcmp(Machine->gamedrv->source_file, driver->source_file) != 0)
+		if (game != -1 && strcmp(drivers[game]->source_file, driver->source_file) != 0)
 			continue;
 #endif
 
@@ -912,6 +1007,11 @@ int mame_validitychecks(void)
 		cpu_checks -= osd_profiling_ticks();
 		error = validate_cpu(drivnum, &drv, region_length) || error;
 		cpu_checks += osd_profiling_ticks();
+
+		/* validate the display */
+		display_checks -= osd_profiling_ticks();
+		error = validate_display(drivnum, &drv) || error;
+		display_checks += osd_profiling_ticks();
 
 		/* validate the graphics decoding */
 		gfx_checks -= osd_profiling_ticks();
@@ -942,6 +1042,7 @@ int mame_validitychecks(void)
 	printf("Driver:    %8dm\n", (int)(driver_checks / 1000000));
 	printf("ROM:       %8dm\n", (int)(rom_checks / 1000000));
 	printf("CPU:       %8dm\n", (int)(cpu_checks / 1000000));
+	printf("Display:   %8dm\n", (int)(display_checks / 1000000));
 	printf("Graphics:  %8dm\n", (int)(gfx_checks / 1000000));
 	printf("Input:     %8dm\n", (int)(input_checks / 1000000));
 	printf("Sound:     %8dm\n", (int)(sound_checks / 1000000));

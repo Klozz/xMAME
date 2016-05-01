@@ -26,11 +26,9 @@ to do:
 
 */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 
-#include "driver.h"		/* use M.A.M.E. */
+#include "sndintrf.h"		/* use M.A.M.E. */
 #include "ym2413.h"
 
 
@@ -628,8 +626,8 @@ INLINE void advance_lfo(YM2413 *chip)
 {
 	/* LFO */
 	chip->lfo_am_cnt += chip->lfo_am_inc;
-	if (chip->lfo_am_cnt >= (LFO_AM_TAB_ELEMENTS<<LFO_SH) )	/* lfo_am_table is 210 elements long */
-		chip->lfo_am_cnt -= (LFO_AM_TAB_ELEMENTS<<LFO_SH);
+	if (chip->lfo_am_cnt >= ((UINT32)LFO_AM_TAB_ELEMENTS<<LFO_SH) )	/* lfo_am_table is 210 elements long */
+		chip->lfo_am_cnt -= ((UINT32)LFO_AM_TAB_ELEMENTS<<LFO_SH);
 
 	LFO_AM = lfo_am_table[ chip->lfo_am_cnt >> LFO_SH ] >> 1;
 
@@ -643,8 +641,6 @@ INLINE void advance(YM2413 *chip)
 	OPLL_CH *CH;
 	OPLL_SLOT *op;
 	unsigned int i;
-
-/*profiler_mark(PROFILER_USER3); */
 
 	/* Envelope Generator */
 	chip->eg_timer += chip->eg_timer_add;
@@ -801,10 +797,6 @@ INLINE void advance(YM2413 *chip)
 		}
 	}
 
-/*profiler_mark(PROFILER_END); */
-
-/*profiler_mark(PROFILER_USER4); */
-
 	for (i=0; i<9*2; i++)
 	{
 		CH  = &chip->P_CH[i/2];
@@ -871,7 +863,6 @@ INLINE void advance(YM2413 *chip)
 
 		i--;
 	}
-/*profiler_mark(PROFILER_END); */
 }
 
 

@@ -1,8 +1,16 @@
+/***************************************************************************
+
+    unzip.c
+
+    Functions to manipulate data within ZIP files.
+
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
+***************************************************************************/
+
 #include "unzip.h"
 #include "driver.h"
-
-#include <stdlib.h>
-#include <string.h>
 #include <ctype.h>
 #include <assert.h>
 #include <zlib.h>
@@ -16,9 +24,6 @@ int	gUnzipQuiet = 0;		/* flag controls error messages */
 #define ERROR_UNSUPPORTED "The format of this zipfile is not supported, please recompress it"
 
 #define INFLATE_INPUT_BUFFER_MAX 16384
-#ifndef MIN
-#define MIN(x,y) ((x)<(y)?(x):(y))
-#endif
 
 /* Print a error message */
 void errormsg(const char* extmsg, const char* usermsg, const char* zipname) {
@@ -180,6 +185,8 @@ static int ecd_read(zip_file* zip) {
      ==0 error
 */
 zip_file* openzip(int pathtype, int pathindex, const char* zipfile) {
+	osd_file_error error;
+
 	/* allocate */
 	zip_file* zip = (zip_file*)malloc( sizeof(zip_file) );
 	if (!zip) {
@@ -187,7 +194,7 @@ zip_file* openzip(int pathtype, int pathindex, const char* zipfile) {
 	}
 
 	/* open */
-	zip->fp = osd_fopen(pathtype, pathindex, zipfile, "rb");
+	zip->fp = osd_fopen(pathtype, pathindex, zipfile, "rb", &error);
 	if (!zip->fp) {
 		errormsg ("Opening for reading", ERROR_FILESYSTEM, zipfile);
 		free(zip);
@@ -384,8 +391,10 @@ void suspendzip(zip_file* zip) {
     ==0 error (zip must be closed with closezip)
 */
 static zip_file* revivezip(zip_file* zip) {
+	osd_file_error error;
+
 	if (!zip->fp) {
-		zip->fp = osd_fopen(zip->pathtype, zip->pathindex, zip->zip, "rb");
+		zip->fp = osd_fopen(zip->pathtype, zip->pathindex, zip->zip, "rb", &error);
 		if (!zip->fp) {
 			return 0;
 		}

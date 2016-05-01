@@ -44,27 +44,6 @@ Pleiads:
 #include "phoenix.h"
 
 
-READ8_HANDLER( phoenix_videoram_r );
-WRITE8_HANDLER( phoenix_videoram_w );
-WRITE8_HANDLER( phoenix_videoreg_w );
-WRITE8_HANDLER( pleiads_videoreg_w );
-WRITE8_HANDLER( phoenix_scroll_w );
-READ8_HANDLER( phoenix_input_port_0_r );
-READ8_HANDLER( pleiads_input_port_0_r );
-READ8_HANDLER( survival_input_port_0_r );
-READ8_HANDLER( survival_protection_r );
-PALETTE_INIT( phoenix );
-PALETTE_INIT( pleiads );
-VIDEO_START( phoenix );
-VIDEO_UPDATE( phoenix );
-
-void *phoenix_sh_start(int clock, const struct CustomSound_interface *config);
-
-WRITE8_HANDLER( pleiads_sound_control_a_w );
-WRITE8_HANDLER( pleiads_sound_control_b_w );
-void *pleiads_sh_start(int clock, const struct CustomSound_interface *config);
-
-
 static ADDRESS_MAP_START( phoenix_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
 	AM_RANGE(0x4000, 0x4fff) AM_READ(MRA8_BANK1)			/* 2 pages selected by bit 0 of the video register */
@@ -688,7 +667,7 @@ static struct AY8910interface survival_ay8910_interface =
 
 
 
-static MACHINE_INIT( phoenix )
+static MACHINE_RESET( phoenix )
 {
 	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x4000);
 }
@@ -703,7 +682,7 @@ static MACHINE_DRIVER_START( phoenix )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)	/* frames per second, vblank duration */
 
-	MDRV_MACHINE_INIT(phoenix)
+	MDRV_MACHINE_RESET(phoenix)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -728,7 +707,7 @@ static MACHINE_DRIVER_START( phoenix )
 	MDRV_SOUND_CONFIG(phoenix_custom_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.4)
 
-	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
+	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 120000)
 	MDRV_SOUND_CONFIG(phoenix_discrete_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.6)
 MACHINE_DRIVER_END
@@ -939,8 +918,8 @@ ROM_START( condor )
 	ROM_LOAD( "cond08c.bin",  0x3800, 0x0800, CRC(1edebb45) SHA1(2fdf061ee600e27a6ed512ea61a8d78307a7fb8a) )
 
 	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "ic23",         0x0000, 0x0800, CRC(3c7e623f) SHA1(e7ff5fc371664af44785c079e92eeb2d8530187b) )
-	ROM_LOAD( "ic24",         0x0800, 0x0800, CRC(59916d3b) SHA1(71aec70a8e096ed1f0c2297b3ae7dca1b8ecc38d) )
+	ROM_LOAD( "cond09c.bin",  0x0000, 0x0800, CRC(3c7e623f) SHA1(e7ff5fc371664af44785c079e92eeb2d8530187b) )
+	ROM_LOAD( "cond10c.bin",  0x0800, 0x0800, CRC(59916d3b) SHA1(71aec70a8e096ed1f0c2297b3ae7dca1b8ecc38d) )
 
 	ROM_REGION( 0x1000, REGION_GFX2, ROMREGION_DISPOSE )
 	ROM_LOAD( "cond11c.bin",  0x0000, 0x0800, CRC(53c52eb0) SHA1(19624ca359996b77d3c65ef78a7af90eeb092377) )

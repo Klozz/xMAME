@@ -20,8 +20,7 @@ Notes:
 ******************************************************************************/
 
 #include "driver.h"
-#include "machine/z80fmly.h"
-#include "vidhrdw/generic.h"
+#include "machine/z80ctc.h"
 #include "sound/3812intf.h"
 #include "sound/dac.h"
 #include "cpu/z80/z80daisy.h"
@@ -204,7 +203,7 @@ static int tmpz84c011_pio_r(int offset)
 						portdata = readinputport(7);
 						break;
 					default:
-						portdata = 0xff;
+						portdata = (readinputport(3) & readinputport(4) & readinputport(5) & readinputport(6) & readinputport(7));
 						break;
 				}
 				break;
@@ -228,7 +227,7 @@ static int tmpz84c011_pio_r(int offset)
 						portdata = readinputport(12);
 						break;
 					default:
-						portdata = 0xff;
+						portdata = (readinputport(8) & readinputport(9) & readinputport(10) & readinputport(11) & readinputport(12));
 						break;
 				}
 				break;
@@ -289,7 +288,7 @@ static int tmpz84c011_pio_r(int offset)
 						portdata = ((readinputport(7) & 0x7f) | (nbmj9195_dipsw_r() << 7));
 						break;
 					default:
-						portdata = 0xff;
+						portdata = (readinputport(3) & readinputport(4) & readinputport(5) & readinputport(6) & (readinputport(12) & 0x7f));
 						break;
 				}
 				break;
@@ -313,7 +312,7 @@ static int tmpz84c011_pio_r(int offset)
 						portdata = readinputport(12) & 0x7f;
 						break;
 					default:
-						portdata = 0xff;
+						portdata = (readinputport(8) & readinputport(9) & readinputport(10) & readinputport(11) & (readinputport(12) & 0x7f));
 						break;
 				}
 				break;
@@ -504,26 +503,36 @@ static INTERRUPT_GEN( ctc0_trg1 )
 	z80ctc_0_trg1_w(0, 0);
 }
 
-static z80ctc_interface ctc_intf =
+static z80ctc_interface ctc_intf_1 =
 {
-	2,									/* 2 chip */
-	{ 0, 1 },							/* clock */
-	{ 0, 0 },							/* timer disables */
-	{ ctc0_interrupt, ctc1_interrupt },	/* interrupt handler */
-	{ 0, z80ctc_1_trg3_w },				/* ZC/TO0 callback ctc1.zc0 -> ctc1.trg3 */
-	{ 0, 0 },							/* ZC/TO1 callback */
-	{ 0, 0 },							/* ZC/TO2 callback */
+	0,							/* clock */
+	0,							/* timer disables */
+	ctc0_interrupt,				/* interrupt handler */
+	0,							/* ZC/TO0 callback ctc1.zc0 -> ctc1.trg3 */
+	0,							/* ZC/TO1 callback */
+	0,							/* ZC/TO2 callback */
+};
+
+static z80ctc_interface ctc_intf_2 =
+{
+	1,							/* clock */
+	0,							/* timer disables */
+	ctc1_interrupt,				/* interrupt handler */
+	z80ctc_1_trg3_w,			/* ZC/TO0 callback ctc1.zc0 -> ctc1.trg3 */
+	0,							/* ZC/TO1 callback */
+	0							/* ZC/TO2 callback */
 };
 
 static void tmpz84c011_init(void)
 {
 	/* initialize the CTC */
-	ctc_intf.baseclock[0] = Machine->drv->cpu[0].cpu_clock;
-	ctc_intf.baseclock[1] = Machine->drv->cpu[1].cpu_clock;
-	z80ctc_init(&ctc_intf);
+	ctc_intf_1.baseclock = Machine->drv->cpu[0].cpu_clock;
+	ctc_intf_2.baseclock = Machine->drv->cpu[1].cpu_clock;
+	z80ctc_init(0, &ctc_intf_1);
+	z80ctc_init(1, &ctc_intf_2);
 }
 
-static MACHINE_INIT( sailorws )
+static MACHINE_RESET( sailorws )
 {
 	int i;
 
@@ -4170,7 +4179,7 @@ static MACHINE_DRIVER_START( NBMJDRV1 )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(sailorws)
+	MDRV_MACHINE_RESET(sailorws)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK | VIDEO_PIXEL_ASPECT_RATIO_1_2)
@@ -5041,35 +5050,35 @@ ROM_END
 
 
 /*    YEAR,     NAME,   PARENT,  MACHINE,    INPUT,     INIT,    MONITOR, COMPANY, FULLNAME, FLAGS */
-GAME( 1992, mjuraden, 0,        mjuraden, mjuraden, mjuraden, ROT0, "Nichibutsu/Yubis", "Mahjong Uranai Densetsu (Japan)", 0 )
-GAME( 1992, koinomp,  0,        koinomp,  koinomp,  koinomp,  ROT0, "Nichibutsu", "Mahjong Koi no Magic Potion (Japan)", 0 )
-GAME( 1992, patimono, 0,        patimono, patimono, patimono, ROT0, "Nichibutsu", "Mahjong Pachinko Monogatari (Japan)", 0 )
-GAME( 1992, janbari,  0,        janbari,  janbari,  janbari,  ROT0, "Nichibutsu/Yubis/AV JAPAN", "Mahjong Janjan Baribari (Japan)", 0 )
-GAME( 1992, mjanbari, janbari,  janbari,  mjanbari, mjanbari, ROT0, "Nichibutsu/Yubis/AV JAPAN", "Medal Mahjong Janjan Baribari [BET] (Japan)", 0 )
-GAME( 1992, mmehyou,  0,        mmehyou,  mmehyou,  mmehyou,  ROT0, "Nichibutsu/Kawakusu", "Medal Mahjong Circuit no Mehyou [BET] (Japan)", 0 )
-GAME( 1993, ultramhm, 0,        ultramhm, ultramhm, ultramhm, ROT0, "Apple", "Ultra Maru-hi Mahjong (Japan)", 0 )
-GAME( 1993, gal10ren, 0,        gal10ren, gal10ren, gal10ren, ROT0, "FUJIC", "Mahjong Gal 10-renpatsu (Japan)", 0 )
-GAME( 1993, renaiclb, 0,        renaiclb, renaiclb, renaiclb, ROT0, "FUJIC", "Mahjong Ren-ai Club (Japan)", 0 )
-GAME( 1993, mjlaman,  0,        mjlaman,  mjlaman,  mjlaman,  ROT0, "Nichibutsu/AV JAPAN", "Mahjong La Man (Japan)", 0 )
-GAME( 1993, mkeibaou, 0,        mkeibaou, mkeibaou, mkeibaou, ROT0, "Nichibutsu", "Mahjong Keibaou (Japan)", 0 )
-GAME( 1993, pachiten, 0,        pachiten, pachiten, pachiten, ROT0, "Nichibutsu/MIKI SYOUJI/AV JAPAN", "Medal Mahjong Pachi-Slot Tengoku [BET] (Japan)", 0 )
-GAME( 1993, sailorws, 0,        sailorws, sailorws, sailorws, ROT0, "Nichibutsu", "Mahjong Sailor Wars (Japan)", 0 )
-GAME( 1993, sailorwa, sailorws, sailorws, sailorws, sailorws, ROT0, "Nichibutsu", "Mahjong Sailor Wars (Japan) (set 2)", 0 )
-GAME( 1993, sailorwr, sailorws, sailorwr, sailorwr, sailorwr, ROT0, "Nichibutsu", "Mahjong Sailor Wars-R [BET] (Japan)", 0 )
-GAME( 1993, wcatcher, 0,        otatidai, wcatcher, wcatcher, ROT0, "Nichibutsu", "Mahjong Wakuwaku Catcher (Japan)", 0 )
-GAME( 1993, jituroku, 0,        jituroku, jituroku, jituroku, ROT0, "Windom", "Jitsuroku Maru-chi Mahjong (Japan)", 0 )
-GAME( 1994, yosimoto, 0,        yosimoto, yosimoto, yosimoto, ROT0, "Nichibutsu/Yoshimoto Kougyou", "Mahjong Yoshimoto Gekijou (Japan)", 0 )
-GAME( 1994, psailor1, 0,        psailor1, psailor1, psailor1, ROT0, "SPHINX", "Bishoujo Janshi Pretty Sailor 18-kin (Japan)", 0 )
-GAME( 1994, psailor2, 0,        psailor2, psailor2, psailor2, ROT0, "SPHINX", "Bishoujo Janshi Pretty Sailor 2 (Japan)", 0 )
-GAME( 1995, otatidai, 0,        otatidai, otatidai, otatidai, ROT0, "SPHINX", "Disco Mahjong Otachidai no Okite (Japan)", 0 )
+GAME( 1992, mjuraden, 0,        mjuraden, mjuraden, mjuraden, ROT0,   "Nichibutsu/Yubis", "Mahjong Uranai Densetsu (Japan)", 0 )
+GAME( 1992, koinomp,  0,        koinomp,  koinomp,  koinomp,  ROT0,   "Nichibutsu", "Mahjong Koi no Magic Potion (Japan)", 0 )
+GAME( 1992, patimono, 0,        patimono, patimono, patimono, ROT0,   "Nichibutsu", "Mahjong Pachinko Monogatari (Japan)", 0 )
+GAME( 1992, janbari,  0,        janbari,  janbari,  janbari,  ROT0,   "Nichibutsu/Yubis/AV JAPAN", "Mahjong Janjan Baribari (Japan)", 0 )
+GAME( 1992, mjanbari, janbari,  janbari,  mjanbari, mjanbari, ROT0,   "Nichibutsu/Yubis/AV JAPAN", "Medal Mahjong Janjan Baribari [BET] (Japan)", 0 )
+GAME( 1992, mmehyou,  0,        mmehyou,  mmehyou,  mmehyou,  ROT0,   "Nichibutsu/Kawakusu", "Medal Mahjong Circuit no Mehyou [BET] (Japan)", 0 )
+GAME( 1993, ultramhm, 0,        ultramhm, ultramhm, ultramhm, ROT0,   "Apple", "Ultra Maru-hi Mahjong (Japan)", 0 )
+GAME( 1993, gal10ren, 0,        gal10ren, gal10ren, gal10ren, ROT0,   "FUJIC", "Mahjong Gal 10-renpatsu (Japan)", 0 )
+GAME( 1993, renaiclb, 0,        renaiclb, renaiclb, renaiclb, ROT0,   "FUJIC", "Mahjong Ren-ai Club (Japan)", 0 )
+GAME( 1993, mjlaman,  0,        mjlaman,  mjlaman,  mjlaman,  ROT0,   "Nichibutsu/AV JAPAN", "Mahjong La Man (Japan)", 0 )
+GAME( 1993, mkeibaou, 0,        mkeibaou, mkeibaou, mkeibaou, ROT0,   "Nichibutsu", "Mahjong Keibaou (Japan)", 0 )
+GAME( 1993, pachiten, 0,        pachiten, pachiten, pachiten, ROT0,   "Nichibutsu/MIKI SYOUJI/AV JAPAN", "Medal Mahjong Pachi-Slot Tengoku [BET] (Japan)", 0 )
+GAME( 1993, sailorws, 0,        sailorws, sailorws, sailorws, ROT0,   "Nichibutsu", "Mahjong Sailor Wars (Japan)", 0 )
+GAME( 1993, sailorwa, sailorws, sailorws, sailorws, sailorws, ROT0,   "Nichibutsu", "Mahjong Sailor Wars (Japan) (set 2)", 0 )
+GAME( 1993, sailorwr, sailorws, sailorwr, sailorwr, sailorwr, ROT0,   "Nichibutsu", "Mahjong Sailor Wars-R [BET] (Japan)", 0 )
+GAME( 1993, wcatcher, 0,        otatidai, wcatcher, wcatcher, ROT0,   "Nichibutsu", "Mahjong Wakuwaku Catcher (Japan)", 0 )
+GAME( 1993, jituroku, 0,        jituroku, jituroku, jituroku, ROT180, "Windom", "Jitsuroku Maru-chi Mahjong (Japan)", 0 )
+GAME( 1994, yosimoto, 0,        yosimoto, yosimoto, yosimoto, ROT180, "Nichibutsu/Yoshimoto Kougyou", "Mahjong Yoshimoto Gekijou (Japan)", 0 )
+GAME( 1994, psailor1, 0,        psailor1, psailor1, psailor1, ROT0,   "SPHINX", "Bishoujo Janshi Pretty Sailor 18-kin (Japan)", 0 )
+GAME( 1994, psailor2, 0,        psailor2, psailor2, psailor2, ROT0,   "SPHINX", "Bishoujo Janshi Pretty Sailor 2 (Japan)", 0 )
+GAME( 1995, otatidai, 0,        otatidai, otatidai, otatidai, ROT0,   "SPHINX", "Disco Mahjong Otachidai no Okite (Japan)", 0 )
 
-GAME( 1991, ngpgal,   0,        ngpgal,   ngpgal,   ngpgal,   ROT0, "Nichibutsu", "Nekketsu Grand-Prix Gal (Japan)", 0 )
-GAME( 1991, mjgottsu, 0,        mjgottsu, mjgottsu, mjgottsu, ROT0, "Nichibutsu", "Mahjong Gottsu ee-kanji (Japan)", 0 )
-GAME( 1991, bakuhatu, mjgottsu, bakuhatu, bakuhatu, bakuhatu, ROT0, "Nichibutsu", "Mahjong Bakuhatsu Junjouden (Japan)", 0 )
-GAME( 1992, cmehyou,  0,        cmehyou,  cmehyou,  cmehyou,  ROT0, "Nichibutsu/Kawakusu", "Mahjong Circuit no Mehyou (Japan)", 0 )
-GAME( 1992, mjkoiura, 0,        mjkoiura, mjkoiura, mjkoiura, ROT0, "Nichibutsu", "Mahjong Koi Uranai (Japan)", 0 )
-GAME( 1992, mkoiuraa, mjkoiura, mkoiuraa, mjkoiura, mjkoiura, ROT0, "Nichibutsu", "Mahjong Koi Uranai (set 2) (Japan)", 0 )
+GAME( 1991, ngpgal,   0,        ngpgal,   ngpgal,   ngpgal,   ROT0,   "Nichibutsu", "Nekketsu Grand-Prix Gal (Japan)", 0 )
+GAME( 1991, mjgottsu, 0,        mjgottsu, mjgottsu, mjgottsu, ROT0,   "Nichibutsu", "Mahjong Gottsu ee-kanji (Japan)", 0 )
+GAME( 1991, bakuhatu, mjgottsu, bakuhatu, bakuhatu, bakuhatu, ROT0,   "Nichibutsu", "Mahjong Bakuhatsu Junjouden (Japan)", 0 )
+GAME( 1992, cmehyou,  0,        cmehyou,  cmehyou,  cmehyou,  ROT0,   "Nichibutsu/Kawakusu", "Mahjong Circuit no Mehyou (Japan)", 0 )
+GAME( 1992, mjkoiura, 0,        mjkoiura, mjkoiura, mjkoiura, ROT0,   "Nichibutsu", "Mahjong Koi Uranai (Japan)", 0 )
+GAME( 1992, mkoiuraa, mjkoiura, mkoiuraa, mjkoiura, mjkoiura, ROT0,   "Nichibutsu", "Mahjong Koi Uranai (set 2) (Japan)", 0 )
 
-GAME( 1994, mscoutm,  0,        mscoutm,  mscoutm,  mscoutm,  ROT0, "SPHINX/AV JAPAN", "Mahjong Scout Man (Japan)", 0 )
-GAME( 1994, imekura,  0,        imekura,  imekura,  imekura,  ROT0, "SPHINX/AV JAPAN", "Imekura Mahjong (Japan)", 0 )
-GAME( 1994, mjegolf,  0,        mjegolf,  mjegolf,  mjegolf,  ROT0, "FUJIC/AV JAPAN", "Mahjong Erotica Golf (Japan)", 0 )
+GAME( 1994, mscoutm,  0,        mscoutm,  mscoutm,  mscoutm,  ROT0,   "SPHINX/AV JAPAN", "Mahjong Scout Man (Japan)", 0 )
+GAME( 1994, imekura,  0,        imekura,  imekura,  imekura,  ROT0,   "SPHINX/AV JAPAN", "Imekura Mahjong (Japan)", 0 )
+GAME( 1994, mjegolf,  0,        mjegolf,  mjegolf,  mjegolf,  ROT0,   "FUJIC/AV JAPAN", "Mahjong Erotica Golf (Japan)", 0 )

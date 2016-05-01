@@ -5,11 +5,12 @@
 
   main part in vidhrdw
 ***************************************************************************/
-#include <math.h>
-#include "driver.h"
 
-#include "sound/streams.h"
+#include <math.h>
+
+#include "driver.h"
 #include "mame.h"
+#include "streams.h"
 
 #define VERBOSE_DBG 0
 #include "includes/cbm.h"

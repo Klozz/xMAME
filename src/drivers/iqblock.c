@@ -43,6 +43,10 @@ Stephh's notes :
     something to do with "Demo Sounds".
     I can't tell however if setting the Dip Switch to OFF means "Demo Sounds" OFF or ON !
 
+Grndtour:
+ - Title should flash 3X slowly. In MAME it flashes too fast, or strangely??
+
+
 ***************************************************************************/
 
 #include "driver.h"
@@ -111,7 +115,7 @@ static ppi8255_interface ppi8255_intf =
 	{ port_C_w },				/* Port C write */
 };
 
-MACHINE_INIT( iqblock )
+MACHINE_RESET( iqblock )
 {
 	ppi8255_init(&ppi8255_intf);
 }
@@ -286,7 +290,7 @@ static MACHINE_DRIVER_START( iqblock )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(iqblock)
+	MDRV_MACHINE_RESET(iqblock)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER|VIDEO_PIXEL_ASPECT_RATIO_1_2)
@@ -315,7 +319,7 @@ static MACHINE_DRIVER_START( cabaret )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(iqblock)
+	MDRV_MACHINE_RESET(iqblock)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER|VIDEO_PIXEL_ASPECT_RATIO_1_2)

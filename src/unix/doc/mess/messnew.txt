@@ -1,3 +1,229 @@
+0.106
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Atari 5200 (alt)  [incog]
+- Bandai WonderSwan/WonderSwan Color [Wilbert Pol]
+- CDTV  [Dirk Best]
+- Sharp Famicom Twin  [incog]
+- Tiger Game.com (not working yet) [Wilbert Pol]
+
+
+
+System Driver Changes:
+----------------------
+- [AMIGA] Cleanups.  [Dirk Best]
+
+- [CBM] Changed code to share 6526 CIA implementation with the one used by
+  the Amiga in MAME.  [Nate Woods]
+
+- [CGENIE] Implemented configurable RAM support.  [Nate Woods]
+
+- [COCO] Fixed joystick regression introduced in 0.105.  (bug #876) [Nate Woods]
+
+- [COCO] Complete rewrite of both M6847 and GIME video code; timing and
+  performance enhancements.  [Nate Woods]
+
+- [COCO] Changed joystick key assignments from arrow keys to numeric keypad,
+  as well as added mouse button assignments.  [Nate Woods]
+
+- [FAMICOM] Fixed disk system.  [Steve Leung]
+
+- [N64] Properly recognizes .n64 file extension.  [Justin Kerk]
+
+- [SMS] Changed to use selectable bioses.  [Wilbert Pol]
+
+
+
+User Interface Changes:
+-----------------------
+- [Windows] Added a save state option that lets the user override existing 
+  saves without a dialog, and save state as now prompts if the command would
+  override the existing save.  [Nate Woods]
+
+- [Windows GUI] Fixed "Skip warnings" regression in the GUI.  (bug #867) [Nate
+  Woods]
+
+- [Windows GUI] Fixed bug that caused problems selecting different images in
+  the picker.  (bug #873) [Nate Woods]
+
+- [Windows GUI] New icons and splash screen.  [incog]
+
+- [Windows GUI] Fixed some general bugginess involving specifying images.
+  (bug #866)  [Nate Woods]
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.106.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+
+
+0.105
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- AT 586 (not working yet) [Nate Woods]
+- Nintendo N64 (not working yet) [Ville Linde]
+
+
+
+System Driver Changes:
+----------------------
+- [990189V] Fixed crash when taking a screenshot.  (bug #714) [Oliver
+  Stoeneberg, Nate Woods]
+
+- [EUROPC] Fixed keyboard regression introduced in 0.104.  (bug #857) [Nate
+  Woods]
+
+- [EXIDY] Added cartridge support.  (bug #842) [Robert]
+
+- [FAMICOM] Added hack to prevent crashing.  Marked as not working.  [Nate
+  Woods]
+
+- [MAC] Moved Mac video code off of videomap.c.  [Nate Woods]
+
+- [MPF1] Added sound support and other enhancements.  [Giel van Schijndel]
+
+- [MSX] Fixed a crash involving cartridge use.  (bug #841) [Nate Woods]
+
+- [MSX] Fixed subtle memory corruption bug.  [R Belmont, Wilbert Pol]
+
+- [PC] Fixed a crash involving certain types of CGA memory access.  (bug #859)
+  [Nate Woods]
+
+- [PC8801] Worked around a regression introduced in MESS 0.96.  (bug #759)
+  [Nate Woods]
+
+- [VTECH1] Added support for the 64k memory expansion, and cartridge support.
+  [Dirk Best]
+
+
+
+User Interface Changes:
+-----------------------
+- Fixed a file manager bug that prevented the last item from being selected. 
+  [telengard]
+
+
+
+Imgtool Changes:
+----------------
+- VZDOS images now supported.  [Dirk Best]
+
+- The "dir" command will display "<DIR>" for directories.  [Nate Woods]
+
+- [FAT] Now supports FAT file systems without an extended BIOS parameter
+  block.  [Nate Woods]
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.105.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Changed how devices work.  Device command line options are now on a per
+  device basis, and now identify the index within a device.  Therefore, you
+  now might invoke MESS like this:
+  
+	mess mysystem -flop1 foo.dsk -flop2 bar.dsk
+	
+  Also, drivers now have the ability to specify the string to be used for the
+  command line option.  This allows multiple devices of the same type to be
+  viable.  (bugs #711, #839) [Nate Woods]
+
+- Fixed WD17XX side select option; this prevented some copy protection schemes
+  from being properly emulated.  (bug #863) [Nate Woods]
+
+- Fixed a bug that caused image creation to crash in certain situations.
+  (bug #858) [Nate Woods]
+
+- Eliminated the unknown and unused -listtext and -createdir command line
+  options.  [Nate Woods]
+
+- Cleaned up auto_malloc() calls.  [Oliver Stoeneberg]
+
+
+
+0.104
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Exidy Sorcerer (diskless) [Robert]
+- Sony Playstation (scph3000 J v1.1 01/22/95) [incog]
+- Sony Playstation (scph3500 J v2.1 07/17/95) [incog]
+- Turbo Grafix-16 [Rob Bohms]
+- Acorn Electron [Wilbert Pol]
+
+
+
+System Driver Changes:
+----------------------
+- [AT] Cleaned up A20 gating.  [Nate Woods]
+
+- [COCO3] Fixed a timing bug in video rendering.  (bug #743) [Nate Woods]
+
+- [PC] Fixed PC keyboard ESC char code (it is now 27; used to be 26).  [Nate
+  Woods]
+
+- [EXIDY] Fixed keyboard, printer and video speed.  Added natural keyboard
+  support.  (bug #615) [Robert]
+
+- [PCE] Various improvements, updated renderer and removed GAME_NOT_WORKING
+  flag.  [Rob Bohms and Charles MacDonald]
+
+- [VTECH1] Fixed key definitions.  (bug #835) [Robert]
+
+
+
+User Interface Changes:
+-----------------------
+- [Windows] Fixed a bug that caused crashes if a dialog was presented, the
+  emulation reset, and a subsequent dialog presented.  (bug #834) [Nate Woods]
+
+- [Windows GUI] Fixed a bug that caused zip files where the file extension was
+  not all lowercase to not be recognized as such.  (bug #831) [Oliver
+  Stoeneberg]
+
+
+
+Imgtool Changes:
+----------------
+- [OS9] Removed a limitation that prevented images from loading that have
+  allocation bitmaps larger than 1024 bytes.  (bug #825) [Nate Woods]
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.104.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Changed how devices are specified.  The new system resembles how MAME CPU
+  and sound cores are specified.  [Nate Woods]
+
+- Added a "input" command to the debugger.  [Nate Woods]
+
+- Cleaned up natural keyboard code.  No longer have QUEUE_CHARS/ACCEPT_CHARS
+  and CHARQUEUE_EMPTY; callbacks are now installed at runtime.  [Nate Woods]
+
+- Fixed a file manager memory allocation bug.  [Brian Sturk]
+
+- Moved MESS validity code into a separate file.  [Nate Woods]
+
+- Enhanced error reporting when loading images.  (bug #827)  [Nate Woods]
+
+
+
 0.103
 
 New System Drivers Supported (in no particular order):

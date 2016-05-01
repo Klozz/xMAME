@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "tatsumi.h"
 #include <math.h>
 
@@ -593,7 +592,7 @@ static void draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, int wri
 		if (index==0xffff || spriteram16[offs+4]==0xffff) /*todo */
 			return;
 
-		if (index>0x1000)
+		if (index>=0x1000)
 			continue;
 
 		src1 = tatsumi_rom_sprite_lookup1 + (index*4);

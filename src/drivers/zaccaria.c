@@ -34,7 +34,6 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/6821pia.h"
 #include "machine/8255ppi.h"
 #include "sound/ay8910.h"
@@ -100,8 +99,8 @@ static WRITE8_HANDLER( ay8910_port0a_w )
 }
 
 
-void zaccaria_irq0a(int state) { cpunum_set_input_line(1, INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE); }
-void zaccaria_irq0b(int state) { cpunum_set_input_line(1,0,state ? ASSERT_LINE : CLEAR_LINE); }
+static void zaccaria_irq0a(int state) { cpunum_set_input_line(1, INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE); }
+static void zaccaria_irq0b(int state) { cpunum_set_input_line(1,0,state ? ASSERT_LINE : CLEAR_LINE); }
 
 static int active_8910,port0a,acs;
 
@@ -215,14 +214,14 @@ static void tms5220_irq_handler(int state)
 
 
 
-static struct pia6821_interface pia_0_intf =
+static const pia6821_interface pia_0_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ zaccaria_port0a_r, 0, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ zaccaria_port0a_w, zaccaria_port0b_w, 0, 0,
 	/*irqs   : A/B             */ zaccaria_irq0a, zaccaria_irq0b
 };
 
-static struct pia6821_interface pia_1_intf =
+static const pia6821_interface pia_1_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ zaccaria_port1a_r, 0, 0, 0, zaccaria_ca2_r, 0,
 	/*outputs: A/B,CA/B2       */ zaccaria_port1a_w, zaccaria_port1b_w, 0, 0,
@@ -242,13 +241,16 @@ static ppi8255_interface ppi8255_intf =
 };
 
 
-static MACHINE_INIT( zaccaria )
+static MACHINE_START( zaccaria )
 {
-	ppi8255_init(&ppi8255_intf);
-
-	pia_unconfig();
 	pia_config(0, PIA_STANDARD_ORDERING, &pia_0_intf);
 	pia_config(1, PIA_STANDARD_ORDERING, &pia_1_intf);
+	return 0;
+}
+
+static MACHINE_RESET( zaccaria )
+{
+	ppi8255_init(&ppi8255_intf);
 	pia_reset();
 }
 
@@ -642,7 +644,7 @@ static const gfx_decode gfxdecodeinfo[] =
 };
 
 
-struct AY8910interface ay8910_interface =
+static struct AY8910interface ay8910_interface =
 {
 	0,
 	soundlatch2_r,
@@ -676,7 +678,8 @@ static MACHINE_DRIVER_START( zaccaria )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(zaccaria)
+	MDRV_MACHINE_START(zaccaria)
+	MDRV_MACHINE_RESET(zaccaria)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

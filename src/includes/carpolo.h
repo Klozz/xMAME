@@ -6,9 +6,10 @@
 
 ****************************************************************************/
 
-/* defined in machine/carpolo.c */
+/*----------- defined in machine/carpolo.c -----------*/
 
-MACHINE_INIT( carpolo );
+MACHINE_START( carpolo );
+MACHINE_RESET( carpolo );
 
 READ8_HANDLER( carpolo_interrupt_cause_r );
 
@@ -36,13 +37,12 @@ void carpolo_generate_car_ball_interrupt(int car, int car_x, int car_y);
 void carpolo_generate_car_border_interrupt(int car, int horizontal_border);
 
 
-/* defined in vidhrdw/carpolo.c */
+/*----------- defined in vidhrdw/carpolo.c -----------*/
 
 extern UINT8 *carpolo_alpharam;
 extern UINT8 *carpolo_spriteram;
 
 PALETTE_INIT( carpolo );
-WRITE8_HANDLER( carpolo_videoram_w );
 VIDEO_START( carpolo );
 VIDEO_UPDATE( carpolo );
 VIDEO_EOF( carpolo );

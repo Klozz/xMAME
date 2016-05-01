@@ -33,7 +33,6 @@
 #include <math.h>
 #include "osinline.h"
 #include "driver.h"
-#include "osdepend.h"
 #include "vector.h"
 #include "artwork.h"
 
@@ -52,9 +51,9 @@ static int beam_diameter_is_one;		  /* flag that beam is one pixel wide */
 static float vector_scale_x;              /* scaling to screen */
 static float vector_scale_y;              /* scaling to screen */
 
-static float gamma_correction = 1.2;
-static float flicker_correction = 0.0;
-static float intensity_correction = 1.5;
+static float gamma_correction = 1.2f;
+static float flicker_correction = 0.0f;
+static float intensity_correction = 1.5f;
 
 static int (*vector_aux_renderer)(point *start, int num_points) = NULL;
 
@@ -225,10 +224,6 @@ VIDEO_START( vector )
 	vector_dirty_list = auto_malloc (MAX_DIRTY_PIXELS * sizeof (vector_dirty_list[0]));
 	old_list = auto_malloc (MAX_POINTS * sizeof (old_list[0]));
 	new_list = auto_malloc (MAX_POINTS * sizeof (new_list[0]));
-
-	/* did we get the requested memory? */
-	if (!(pTcosin && pixel && old_list && new_list && vector_dirty_list))
-		return 1;
 
 	/* build cosine table for fixing line width in antialias */
 	for (i=0; i<=2048; i++)

@@ -1,6 +1,4 @@
 #include "driver.h"
-#include "vidhrdw/generic.h"
-#include "tilemap.h"
 
 UINT8 *baraduke_textram, *baraduke_videoram, *baraduke_spriteram;
 
@@ -248,7 +246,7 @@ static void draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, int spr
 		int priority = source[10] & 0x01;
 		if (priority == sprite_priority)
 		{
-			static int gfx_offs[2][2] =
+			static const int gfx_offs[2][2] =
 			{
 				{ 0, 1 },
 				{ 2, 3 }
@@ -304,7 +302,7 @@ static void draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, int spr
 
 static void set_scroll(int layer)
 {
-	int xdisp[2] = { 26, 24 };
+	static const int xdisp[2] = { 26, 24 };
 	int scrollx, scrolly;
 
 	scrollx = xscroll[layer] + xdisp[layer];

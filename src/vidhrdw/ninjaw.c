@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/taitoic.h"
 
 #define TC0100SCN_GFX_NUM 1
@@ -26,8 +25,6 @@ static VIDEO_START( ninjaw_core )
 	int chips;
 
 	spritelist = auto_malloc(0x1000 * sizeof(*spritelist));
-	if (!spritelist)
-		return 1;
 
 	chips = number_of_TC0100SCN();
 

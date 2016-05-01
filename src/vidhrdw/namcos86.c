@@ -5,7 +5,6 @@ Namco System 86 Video Hardware
 *******************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 
 UINT8 *rthunder_videoram1, *rthunder_videoram2, *rthunder_spriteram;
@@ -347,7 +346,7 @@ static void draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 
 static void set_scroll(int layer)
 {
-	int xdisp[4] = { 47, 49, 46, 48 };
+	static const int xdisp[4] = { 47, 49, 46, 48 };
 	int scrollx,scrolly;
 
 	scrollx = xscroll[layer] - xdisp[layer];

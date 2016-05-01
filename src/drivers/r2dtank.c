@@ -37,7 +37,6 @@ Should be very similar to Sigma's Spiders hardware.
 ********************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/6821pia.h"
 #include "vidhrdw/crtc6845.h"
 #include "cpu/m6800/m6800.h"
@@ -305,7 +304,7 @@ VIDEO_UPDATE( r2dtank )
 /* Declare PIA structure */
 
 /* PIA 0, main CPU */
-static struct pia6821_interface pia_0_intf =
+static const pia6821_interface pia_0_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ input_port_0_r, input_port_1_r, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ 0, 0, 0, r2dtank_video_flip_w,
@@ -313,18 +312,22 @@ static struct pia6821_interface pia_0_intf =
 };
 
 /* PIA 1, main CPU */
-static struct pia6821_interface pia_1_intf =
+static const pia6821_interface pia_1_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ 0, 0, 0, 0,
 	/*irqs   : A/B             */ 0, 0
 };
 
-MACHINE_INIT( r2dtank )
+MACHINE_START( r2dtank )
 {
-	pia_unconfig();
 	pia_config(0, PIA_STANDARD_ORDERING, &pia_0_intf);
 	pia_config(1, PIA_STANDARD_ORDERING, &pia_1_intf);
+	return 0;
+}
+
+MACHINE_RESET( r2dtank )
+{
 	pia_reset();
 }
 
@@ -346,7 +349,8 @@ static MACHINE_DRIVER_START( r2dtank )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(r2dtank)
+	MDRV_MACHINE_START(r2dtank)
+	MDRV_MACHINE_RESET(r2dtank)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */

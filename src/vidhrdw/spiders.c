@@ -8,10 +8,7 @@
 
 #include "driver.h"
 #include "spiders.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/crtc6845.h"
-
-extern int spiders_video_flip;
 
 static UINT8 bitflip[256];
 static int *screenbuffer;
@@ -42,7 +39,7 @@ VIDEO_START( spiders )
 		bitflip[loop]|=(loop&0x40)?0x02:0x00;
 		bitflip[loop]|=(loop&0x80)?0x01:0x00;
 	}
-	if ((screenbuffer = auto_malloc(SCREENBUFFER_SIZE*sizeof(int))) == 0) return 1;
+	screenbuffer = auto_malloc(SCREENBUFFER_SIZE*sizeof(int));
 	memset(screenbuffer,1,SCREENBUFFER_SIZE*sizeof(int));
 	return 0;
 }

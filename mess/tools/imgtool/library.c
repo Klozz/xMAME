@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include "osdepend.h"
 #include "library.h"
 #include "pool.h"
 
@@ -203,7 +204,7 @@ void *imgtool_library_alloc(imgtool_library *library, size_t mem)
 
 char *imgtool_library_strdup(imgtool_library *library, const char *s)
 {
-	return pool_strdup(&library->pool, s);
+	return s ? pool_strdup(&library->pool, s) : NULL;
 }
 
 

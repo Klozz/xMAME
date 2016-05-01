@@ -5,7 +5,6 @@
 *************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 extern UINT8 tunhunt_control;
 extern UINT8 *tunhunt_ram;
@@ -86,8 +85,6 @@ VIDEO_START( tunhunt )
     With max RLE expansion, bitmap size is 256x64.
     */
 	dirtybuffer = auto_malloc(64);
-	if (!dirtybuffer)
-		return 1;
 
 	memset( dirtybuffer, 1, 64 );
 	tmpbitmap = auto_bitmap_alloc( 256, 64 );

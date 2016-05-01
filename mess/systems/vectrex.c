@@ -18,7 +18,7 @@ Bruce Tomlin (hardware info)
 
 ADDRESS_MAP_START( vectrex_map , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x7fff) AM_ROM
-	AM_RANGE( 0xc800, 0xcbff) AM_RAM AM_MIRROR( 0x0400 )
+	AM_RANGE( 0xc800, 0xcbff) AM_RAM AM_MIRROR( 0x0400 ) AM_BASE(&vectrex_ram_base) AM_SIZE(&vectrex_ram_size)
 	AM_RANGE( 0xd000, 0xd7ff) AM_READWRITE( via_0_r, via_0_w )
 	AM_RANGE( 0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -123,13 +123,22 @@ static MACHINE_DRIVER_START( vectrex )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)	
 MACHINE_DRIVER_END
 
-static void vectrex_cartslot_getinfo(struct IODevice *dev)
+static void vectrex_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 1;
-	dev->file_extensions = "bin\0gam\0vec\0";
-	dev->load = device_load_vectrex_cart;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_vectrex_cart; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "bin,gam,vec"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(vectrex)
@@ -138,7 +147,7 @@ SYSTEM_CONFIG_END
 
 ROM_START(vectrex)
     ROM_REGION(0x10000,REGION_CPU1, 0)
-    ROM_LOAD("system.img", 0xe000, 0x2000, CRC(ba13fb57))
+    ROM_LOAD("system.img", 0xe000, 0x2000, CRC(ba13fb57) SHA1(65d07426b520ddd3115d40f255511e0fd2e20ae7))
 ROM_END
 
 
@@ -216,8 +225,8 @@ MACHINE_DRIVER_END
 
 ROM_START(raaspec)
 	ROM_REGION(0x10000,REGION_CPU1, 0)
-	ROM_LOAD("spectrum.bin", 0x0000, 0x8000, CRC(20af7f3f))
-	ROM_LOAD("system.img", 0xe000, 0x2000, CRC(ba13fb57))
+	ROM_LOAD("spectrum.bin", 0x0000, 0x8000, CRC(20af7f3f) SHA1(7ce85db8dd32687ad7629631ae113820371faf7c))
+	ROM_LOAD("system.img", 0xe000, 0x2000, CRC(ba13fb57) SHA1(65d07426b520ddd3115d40f255511e0fd2e20ae7))
 ROM_END
 
 /***************************************************************************

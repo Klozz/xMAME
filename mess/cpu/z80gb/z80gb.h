@@ -1,7 +1,6 @@
 #ifndef z80gb_H
 #define z80gb_H
 #include "cpuintrf.h"
-#include "osd_cpu.h"
 #include "driver.h"
 #include "includes/gb.h"
 
@@ -40,7 +39,7 @@ INLINE void mem_WriteWord (UINT32 address, UINT16 value)
 }
 
 #ifdef MAME_DEBUG
-extern unsigned DasmZ80GB(char *buffer, unsigned pc);
+extern unsigned z80gb_dasm( char *buffer, offs_t pc, UINT8 *oprom, UINT8 *opram, int bytes );
 #endif
 
 #endif

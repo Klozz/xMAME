@@ -7,15 +7,12 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "res_net.h"
-
-/* from sndhrdw/pleiads.c */
-WRITE8_HANDLER( pleiads_sound_control_c_w );
+#include "includes/phoenix.h"
 
 unsigned char *naughtyb_videoram2;
 
-int videoreg;
+static int videoreg;
 
 /* use these to draw charset B */
 unsigned char *naughtyb_scrollreg;
@@ -77,7 +74,7 @@ PALETTE_INIT( naughtyb )
 	#define COLOR(gfxn,offs) (colortable[Machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
 
 	/* note: there is no resistor on second PROM so we define second resistance as 0 */
-	const int resistances[2] = { 270, 0 };
+	static const int resistances[2] = { 270, 0 };
 	double weights_r[2], weights_g[2], weights_b[2];
 
 
@@ -157,8 +154,7 @@ VIDEO_START( naughtyb )
 	videoreg = palreg = bankreg = 0;
 
 	/* Naughty Boy has a virtual screen twice as large as the visible screen */
-	if ((dirtybuffer = auto_malloc(videoram_size)) == 0)
-		return 1;
+	dirtybuffer = auto_malloc(videoram_size);
 	memset(dirtybuffer, 1, videoram_size);
 
 	if ((tmpbitmap = auto_bitmap_alloc(68*8,28*8)) == 0)

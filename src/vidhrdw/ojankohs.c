@@ -8,7 +8,6 @@
 ******************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 
 
@@ -298,7 +297,7 @@ VIDEO_START( ojankohs )
 	ojankohs_colorram = auto_malloc(0x1000);
 	ojankohs_paletteram = auto_malloc(0x800);
 
-	if (!ojankohs_tilemap || !ojankohs_videoram || !ojankohs_colorram || !ojankohs_paletteram) return 1;
+	if (!ojankohs_tilemap) return 1;
 
 	return 0;
 }
@@ -310,7 +309,7 @@ VIDEO_START( ojankoy )
 	ojankohs_colorram = auto_malloc(0x1000);
 	ojankohs_paletteram = auto_malloc(0x800);
 
-	if (!ojankohs_tilemap || !ojankohs_videoram || !ojankohs_colorram || !ojankohs_paletteram) return 1;
+	if (!ojankohs_tilemap) return 1;
 
 	return 0;
 }
@@ -321,7 +320,7 @@ VIDEO_START( ojankoc )
 	ojankohs_videoram = auto_malloc(0x8000);
 	ojankohs_paletteram = auto_malloc(0x20);
 
-	if (!ojankoc_tmpbitmap || !ojankohs_videoram || !ojankohs_paletteram) return 1;
+	if (!ojankoc_tmpbitmap) return 1;
 
 	return 0;
 }

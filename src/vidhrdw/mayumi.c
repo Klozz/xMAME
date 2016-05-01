@@ -7,7 +7,7 @@ Video hardware
 
 ******************************************************************************/
 
-#include "vidhrdw/generic.h"
+#include "driver.h"
 
 static UINT8 *mayumi_videoram;
 static tilemap *mayumi_tilemap;
@@ -26,7 +26,7 @@ VIDEO_START( mayumi )
 
 	mayumi_tilemap = tilemap_create( get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,64,32 );
 
-	if (!mayumi_videoram || !mayumi_tilemap )
+	if ( !mayumi_tilemap )
 		return 1;
 
 	return 0;

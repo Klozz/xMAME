@@ -7,11 +7,11 @@
 ***************************************************************************/
   
 #include "includes/cococart.h"
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 #include "devices/coco_vhd.h"
 #include "ds1315.h"
 #include "m6242b.h"
-#include "includes/dragon.h"
+#include "includes/coco.h"
 #include "sound/dac.h"
 
 static const struct cartridge_callback *cartcallbacks;
@@ -79,7 +79,7 @@ enum {
 
 static void coco_fdc_init(const struct cartridge_callback *callbacks)
 {
-    wd179x_init(WD_TYPE_179X,coco_fdc_callback);
+    wd179x_init(WD_TYPE_1773, coco_fdc_callback);
 	dskreg = 0;
 	cartcallbacks = callbacks;
 	drq_state = ASSERT_LINE;
@@ -245,6 +245,21 @@ static void set_dragon_dskreg(int data)
 
 /* ---------------------------------------------------- */
 
+typedef enum
+{
+	RTC_DISTO	= 0x00,
+	RTC_CLOUD9	= 0x01
+} rtc_type_t;
+
+static rtc_type_t real_time_clock(void)
+{
+	return (rtc_type_t) (int) readinputportbytag_safe("real_time_clock", 0x00);
+}
+
+
+
+/* ---------------------------------------------------- */
+
  READ8_HANDLER(coco_floppy_r)
 {
 	int result = 0;
@@ -267,25 +282,25 @@ static void set_dragon_dskreg(int data)
 		break;
 	}
 
-	if( (readinputport(13) & 0x03) == 0 )
+	switch(real_time_clock())
 	{
-		/* This is the real time clock in Disto's many products */
+		case RTC_DISTO:
+			/* This is the real time clock in Disto's many products */
+			if( offset == ( 0xff50-0xff40 ) )
+				result = m6242_data_r( 0 );
+			break;
+			
+		case RTC_CLOUD9:
+			/* This is the realtime clock in the TC^3 SCSI Controller */
+			if( offset == ( 0xff79-0xff40 ) )
+				ds1315_r_1( offset );
 
-		if( offset == ( 0xff50-0xff40 ) )
-			result = m6242_data_r( 0 );
-	}
-	else
-	{
-		/* This is the realtime clock in the TC^3 SCSI Controller */
+			if( offset == ( 0xff78-0xff40 ) )
+				ds1315_r_0( offset );
 
-		if( offset == ( 0xff79-0xff40 ) )
-			ds1315_r_1( offset );
-
-		if( offset == ( 0xff78-0xff40 ) )
-			ds1315_r_0( offset );
-
-		if( offset == ( 0xff7c-0xff40 ) )
-			result = ds1315_r_data( offset );
+			if( offset == ( 0xff7c-0xff40 ) )
+				result = ds1315_r_data( offset );
+			break;
 	}
 
 /*	logerror("SCS read:  address %4.4X, data %2.2X\n", 0xff40+offset, result );*/
@@ -320,15 +335,19 @@ WRITE8_HANDLER(coco_floppy_w)
 		break;
 	};
 
-	if( (readinputport(13) & 0x03) == 0 )
+	switch(real_time_clock())
 	{
-		/* This is the real time clock in Disto's many products */
+		case RTC_DISTO:
+			/* This is the real time clock in Disto's many products */
+			if( offset == ( 0xff50-0xff40 ) )
+				m6242_data_w( 0, data );
 
-		if( offset == ( 0xff50-0xff40 ) )
-			m6242_data_w( 0, data );
-
-		if( offset == ( 0xff51-0xff40 ) )
-			m6242_address_w( 0, data );
+			if( offset == ( 0xff51-0xff40 ) )
+				m6242_address_w( 0, data );
+			break;
+			
+		default:
+			break;
 	}
 
 	coco_vhd_io_w( offset, data );

@@ -14,11 +14,10 @@ OKI M6295 sound ROM dump is bad.
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
 
-UINT8 *bg_paletteram, *missb2_bgvram;
+static UINT8 *bg_paletteram, *missb2_bgvram;
 
 /* vidhrdw/bublbobl.c */
 extern UINT8 *bublbobl_objectram;
@@ -144,7 +143,7 @@ INLINE void bg_changecolor_RRRRGGGGBBBBxxxx(pen_t color,int data)
 	palette_set_color(color+256,r,g,b);
 }
 
-static WRITE8_HANDLER( bg_paletteram_RRRRGGGGBBBBxxxx_swap_w )
+static WRITE8_HANDLER( bg_paletteram_RRRRGGGGBBBBxxxx_be_w )
 {
 	bg_paletteram[offset] = data;
 	bg_changecolor_RRRRGGGGBBBBxxxx(offset / 2,bg_paletteram[offset | 1] | (bg_paletteram[offset & ~1] << 8));
@@ -168,7 +167,7 @@ static ADDRESS_MAP_START( master_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xdcff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0xdd00, 0xdfff) AM_RAM AM_BASE(&bublbobl_objectram) AM_SIZE(&bublbobl_objectram_size)
 	AM_RANGE(0xe000, 0xf7ff) AM_RAM AM_SHARE(1)
-	AM_RANGE(0xf800, 0xf9ff) AM_RAM AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_swap_w) AM_BASE(&paletteram)
+	AM_RANGE(0xf800, 0xf9ff) AM_RAM AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_be_w) AM_BASE(&paletteram)
 	AM_RANGE(0xfa00, 0xfa00) AM_WRITE(bublbobl_sound_command_w)
 	AM_RANGE(0xfa03, 0xfa03) AM_WRITENOP /* sound cpu reset */
 	AM_RANGE(0xfa80, 0xfa80) AM_WRITENOP
@@ -189,7 +188,7 @@ static ADDRESS_MAP_START( slave_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x9000, 0xafff) AM_ROMBANK(2)	/* ROM data for the background palette ram */
 	AM_RANGE(0xb000, 0xb1ff) AM_ROM			/* banked ??? */
-	AM_RANGE(0xc000, 0xc1ff) AM_RAM AM_WRITE(bg_paletteram_RRRRGGGGBBBBxxxx_swap_w) AM_BASE(&bg_paletteram)
+	AM_RANGE(0xc000, 0xc1ff) AM_RAM AM_WRITE(bg_paletteram_RRRRGGGGBBBBxxxx_be_w) AM_BASE(&bg_paletteram)
 	AM_RANGE(0xc800, 0xcfff) AM_RAM			/* main ??? */
 	AM_RANGE(0xd000, 0xd000) AM_WRITE(missb2_bg_bank_w)
 	AM_RANGE(0xd002, 0xd002) AM_WRITENOP
@@ -292,13 +291,8 @@ static const gfx_layout charlayout =
 	16*8
 };
 
-static const gfx_layout bglayout =
+static const UINT32 bglayout_xoffset[256] =
 {
-	256,16,
-	RGN_FRAC(1,1),
-	8,
-	{ 0,1,2,3,4,5,6,7 },
-	{
 		0*8,      1*8, 2048*8, 2049*8,    8*8,    9*8, 2056*8, 2057*8,
 		4*8,      5*8, 2052*8, 2053*8,   12*8,   13*8, 2060*8, 2061*8,
 		256*8 , 257*8, 2304*8, 2305*8,  264*8,  265*8, 2312*8, 2313*8,
@@ -331,9 +325,19 @@ static const gfx_layout bglayout =
 	   1542*8, 1543*8, 3590*8, 3591*8, 1550*8, 1551*8, 3598*8, 3599*8,
 	   1794*8, 1795*8, 3842*8, 3843*8, 1802*8, 1803*8, 3850*8, 3851*8,
 	   1798*8, 1799*8, 3846*8, 3847*8, 1806*8, 1807*8, 3854*8, 3855*8
-	  },
+};
+
+static const gfx_layout bglayout =
+{
+	256,16,
+	RGN_FRAC(1,1),
+	8,
+	{ 0,1,2,3,4,5,6,7 },
+	EXTENDED_XOFFS,
 	{ 0*128, 1*128, 2*128, 3*128, 4*128, 5*128, 6*128, 7*128, 8*128, 9*128, 10*128, 11*128, 12*128, 13*128, 14*128, 15*128 },
-	256*128
+	256*128,
+	bglayout_xoffset,
+	NULL
 };
 
 /* Graphics Decode Information */

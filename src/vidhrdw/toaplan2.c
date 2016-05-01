@@ -145,7 +145,6 @@ Pipi & Bibis     | Fix Eight        | V-Five           | Snow Bros. 2     |
 ***************************************************************************/
 
 #include "driver.h"
-#include "tilemap.h"
 #include "cpu/m68000/m68000.h"
 
 
@@ -158,7 +157,7 @@ Pipi & Bibis     | Fix Eight        | V-Five           | Snow Bros. 2     |
 extern  size_t toaplan2_tx_vram_size;		 /* 0x2000 Text layer RAM size */
 extern  size_t toaplan2_tx_offs_vram_size;	 /* 0x200 Text layer tile flip and positon ? */
 extern  size_t toaplan2_tx_scroll_vram_size; /* 0x200 Text layer scroll ? */
-extern  size_t paletteram_size;
+extern  size_t batrider_paletteram16_size;
 
 
 
@@ -226,7 +225,7 @@ static tilemap *tx_tilemap;	/* Tilemap for extra-text-layer */
 static int xoffset[4];
 static int yoffset[4];
 
-void defaultOffsets(void)
+static void defaultOffsets(void)
 {
 		xoffset[0]=0;
 		xoffset[1]=0;
@@ -481,24 +480,19 @@ static int batrider_create_tilemaps_0(void)
 
 static int toaplan2_vram_alloc(int controller)
 {
-	if ((spriteram16_new[controller] = (UINT16 *)auto_malloc(TOAPLAN2_SPRITERAM_SIZE)) == 0)
-		return 1;
+	spriteram16_new[controller] = auto_malloc(TOAPLAN2_SPRITERAM_SIZE);
 	memset(spriteram16_new[controller],0,TOAPLAN2_SPRITERAM_SIZE);
 
-	if ((spriteram16_now[controller] = (UINT16 *)auto_malloc(TOAPLAN2_SPRITERAM_SIZE)) == 0)
-		return 1;
+	spriteram16_now[controller] = auto_malloc(TOAPLAN2_SPRITERAM_SIZE);
 	memset(spriteram16_now[controller],0,TOAPLAN2_SPRITERAM_SIZE);
 
-	if ((topvideoram16[controller] = (UINT16 *)auto_malloc(TOAPLAN2_TOP_VRAM_SIZE)) == 0)
-		return 1;
+	topvideoram16[controller] = auto_malloc(TOAPLAN2_TOP_VRAM_SIZE);
 	memset(topvideoram16[controller],0,TOAPLAN2_TOP_VRAM_SIZE);
 
-	if ((fgvideoram16[controller] = (UINT16 *)auto_malloc(TOAPLAN2_FG_VRAM_SIZE)) == 0)
-		return 1;
+	fgvideoram16[controller] = auto_malloc(TOAPLAN2_FG_VRAM_SIZE);
 	memset(fgvideoram16[controller],0,TOAPLAN2_FG_VRAM_SIZE);
 
-	if ((bgvideoram16[controller] = (UINT16 *)auto_malloc(TOAPLAN2_BG_VRAM_SIZE)) == 0)
-		return 1;
+	bgvideoram16[controller] = auto_malloc(TOAPLAN2_BG_VRAM_SIZE);
 	memset(bgvideoram16[controller],0,TOAPLAN2_BG_VRAM_SIZE);
 
 	spriteram16_n[controller] = spriteram16_now[controller];
@@ -587,8 +581,7 @@ VIDEO_START( battleg_0 )
 
 VIDEO_START( batrider_0 )
 {
-	if ((raizing_tx_gfxram16 = (UINT16 *)auto_malloc(RAIZING_TX_GFXRAM_SIZE)) == 0)
-		return 1;
+	raizing_tx_gfxram16 = auto_malloc(RAIZING_TX_GFXRAM_SIZE);
 	memset(raizing_tx_gfxram16,0,RAIZING_TX_GFXRAM_SIZE);
 
 	if (toaplan2_vram_alloc(0))
@@ -747,8 +740,8 @@ WRITE16_HANDLER( batrider_textdata_decode )
 
 	memcpy(dest, toaplan2_txvideoram16, toaplan2_tx_vram_size);
 	dest += (toaplan2_tx_vram_size/2);
-	memcpy(dest, paletteram16, paletteram_size);
-	dest += (paletteram_size/2);
+	memcpy(dest, paletteram16, batrider_paletteram16_size);
+	dest += (batrider_paletteram16_size/2);
 	memcpy(dest, toaplan2_txvideoram16_offs, toaplan2_tx_offs_vram_size);
 	dest += (toaplan2_tx_offs_vram_size/2);
 	memcpy(dest, toaplan2_txscrollram16, toaplan2_tx_scroll_vram_size);

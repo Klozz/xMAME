@@ -5,6 +5,7 @@
 **************************************************************************/
 
 #include "driver.h"
+#include "profiler.h"
 #include "cpu/tms34010/tms34010.h"
 #include "cpu/tms34010/34010ops.h"
 #include "midyunit.h"
@@ -83,10 +84,6 @@ static VIDEO_START( common )
 	midyunit_cmos_ram = auto_malloc(0x2000 * 4);
 	local_videoram = auto_malloc(0x80000);
 	pen_map = auto_malloc(65536 * sizeof(pen_map[0]));
-
-	/* handle failure */
-	if (!midyunit_cmos_ram || !local_videoram || !pen_map)
-		return 1;
 
 	/* we have to erase this since we rely on upper bits being 0 */
 	memset(local_videoram, 0, 0x80000);
@@ -491,7 +488,7 @@ static void dma_callback(int is_in_34010_context)
 	dma_register[DMA_COMMAND] &= ~0x8000; /* tell the cpu we're done */
 	if (is_in_34010_context)
 	{
-		cpunum_set_info_fct(0, CPUINFO_PTR_IRQ_CALLBACK, (genf *)temp_irq_callback);
+		cpunum_set_irq_callback(0, temp_irq_callback);
 		cpunum_set_info_int(0, CPUINFO_INT_INPUT_STATE + 0, ASSERT_LINE);
 	}
 	else

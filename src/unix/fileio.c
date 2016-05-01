@@ -57,7 +57,9 @@ extern char *cheatfile;
 /*	TYPE DEFINITIONS */
 /*============================================================ */
 
-struct pathdata
+typedef struct _pathdata pathdata;
+
+struct _pathdata
 {
 	const char *rawpath;
 	const char **path;
@@ -75,7 +77,7 @@ struct _osd_file
 	unsigned char	buffer[FILE_BUFFER_SIZE];
 };
 
-static struct pathdata pathlist[FILETYPE_end];
+static pathdata pathlist[FILETYPE_end];
 static osd_file openfile[MAX_OPEN_FILES];
 
 
@@ -84,13 +86,40 @@ static osd_file openfile[MAX_OPEN_FILES];
 /*	GLOBAL VARIABLES */
 /*============================================================ */
 
-FILE *errorlog = NULL;
-
 char *playbackname;
 char *recordname;
 
 FILE *stdout_file;
 FILE *stderr_file;
+
+
+
+/*============================================================ */
+/*	LOCAL VARIABLES */
+/*============================================================ */
+
+#ifndef MESS
+
+static int errorlog;
+
+static int init_errorlog(struct rc_option *option, const char *arg, int priority)
+{
+	/* provide errorlog from here on */
+	if (errorlog)
+	{
+		options.logfile = mame_fopen(NULL, "error.log", FILETYPE_DEBUGLOG, TRUE);
+		if (!options.logfile)
+		{
+			perror("unable to open log file\n");
+			exit(1);
+		}
+	}
+	option->priority = priority;
+	return 0;
+}
+
+#endif // !MESS
+
 
 
 /*============================================================ */
@@ -102,31 +131,34 @@ struct rc_option fileio_opts[] =
 	/* name, shortname, type, dest, deflt, min, max, func, help */
 	{ "File I/O-related", NULL, rc_seperator, NULL, NULL, 0, 0, NULL, NULL },
 #ifndef MESS
-	{ "rompath", "rp", rc_string, &pathlist[FILETYPE_ROM].rawpath, XMAMEROOT"/roms", 0, 0, NULL, "Search path for rom files" },
+	{ "rompath", "rp", rc_string, (char *)&pathlist[FILETYPE_ROM].rawpath, XMAMEROOT"/roms", 0, 0, NULL, "Search path for rom files" },
 #else
-	{ "biospath", "bp", rc_string, &pathlist[FILETYPE_ROM].rawpath, XMAMEROOT"/bios", 0, 0, NULL, "Search path for BIOS sets" },
-	{ "softwarepath", "swp", rc_string, &pathlist[FILETYPE_IMAGE].rawpath, XMAMEROOT"/software", 0, 0, NULL,  "Search path for software" },
-	{ "hash_directory", "hash", rc_string, &pathlist[FILETYPE_HASH].rawpath, XMAMEROOT"/hash", 0, 0, NULL, "Directory containing hash files" },
+	{ "biospath", "bp", rc_string, (char *)&pathlist[FILETYPE_ROM].rawpath, XMAMEROOT"/bios", 0, 0, NULL, "Search path for BIOS sets" },
+	{ "softwarepath", "swp", rc_string, (char *)&pathlist[FILETYPE_IMAGE].rawpath, XMAMEROOT"/software", 0, 0, NULL,  "Search path for software" },
+	{ "hash_directory", "hash", rc_string, (char *)&pathlist[FILETYPE_HASH].rawpath, XMAMEROOT"/hash", 0, 0, NULL, "Directory containing hash files" },
 #endif
-	{ "samplepath", "sp", rc_string, &pathlist[FILETYPE_SAMPLE].rawpath, XMAMEROOT"/samples", 0, 0, NULL, "Search path for sample files" },
-	{ "inipath", NULL, rc_string, &pathlist[FILETYPE_INI].rawpath, XMAMEROOT"/ini", 0, 0, NULL, "Search path for ini files" },
-	{ "cfg_directory", NULL, rc_string, &pathlist[FILETYPE_CONFIG].rawpath, "$HOME/"PATH_LEADER NAME"/cfg", 0, 0, NULL, "Directory to save configurations" },
-	{ "nvram_directory", NULL, rc_string, &pathlist[FILETYPE_NVRAM].rawpath, "$HOME/"PATH_LEADER NAME"/nvram", 0, 0, NULL, "Directory to save nvram contents" },
-	{ "memcard_directory", NULL, rc_string, &pathlist[FILETYPE_MEMCARD].rawpath, "$HOME/"PATH_LEADER NAME"/memcard", 0, 0, NULL, "Directory to save memory card contents" },
-	{ "input_directory", NULL, rc_string, &pathlist[FILETYPE_INPUTLOG].rawpath, "$HOME/"PATH_LEADER NAME"/inp", 0, 0, NULL, "Directory to save input device logs" },
-	{ "hiscore_directory", NULL, rc_string, &pathlist[FILETYPE_HIGHSCORE].rawpath, "$HOME/"PATH_LEADER NAME"/hi", 0, 0, NULL, "Directory to save hiscores" },
-	{ "state_directory", NULL, rc_string, &pathlist[FILETYPE_STATE].rawpath, "$HOME/"PATH_LEADER NAME"/sta", 0, 0, NULL, "Directory to save states" },
-	{ "artwork_directory", NULL, rc_string, &pathlist[FILETYPE_ARTWORK].rawpath, XMAMEROOT"/artwork", 0, 0, NULL, "Directory for Artwork (Overlays etc.)" },
-	{ "snapshot_directory", NULL, rc_string, &pathlist[FILETYPE_SCREENSHOT].rawpath, XMAMEROOT"/snap", 0, 0, NULL, "Directory for screenshots (.png format)" },
-	{ "diff_directory", NULL, rc_string, &pathlist[FILETYPE_IMAGE_DIFF].rawpath, "$HOME/"PATH_LEADER NAME"/diff", 0, 0, NULL, "Directory for hard drive image difference files" },
-	{ "ctrlr_directory", NULL, rc_string, &pathlist[FILETYPE_CTRLR].rawpath, XMAMEROOT"/ctrlr", 0, 0, NULL, "Directory to save controller definitions" },
+	{ "samplepath", "sp", rc_string, (char *)&pathlist[FILETYPE_SAMPLE].rawpath, XMAMEROOT"/samples", 0, 0, NULL, "Search path for sample files" },
+	{ "inipath", NULL, rc_string, (char *)&pathlist[FILETYPE_INI].rawpath, XMAMEROOT"/ini", 0, 0, NULL, "Search path for ini files" },
+	{ "cfg_directory", NULL, rc_string, (char *)&pathlist[FILETYPE_CONFIG].rawpath, "$HOME/"PATH_LEADER NAME"/cfg", 0, 0, NULL, "Directory to save configurations" },
+	{ "nvram_directory", NULL, rc_string, (char *)&pathlist[FILETYPE_NVRAM].rawpath, "$HOME/"PATH_LEADER NAME"/nvram", 0, 0, NULL, "Directory to save nvram contents" },
+	{ "memcard_directory", NULL, rc_string, (char *)&pathlist[FILETYPE_MEMCARD].rawpath, "$HOME/"PATH_LEADER NAME"/memcard", 0, 0, NULL, "Directory to save memory card contents" },
+	{ "input_directory", NULL, rc_string, (char *)&pathlist[FILETYPE_INPUTLOG].rawpath, "$HOME/"PATH_LEADER NAME"/inp", 0, 0, NULL, "Directory to save input device logs" },
+	{ "hiscore_directory", NULL, rc_string, (char *)&pathlist[FILETYPE_HIGHSCORE].rawpath, "$HOME/"PATH_LEADER NAME"/hi", 0, 0, NULL, "Directory to save hiscores" },
+	{ "state_directory", NULL, rc_string, (char *)&pathlist[FILETYPE_STATE].rawpath, "$HOME/"PATH_LEADER NAME"/sta", 0, 0, NULL, "Directory to save states" },
+	{ "artwork_directory", NULL, rc_string, (char *)&pathlist[FILETYPE_ARTWORK].rawpath, XMAMEROOT"/artwork", 0, 0, NULL, "Directory for Artwork (Overlays etc.)" },
+	{ "snapshot_directory", NULL, rc_string, (char *)&pathlist[FILETYPE_SCREENSHOT].rawpath, XMAMEROOT"/snap", 0, 0, NULL, "Directory for screenshots (.png format)" },
+	{ "diff_directory", NULL, rc_string, (char *)&pathlist[FILETYPE_IMAGE_DIFF].rawpath, "$HOME/"PATH_LEADER NAME"/diff", 0, 0, NULL, "Directory for hard drive image difference files" },
+	{ "ctrlr_directory", NULL, rc_string, (char *)&pathlist[FILETYPE_CTRLR].rawpath, XMAMEROOT"/ctrlr", 0, 0, NULL, "Directory to save controller definitions" },
+	{ "comment_directory", NULL, rc_string, (char *)&pathlist[FILETYPE_COMMENT].rawpath, XMAMEROOT"/comments", 0, 0, NULL, "Directory to save comment files" },
 	{ "cheat_file", NULL, rc_string, &cheatfile, XMAMEROOT"/cheat.dat", 0, 0, NULL, "Cheat filename" },
 	{ "hiscore_file", NULL, rc_string, &db_filename, XMAMEROOT"/hiscore.dat", 0, 0, NULL, NULL },
 	{ "record", "rec", rc_string, &recordname, NULL, 0, 0, NULL, "Set a file to record keypresses into" },
 	{ "playback", "pb", rc_string, &playbackname, NULL, 0, 0, NULL, "Set a file to playback keypresses from" },
 	{ "stdout-file", "out", rc_file, &stdout_file, NULL, 1,	0, NULL, "Set a file to redirect stdout to" },
 	{ "stderr-file", "err",	rc_file, &stderr_file, NULL, 1, 0, NULL, "Set a file to redirect stderr to" },
-	{ "log", "L", rc_file, &errorlog, NULL, 1, 0, NULL, "Set a file to log debug info to" },
+#ifndef MESS
+	{ "log", "L", rc_bool, &errorlog, "0", 0, 0, init_errorlog, "Generate error.log" },
+#endif
 	{ NULL,	NULL, rc_end, NULL, NULL, 0, 0,	NULL, NULL }
 };
 
@@ -161,7 +193,7 @@ static char *find_reverse_path_sep(char *name)
 /*	create_path */
 /*============================================================ */
 
-static void create_path(char *path, int has_filename)
+static int create_path(char *path, int has_filename)
 {
 	char *sep = find_reverse_path_sep(path);
 
@@ -169,16 +201,17 @@ static void create_path(char *path, int has_filename)
 	if (sep && sep > path && !is_pathsep(sep[-1]))
 	{
 		*sep = 0;
-		create_path(path, 0);
+		if (!create_path(path, 0))
+			return 0;
 		*sep = '/';
 	}
 
 	/* if we have a filename, we're done */
 	if (has_filename)
-		return;
+		return 1;
 
 	/* create the path */
-	check_and_create_dir(path);
+	return check_and_create_dir(path) ? FALSE : TRUE;
 }
 
 
@@ -256,8 +289,7 @@ static char *copy_and_expand_variables(const char *path, int len)
 
 	/* allocate a string of the appropriate length */
 	result = malloc(length + 1);
-	if (!result)
-		goto out_of_memory;
+	assert_always(result != NULL, "Out of memory in variable expansion!");
 
 	/* now actually generate the string */
 	backslash = 0;
@@ -282,9 +314,6 @@ static char *copy_and_expand_variables(const char *path, int len)
 	/* NULL terminate and return */
 	*dst = 0;
 	return result;
-
-out_of_memory:
-	osd_die("Out of memory in variable expansion!\n");
 }
 
 
@@ -293,7 +322,7 @@ out_of_memory:
 /*	expand_pathlist */
 /*============================================================ */
 
-static void expand_pathlist(struct pathdata *list)
+static void expand_pathlist(pathdata *list)
 {
 	const char *rawpath = (list->rawpath) ? list->rawpath : "";
 	const char *token;
@@ -326,8 +355,7 @@ static void expand_pathlist(struct pathdata *list)
 	{
 		/* allocate space for the new pointer */
 		list->path = realloc((void *)list->path, (list->pathcount + 1) * sizeof(char *));
-		if (!list->path)
-			goto out_of_memory;
+		assert_always(list->path != NULL, "Out of memory!");
 
 		/* copy the path in */
 		list->path[list->pathcount++] = copy_and_expand_variables(rawpath, token - rawpath);
@@ -351,9 +379,6 @@ static void expand_pathlist(struct pathdata *list)
 	free((void *)list->rawpath);
 	list->rawpath = NULL;
 	return;
-
-out_of_memory:
-	osd_die("Out of memory!\n");
 }
 
 
@@ -368,7 +393,7 @@ void free_pathlists(void)
 
 	for (i = 0; i < FILETYPE_end; i++)
 	{
-		struct pathdata *list = &pathlist[i];
+		pathdata *list = &pathlist[i];
 
 		/* free any existing paths */
 		if (list->pathcount != 0)
@@ -394,7 +419,7 @@ void free_pathlists(void)
 
 static const char *get_path_for_filetype(int filetype, int pathindex, int *count)
 {
-	struct pathdata *list;
+	pathdata *list;
 
 	/* handle aliasing of some paths */
 	switch (filetype)
@@ -469,6 +494,41 @@ static void compose_path(char *output, size_t outputlen, int pathtype, int pathi
 
 
 /*============================================================ */
+/*  get_last_fileerror */
+/*============================================================ */
+
+static osd_file_error get_last_fileerror(void)
+{
+	osd_file_error error;
+
+	switch (errno)
+	{
+		case ENOMEM:
+			error = FILEERR_OUT_OF_MEMORY;
+			break;
+
+		case ENOENT:
+		case ENOTDIR:
+			error = FILEERR_NOT_FOUND;
+			break;
+
+		case EACCES:
+		case EAGAIN:
+		case EFAULT:
+		case EISDIR:
+		case EROFS:
+			error = FILEERR_ACCESS_DENIED;
+			break;
+
+		default:
+			error = FILEERR_FAILURE;
+			break;
+	}
+	return error;
+}
+
+
+/*============================================================ */
 /*	osd_get_path_count */
 /*============================================================ */
 
@@ -514,7 +574,8 @@ int osd_get_path_info(int pathtype, int pathindex, const char *filename)
 /*	osd_fopen */
 /*============================================================ */
 
-osd_file *osd_fopen(int pathtype, int pathindex, const char *filename, const char *mode)
+osd_file *osd_fopen(int pathtype, int pathindex, const char *filename,
+		const char *mode, osd_file_error *error)
 {
 	char fullpath[1024];
 	osd_file *file;
@@ -525,7 +586,7 @@ osd_file *osd_fopen(int pathtype, int pathindex, const char *filename, const cha
 		if (openfile[i].fileptr == NULL)
 			break;
 	if (i == MAX_OPEN_FILES)
-		return NULL;
+		goto error;
 
 	/* zap the file record */
 	file = &openfile[i];
@@ -540,22 +601,27 @@ osd_file *osd_fopen(int pathtype, int pathindex, const char *filename, const cha
 	{
 		/* if it's read-only, or if the path exists, then that's final */
 		if (!(strchr(mode, 'w')) || errno != EACCES)
-			return NULL;
+			goto error;
 
 		/* create the path and try again */
-		create_path(fullpath, 1);
+		create_path(fullpath, TRUE);
 		file->fileptr = fopen(fullpath, mode);
 
 		/* if that doesn't work, we give up */
 		if (file->fileptr == NULL)
-			return NULL;
+			goto error;
 	}
 
 	/* get the file size */
 	FSEEK(file->fileptr, 0, SEEK_END);
 	file->end = FTELL(file->fileptr);
 	rewind(file->fileptr);
+	*error = FILEERR_SUCCESS;
 	return file;
+
+error:
+	*error = get_last_fileerror();
+	return NULL;
 }
 
 
@@ -730,7 +796,6 @@ void osd_fclose(osd_file *file)
 
 
 
-#ifdef MESS
 /*============================================================ */
 /*	osd_create_directory */
 /*============================================================ */
@@ -742,6 +807,5 @@ int osd_create_directory(int pathtype, int pathindex, const char *dirname)
 	/* compose the full path */
 	compose_path(fullpath, sizeof(fullpath), pathtype, pathindex, dirname);
 
-	return check_and_create_dir(fullpath) ? 0 : 1;
+	return create_path(fullpath, FALSE);
 }
-#endif

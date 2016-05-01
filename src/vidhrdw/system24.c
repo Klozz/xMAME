@@ -1,7 +1,6 @@
 #include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/segaic24.h"
+#include "includes/system24.h"
 
 VIDEO_START(system24)
 {

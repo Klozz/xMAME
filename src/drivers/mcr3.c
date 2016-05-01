@@ -83,12 +83,10 @@
 
 
 #include "driver.h"
-#include "machine/z80fmly.h"
+#include "machine/z80ctc.h"
 #include "sndhrdw/mcr.h"
-#include "vidhrdw/generic.h"
 #include "artwork.h"
 #include "mcr.h"
-#include "state.h"
 
 
 
@@ -989,21 +987,30 @@ INPUT_PORTS_END
  *
  *************************************/
 
+static const UINT32 spyhunt_charlayout_xoffset[64] =
+{
+	   0,  0,  2,  2,  4,  4,  6,  6,  8,  8, 10, 10, 12, 12, 14, 14,
+	  16, 16, 18, 18, 20, 20, 22, 22, 24, 24, 26, 26, 28, 28, 30, 30,
+	  32, 32, 34, 34, 36, 36, 38, 38, 40, 40, 42, 42, 44, 44, 46, 46,
+	  48, 48, 50, 50, 52, 52, 54, 54, 56, 56, 58, 58, 60, 60, 62, 62
+};
+
 static const gfx_layout spyhunt_charlayout =
 {
 	64,32,
 	RGN_FRAC(1,2),
 	4,
 	{ RGN_FRAC(1,2), RGN_FRAC(1,2)+1, 0, 1 },
-	{  0,  0,  2,  2,  4,  4,  6,  6,  8,  8, 10, 10, 12, 12, 14, 14,
-	  16, 16, 18, 18, 20, 20, 22, 22, 24, 24, 26, 26, 28, 28, 30, 30,
-	  32, 32, 34, 34, 36, 36, 38, 38, 40, 40, 42, 42, 44, 44, 46, 46,
-	  48, 48, 50, 50, 52, 52, 54, 54, 56, 56, 58, 58, 60, 60, 62, 62 },
-	{ 0*32,  0*32,  2*32,  2*32,  4*32,  4*32,  6*32,  6*32,
-	  8*32,  8*32, 10*32, 10*32, 12*32, 12*32, 14*32, 14*32,
-	 16*32, 16*32, 18*32, 18*32, 20*32, 20*32, 22*32, 22*32,
-	 24*32, 24*32, 26*32, 26*32, 28*32, 28*32, 30*32, 30*32 },
-	128*8
+	EXTENDED_XOFFS,
+	{
+		  0*32,  0*32,  2*32,  2*32,  4*32,  4*32,  6*32,  6*32,
+		  8*32,  8*32, 10*32, 10*32, 12*32, 12*32, 14*32, 14*32,
+		 16*32, 16*32, 18*32, 18*32, 20*32, 20*32, 22*32, 22*32,
+		 24*32, 24*32, 26*32, 26*32, 28*32, 28*32, 30*32, 30*32
+	},
+	128*8,
+	spyhunt_charlayout_xoffset,
+	NULL
 };
 
 
@@ -1054,7 +1061,8 @@ static MACHINE_DRIVER_START( mcr3_base )
 	MDRV_FRAMES_PER_SECOND(30)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_30HZ_VBLANK_DURATION)
 	MDRV_WATCHDOG_VBLANK_INIT(16)
-	MDRV_MACHINE_INIT(mcr)
+	MDRV_MACHINE_START(mcr)
+	MDRV_MACHINE_RESET(mcr)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
@@ -1403,8 +1411,6 @@ ROM_START( turbotag )
 	ROM_LOAD( "ttprog5.bin",  0xa000, 0x2000, CRC(11e62fe4) SHA1(72897702c61486b654e4b4a3f6560c144c862e1f) )
 	ROM_RELOAD(               0xc000, 0x2000 )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for the audio CPU, not populated */
-
 	ROM_REGION( 0x8000, REGION_CPU3, 0 )  /* 32k for the Chip Squeak Deluxe */
 	ROM_LOAD16_BYTE( "ttu7.bin",  0x00000, 0x2000, CRC(8ebb3302) SHA1(c516abdae6eea524a6d2a039ed9bd7dff72ab986) )
 	ROM_LOAD16_BYTE( "ttu17.bin", 0x00001, 0x2000, CRC(605d6c74) SHA1(a6c2bc95cca372fa823ab256c9dd1f92b6ba45fd) )
@@ -1442,7 +1448,7 @@ ROM_END
  *
  *************************************/
 
-static void common_init(int sound_board)
+static void mcr_common_init(int sound_board)
 {
 	mcr_sound_init(sound_board);
 
@@ -1454,7 +1460,7 @@ static void common_init(int sound_board)
 
 static DRIVER_INIT( demoderm )
 {
-	common_init(MCR_TURBO_CHIP_SQUEAK);
+	mcr_common_init(MCR_TURBO_CHIP_SQUEAK);
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x01, 0x01, 0, 0, demoderm_ip1_r);
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x02, 0x02, 0, 0, demoderm_ip2_r);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, demoderm_op6_w);
@@ -1463,14 +1469,14 @@ static DRIVER_INIT( demoderm )
 
 static DRIVER_INIT( sarge )
 {
-	common_init(MCR_TURBO_CHIP_SQUEAK);
+	mcr_common_init(MCR_TURBO_CHIP_SQUEAK);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, turbocs_data_w);
 }
 
 
 static DRIVER_INIT( maxrpm )
 {
-	common_init(MCR_TURBO_CHIP_SQUEAK);
+	mcr_common_init(MCR_TURBO_CHIP_SQUEAK);
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x01, 0x01, 0, 0, maxrpm_ip1_r);
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x02, 0x02, 0, 0, maxrpm_ip2_r);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, maxrpm_op5_w);
@@ -1486,7 +1492,7 @@ static DRIVER_INIT( maxrpm )
 
 static DRIVER_INIT( rampage )
 {
-	common_init(MCR_SOUNDS_GOOD);
+	mcr_common_init(MCR_SOUNDS_GOOD);
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x04, 0x04, 0, 0, rampage_ip4_r);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, rampage_op6_w);
 }
@@ -1494,7 +1500,7 @@ static DRIVER_INIT( rampage )
 
 static DRIVER_INIT( powerdrv )
 {
-	common_init(MCR_SOUNDS_GOOD);
+	mcr_common_init(MCR_SOUNDS_GOOD);
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x02, 0x02, 0, 0, powerdrv_ip2_r);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, powerdrv_op5_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, powerdrv_op6_w);
@@ -1503,7 +1509,7 @@ static DRIVER_INIT( powerdrv )
 
 static DRIVER_INIT( stargrds )
 {
-	common_init(MCR_SOUNDS_GOOD);
+	mcr_common_init(MCR_SOUNDS_GOOD);
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x00, 0x00, 0, 0, stargrds_ip0_r);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, stargrds_op5_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, stargrds_op6_w);
@@ -1512,7 +1518,7 @@ static DRIVER_INIT( stargrds )
 
 static DRIVER_INIT( spyhunt )
 {
-	common_init(MCR_SSIO | MCR_CHIP_SQUEAK_DELUXE);
+	mcr_common_init(MCR_SSIO | MCR_CHIP_SQUEAK_DELUXE);
 	ssio_set_custom_input(1, 0x60, spyhunt_ip1_r);
 	ssio_set_custom_input(2, 0xff, spyhunt_ip2_r);
 	ssio_set_custom_output(4, 0xff, spyhunt_op4_w);
@@ -1524,7 +1530,7 @@ static DRIVER_INIT( spyhunt )
 
 static DRIVER_INIT( crater )
 {
-	common_init(MCR_SSIO);
+	mcr_common_init(MCR_SSIO);
 
 	spyhunt_sprite_color_mask = 0x03;
 	spyhunt_scroll_offset = 96;
@@ -1533,7 +1539,7 @@ static DRIVER_INIT( crater )
 
 static DRIVER_INIT( turbotag )
 {
-	common_init(MCR_SSIO | MCR_CHIP_SQUEAK_DELUXE);
+	mcr_common_init(MCR_SSIO | MCR_CHIP_SQUEAK_DELUXE);
 	ssio_set_custom_input(1, 0x60, spyhunt_ip1_r);
 	ssio_set_custom_input(2, 0xff, turbotag_ip2_r);
 	ssio_set_custom_output(4, 0xff, spyhunt_op4_w);

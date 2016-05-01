@@ -7,35 +7,24 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
+#include "includes/galaga.h"
 
 
 #define MAX_STARS 252
 #define STARS_COLOR_BASE 32
 
-static unsigned int stars_scrollx;
-static unsigned int stars_scrolly;
+static UINT32 stars_scrollx;
+static UINT32 stars_scrolly;
 
-static int bosco_starcontrol,bosco_starblink[2];
+static INT32 bosco_starcontrol,bosco_starblink[2];
 
 static tilemap *bg_tilemap,*fg_tilemap;
-
-
-struct star
-{
-	int x,y,col,set;
-};
-
 
 #define VIDEO_RAM_SIZE 0x400
 
 UINT8 *bosco_videoram;
 UINT8 *bosco_radarattr;
 static UINT8 *bosco_radarx,*bosco_radary;
-
-/* see Galaga.c for starfield locations data */
-
-extern struct star star_seed_tab[];
 
 
 PALETTE_INIT( bosco )
@@ -86,7 +75,7 @@ PALETTE_INIT( bosco )
 	for (i = 0;i < 64;i++)
 	{
 		int bits,r,g,b;
-		int map[4] = { 0x00, 0x47, 0x97, 0xde };
+		static const int map[4] = { 0x00, 0x47, 0x97, 0xde };
 
 		bits = (i >> 0) & 0x03;
 		r = map[bits];
@@ -160,6 +149,11 @@ VIDEO_START( bosco )
 	bosco_radarx = bosco_videoram + 0x03f0;
 	bosco_radary = bosco_radarx + 0x0800;
 
+
+	state_save_register_global(stars_scrollx);
+	state_save_register_global(stars_scrolly);
+	state_save_register_global(bosco_starcontrol);
+	state_save_register_global_array(bosco_starblink);
 
 	return 0;
 }
@@ -346,8 +340,8 @@ VIDEO_UPDATE( bosco )
 
 VIDEO_EOF( bosco )
 {
-	int speedsx[8] = { -1, -2, -3, 0, 3, 2, 1, 0 };
-	int speedsy[8] = { 0, -1, -2, -3, 0, 3, 2, 1 };
+	static const int speedsx[8] = { -1, -2, -3, 0, 3, 2, 1, 0 };
+	static const int speedsy[8] = { 0, -1, -2, -3, 0, 3, 2, 1 };
 
 	stars_scrollx += speedsx[bosco_starcontrol & 0x07];
 	stars_scrolly += speedsy[(bosco_starcontrol & 0x38) >> 3];

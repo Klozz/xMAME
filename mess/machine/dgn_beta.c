@@ -57,11 +57,11 @@
 #include "driver.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
-#include "includes/dragon.h"
+#include "includes/coco.h"
 #include "includes/dgn_beta.h"
 #include "includes/6551.h"
 #include "image.h"
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 #include "includes/crtc6845.h"
 
 static UINT8 *system_rom;
@@ -140,7 +140,7 @@ int SelectedKeyrow(int	Rows);
 
 int dgnbeta_font=0;
 
-static struct pia6821_interface dgnbeta_pia_intf[] =
+static const pia6821_interface dgnbeta_pia_intf[] =
 {
 	/* PIA 0 at $FC20-$FC23 I46 */
 	{
@@ -984,7 +984,7 @@ INTERRUPT_GEN( dgn_beta_frame_interrupt )
 
 /********************************* Machine/Driver Initialization ****************************************/
 
-MACHINE_INIT( dgnbeta )
+static void dgnbeta_reset(void)
 {
 	system_rom = memory_region(REGION_CPU1);
 
@@ -1000,9 +1000,6 @@ MACHINE_INIT( dgnbeta )
 	memset(PageRegs,0,sizeof(PageRegs));	/* Reset page registers to 0 */
 	SetDefaultTask();
 
-	pia_config(0, PIA_STANDARD_ORDERING | PIA_8BIT, &dgnbeta_pia_intf[0]);
-	pia_config(1, PIA_STANDARD_ORDERING | PIA_8BIT, &dgnbeta_pia_intf[1]);
-	pia_config(2, PIA_STANDARD_ORDERING | PIA_8BIT, &dgnbeta_pia_intf[2]); 
 	pia_reset();
 
 	d_pia1_pa_last=0x00;
@@ -1020,18 +1017,22 @@ MACHINE_INIT( dgnbeta )
 	wd179x_set_drive(0);
 }
 
-MACHINE_STOP( dgnbeta )
-{
-}
 
-DRIVER_INIT( dgnbeta )
+MACHINE_START( dgnbeta )
 {
+	pia_config(0, PIA_STANDARD_ORDERING | PIA_8BIT, &dgnbeta_pia_intf[0]);
+	pia_config(1, PIA_STANDARD_ORDERING | PIA_8BIT, &dgnbeta_pia_intf[1]);
+	pia_config(2, PIA_STANDARD_ORDERING | PIA_8BIT, &dgnbeta_pia_intf[2]); 
+
 	init_video();
 	
 	wd179x_init(WD_TYPE_179X,dgnbeta_fdc_callback);
 #ifdef MAME_DEBUG
 	cpuintrf_set_dasm_override(dgnbeta_dasm_override);
 #endif
+
+	add_reset_callback(dgnbeta_reset);
+	return 0;
 }
 
 

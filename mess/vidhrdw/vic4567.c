@@ -38,14 +38,14 @@ extern void vic4567_init (int pal, int (*dma_read) (int),
 	memset(&vic2, 0, sizeof(vic2));
 
 	vic2.lines = VIC2_LINES;
-	vic2.vic3=true;
+	vic2.vic3 = TRUE;
 
 	vic2.dma_read = dma_read;
 	vic2.dma_read_color = dma_read_color;
 	vic2.interrupt = irq;
 	vic2.pal = pal;
 	vic2.port_changed = param_port_changed;
-	vic2.on = true;
+	vic2.on = TRUE;
 }
 
 WRITE8_HANDLER ( vic3_port_w )
@@ -176,7 +176,7 @@ static void vic3_drawlines (int first, int last)
 	if (first == last)
 		return;
 	vic2.lastline = last;
-	if (osd_skip_this_frame ())
+	if (skip_this_frame ())
 		return;
 
 	/* top part of display not rastered */
@@ -774,7 +774,7 @@ INTERRUPT_GEN( vic3_raster_irq )
 			set_visible_area(0,columns+16-1,0, raws+16-1);
 		}
 		if (VIC3_BITPLANES) {
-			if (!osd_skip_this_frame ()) vic3_draw_bitplanes();
+			if (!skip_this_frame ()) vic3_draw_bitplanes();
 		} else {
 			if (vic2.on) vic2_drawlines (vic2.lastline, vic2.lines);
 		}

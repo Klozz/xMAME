@@ -233,7 +233,7 @@ static MACHINE_DRIVER_START( primoa32 )
 	MDRV_CPU_VBLANK_INT( primo_vblank_interrupt, 1 )
 	MDRV_INTERLEAVE( 1 )
 
-	MDRV_MACHINE_INIT( primoa )
+	MDRV_MACHINE_RESET( primoa )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
@@ -271,7 +271,7 @@ static MACHINE_DRIVER_START( primob32 )
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_IO_MAP( primob_port, 0 )
 
-	MDRV_MACHINE_INIT( primob )
+	MDRV_MACHINE_RESET( primob )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( primob48 )
@@ -279,7 +279,7 @@ static MACHINE_DRIVER_START( primob48 )
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_IO_MAP( primob_port, 0 )
 
-	MDRV_MACHINE_INIT( primob )
+	MDRV_MACHINE_RESET( primob )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( primob64 )
@@ -287,35 +287,35 @@ static MACHINE_DRIVER_START( primob64 )
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_IO_MAP( primob_port, 0 )
 
-	MDRV_MACHINE_INIT( primob )
+	MDRV_MACHINE_RESET( primob )
 MACHINE_DRIVER_END
 
 ROM_START( primoa32 )
 	ROM_REGION( 0x1c000, REGION_CPU1, 0 )
-	ROM_LOAD( "a32_1.rom", 0x10000, 0x1000, CRC(4e91c1a4) )
-	ROM_LOAD( "a32_2.rom", 0x11000, 0x1000, CRC(81a8a0fb) )
-	ROM_LOAD( "a32_3.rom", 0x12000, 0x1000, CRC(a97de2f5) )
-	ROM_LOAD( "a32_4.rom", 0x13000, 0x1000, CRC(70f84bc8) )
+	ROM_LOAD( "a32_1.rom", 0x10000, 0x1000, CRC(4e91c1a4) SHA1(bf6e41b6b36a2556a50065e9acfd8cd57968f039) )
+	ROM_LOAD( "a32_2.rom", 0x11000, 0x1000, CRC(81a8a0fb) SHA1(df75bd7774969cabb062e50da6004f2efbde489e) )
+	ROM_LOAD( "a32_3.rom", 0x12000, 0x1000, CRC(a97de2f5) SHA1(743c76121f5b9e1eab35c8c00797311f58da5243) )
+	ROM_LOAD( "a32_4.rom", 0x13000, 0x1000, CRC(70f84bc8) SHA1(9ae1c06531edf20c14ba47e78c0747dd2a92612a) )
 	ROM_CART_LOAD(1, "rom\0", 0x14000, 0x4000, ROM_FILL_FF | ROM_OPTIONAL)
 	ROM_CART_LOAD(0, "rom\0", 0x18000, 0x4000, ROM_FILL_FF | ROM_OPTIONAL)
 ROM_END
 
 ROM_START( primoa48 )
 	ROM_REGION( 0x1c000, REGION_CPU1, 0 )
-	ROM_LOAD( "a48_1.rom", 0x10000, 0x1000, CRC(7de6ad6f) )
-	ROM_LOAD( "a48_2.rom", 0x11000, 0x1000, CRC(81a8a0fb) )
-	ROM_LOAD( "a48_3.rom", 0x12000, 0x1000, CRC(a97de2f5) )
-	ROM_LOAD( "a48_4.rom", 0x13000, 0x1000, CRC(e4d0c452) )
+	ROM_LOAD( "a48_1.rom", 0x10000, 0x1000, CRC(7de6ad6f) SHA1(f2fd6fac4f9bc57c646efe40281758bb7c3f56e1) )
+	ROM_LOAD( "a48_2.rom", 0x11000, 0x1000, CRC(81a8a0fb) SHA1(df75bd7774969cabb062e50da6004f2efbde489e) )
+	ROM_LOAD( "a48_3.rom", 0x12000, 0x1000, CRC(a97de2f5) SHA1(743c76121f5b9e1eab35c8c00797311f58da5243) )
+	ROM_LOAD( "a48_4.rom", 0x13000, 0x1000, CRC(e4d0c452) SHA1(4a98ff7502f1236445250d6b4e1c34850734350e) )
 	ROM_CART_LOAD(1, "rom\0", 0x14000, 0x4000, ROM_FILL_FF | ROM_OPTIONAL)
 	ROM_CART_LOAD(0, "rom\0", 0x18000, 0x4000, ROM_FILL_FF | ROM_OPTIONAL)
 ROM_END
 
 ROM_START( primoa64 )
 	ROM_REGION( 0x1c000, REGION_CPU1, 0 )
-	ROM_LOAD( "a64_1.rom", 0x10000, 0x1000, CRC(6a7a9b9b) )
-	ROM_LOAD( "a64_2.rom", 0x11000, 0x1000, CRC(81a8a0fb) )
-	ROM_LOAD( "a64_3.rom", 0x12000, 0x1000, CRC(a97de2f5) )
-	ROM_LOAD( "a64_4.rom", 0x13000, 0x1000, CRC(e4d0c452) )
+	ROM_LOAD( "a64_1.rom", 0x10000, 0x1000, CRC(6a7a9b9b) SHA1(e9ce16f90d9a799a26a9cef09d9ee6a6d7749484) )
+	ROM_LOAD( "a64_2.rom", 0x11000, 0x1000, CRC(81a8a0fb) SHA1(df75bd7774969cabb062e50da6004f2efbde489e) )
+	ROM_LOAD( "a64_3.rom", 0x12000, 0x1000, CRC(a97de2f5) SHA1(743c76121f5b9e1eab35c8c00797311f58da5243) )
+	ROM_LOAD( "a64_4.rom", 0x13000, 0x1000, CRC(e4d0c452) SHA1(4a98ff7502f1236445250d6b4e1c34850734350e) )
 	ROM_CART_LOAD(1, "rom\0", 0x14000, 0x4000, ROM_FILL_FF | ROM_OPTIONAL)
 	ROM_CART_LOAD(0, "rom\0", 0x18000, 0x4000, ROM_FILL_FF | ROM_OPTIONAL)
 ROM_END
@@ -336,7 +336,7 @@ ROM_END
 
 ROM_START( primob64 )
 	ROM_REGION( 0x1c000, REGION_CPU1, 0 )
-	ROM_LOAD( "b64.rom", 0x10000, 0x4000, CRC(73305e4d) )
+	ROM_LOAD( "b64.rom", 0x10000, 0x4000, CRC(73305e4d) SHA1(c090c3430cdf19eed8363377b981e1c21a4ed169) )
 	ROM_CART_LOAD(1, "rom\0", 0x14000, 0x4000, ROM_FILL_FF | ROM_OPTIONAL)
 	ROM_CART_LOAD(0, "rom\0", 0x18000, 0x4000, ROM_FILL_FF | ROM_OPTIONAL)
 ROM_END
@@ -347,39 +347,80 @@ static struct CassetteOptions primo_cassette_options = {
 	22050		/* sample frequency */
 };
 
-static void primo_cassette_getinfo(struct IODevice *dev)
+static void primo_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
-	cassette_device_getinfo(dev, primo_ptp_format, &primo_cassette_options, CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED);
-	dev->count = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) primo_ptp_format; break;
+		case DEVINFO_PTR_CASSETTE_OPTIONS:				info->p = (void *) &primo_cassette_options; break;
+
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED; break;
+
+		default:										cassette_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void primo_snapshot_getinfo(struct IODevice *dev)
+static void primo_snapshot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* snapshot */
-	snapshot_device_getinfo(dev, snapshot_load_primo, 0.0);
-	dev->file_extensions = "pss\0";
+	switch(state)
+	{
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "pss"); break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_primo; break;
+
+		default:										snapshot_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void primo_quickload_getinfo(struct IODevice *dev)
+static void primo_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* quickload */
-	quickload_device_getinfo(dev, quickload_load_primo, 0.0);
-	dev->file_extensions = "pp\0";
+	switch(state)
+	{
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "pp"); break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_primo; break;
+
+		default:										quickload_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void primo_cartslot_getinfo(struct IODevice *dev)
+static void primo_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->name = device_name_cartslot_primo;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_DESCRIPTION+0:					strcpy(info->s = device_temp_str(), "EPROM Expansion Bank #1"); break;
+		case DEVINFO_STR_DESCRIPTION+1:					strcpy(info->s = device_temp_str(), "EPROM Expansion Bank #2"); break;
+		case DEVINFO_STR_DESCRIPTION+2:					strcpy(info->s = device_temp_str(), "EPROM Expansion Bank #3"); break;
+		case DEVINFO_STR_DESCRIPTION+3:					strcpy(info->s = device_temp_str(), "EPROM Expansion Bank #4"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void primo_floppy_getinfo(struct IODevice *dev)
+static void primo_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* snapshot */
-	cbmfloppy_device_getinfo(dev);
-	dev->not_working = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_NOT_WORKING:					info->i = 1; break;
+
+		default:										cbmfloppy_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START( primoa )

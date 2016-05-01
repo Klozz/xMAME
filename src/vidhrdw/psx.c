@@ -17,10 +17,9 @@
 
 ***************************************************************************/
 
+#include <stdarg.h>
 #include "driver.h"
-#include "state.h"
 #include "includes/psx.h"
-#include "usrintrf.h"
 
 #define STOP_ON_ERROR ( 0 )
 
@@ -164,13 +163,13 @@ static union
 
 struct PSXGPU
 {
-	int n_tx;
-	int n_ty;
-	int n_abr;
-	int n_tp;
-	int n_ix;
-	int n_iy;
-	int n_ti;
+	INT32 n_tx;
+	INT32 n_ty;
+	INT32 n_abr;
+	INT32 n_tp;
+	INT32 n_ix;
+	INT32 n_iy;
+	INT32 n_ti;
 } psxgpu;
 
 static UINT16 *m_p_vram;
@@ -649,10 +648,6 @@ static int psx_gpu_init( void )
 
 	m_n_vram_size = Machine->drv->screen_width * Machine->drv->screen_height;
 	m_p_vram = auto_malloc( m_n_vram_size * 2 );
-	if( m_p_vram == NULL )
-	{
-		return 1;
-	}
 	memset( m_p_vram, 0x00, m_n_vram_size * 2 );
 
 	for( n_line = 0; n_line < 1024; n_line++ )
@@ -751,38 +746,40 @@ static int psx_gpu_init( void )
 		}
 	}
 
-	state_save_register_UINT8( "psx", 0, "m_packet", (UINT8 *)&m_packet, sizeof( m_packet ) );
-	state_save_register_UINT16( "psx", 0, "m_p_vram", m_p_vram, m_n_vram_size );
-	state_save_register_UINT32( "psx", 0, "m_n_gpu_buffer_offset", &m_n_gpu_buffer_offset, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_vramx", &m_n_vramx, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_vramy", &m_n_vramy, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_twy", &m_n_twy, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_twx", &m_n_twx, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_twh", &m_n_tww, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_drawarea_x1", &m_n_drawarea_x1, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_drawarea_y1", &m_n_drawarea_y1, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_drawarea_x2", &m_n_drawarea_x2, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_drawarea_y2", &m_n_drawarea_y2, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_horiz_disstart", &m_n_horiz_disstart, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_horiz_disend", &m_n_horiz_disend, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_vert_disstart", &m_n_vert_disstart, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_vert_disend", &m_n_vert_disend, 1 );
-	state_save_register_UINT32( "psx", 0, "m_b_reverseflag", &m_b_reverseflag, 1 );
-	state_save_register_INT32( "psx", 0, "m_n_drawoffset_x", &m_n_drawoffset_x, 1 );
-	state_save_register_INT32( "psx", 0, "m_n_drawoffset_y", &m_n_drawoffset_y, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_displaystartx", &m_n_displaystartx, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_displaystarty", &m_n_displaystarty, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_gpustatus", &m_n_gpustatus, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_gpuinfo", &m_n_gpuinfo, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_lightgun_x", &m_n_lightgun_x, 1 );
-	state_save_register_UINT32( "psx", 0, "m_n_lightgun_y", &m_n_lightgun_y, 1 );
-	state_save_register_int( "psx", 0, "n_tx", &psxgpu.n_tx );
-	state_save_register_int( "psx", 0, "n_ty", &psxgpu.n_ty );
-	state_save_register_int( "psx", 0, "n_abr", &psxgpu.n_abr );
-	state_save_register_int( "psx", 0, "n_tp", &psxgpu.n_tp );
-	state_save_register_int( "psx", 0, "n_ix", &psxgpu.n_ix );
-	state_save_register_int( "psx", 0, "n_iy", &psxgpu.n_iy );
-	state_save_register_int( "psx", 0, "n_ti", &psxgpu.n_ti );
+	/* icky!!! */
+	state_save_register_memory( "globals", 0, "m_packet", (UINT8 *)&m_packet, 1, sizeof( m_packet ) );
+
+	state_save_register_global_pointer( m_p_vram, m_n_vram_size );
+	state_save_register_global( m_n_gpu_buffer_offset );
+	state_save_register_global( m_n_vramx );
+	state_save_register_global( m_n_vramy );
+	state_save_register_global( m_n_twy );
+	state_save_register_global( m_n_twx );
+	state_save_register_global( m_n_tww );
+	state_save_register_global( m_n_drawarea_x1 );
+	state_save_register_global( m_n_drawarea_y1 );
+	state_save_register_global( m_n_drawarea_x2 );
+	state_save_register_global( m_n_drawarea_y2 );
+	state_save_register_global( m_n_horiz_disstart );
+	state_save_register_global( m_n_horiz_disend );
+	state_save_register_global( m_n_vert_disstart );
+	state_save_register_global( m_n_vert_disend );
+	state_save_register_global( m_b_reverseflag );
+	state_save_register_global( m_n_drawoffset_x );
+	state_save_register_global( m_n_drawoffset_y );
+	state_save_register_global( m_n_displaystartx );
+	state_save_register_global( m_n_displaystarty );
+	state_save_register_global( m_n_gpustatus );
+	state_save_register_global( m_n_gpuinfo );
+	state_save_register_global( m_n_lightgun_x );
+	state_save_register_global( m_n_lightgun_y );
+	state_save_register_global( psxgpu.n_tx );
+	state_save_register_global( psxgpu.n_ty );
+	state_save_register_global( psxgpu.n_abr );
+	state_save_register_global( psxgpu.n_tp );
+	state_save_register_global( psxgpu.n_ix );
+	state_save_register_global( psxgpu.n_iy );
+	state_save_register_global( psxgpu.n_ti );
 
 	state_save_register_func_postload( updatevisiblearea );
 
@@ -799,10 +796,6 @@ VIDEO_START( psx_type2 )
 {
 	m_n_gputype = 2;
 	return psx_gpu_init();
-}
-
-VIDEO_STOP( psx )
-{
 }
 
 VIDEO_UPDATE( psx )
@@ -1515,6 +1508,9 @@ static void FlatPolygon( int n_points )
 
 	n_cmd = BGR_C( m_packet.FlatPolygon.n_bgr );
 
+	n_cx1.d = 0;
+	n_cx2.d = 0;
+
 	SOLIDSETUP
 
 	n_r.w.h = BGR_R( m_packet.FlatPolygon.n_bgr ); n_r.w.l = 0;
@@ -1687,6 +1683,16 @@ static void FlatTexturedPolygon( int n_points )
 
 	n_clutx = ( m_packet.FlatTexturedPolygon.vertex[ 0 ].n_texture.w.h & 0x3f ) << 4;
 	n_cluty = ( m_packet.FlatTexturedPolygon.vertex[ 0 ].n_texture.w.h >> 6 ) & 0x3ff;
+
+	n_r.d = 0;
+	n_g.d = 0;
+	n_b.d = 0;
+	n_cx1.d = 0;
+	n_cu1.d = 0;
+	n_cv1.d = 0;
+	n_cx2.d = 0;
+	n_cu2.d = 0;
+	n_cv2.d = 0;
 
 	decode_tpage( &psxgpu, m_packet.FlatTexturedPolygon.vertex[ 1 ].n_texture.w.h );
 	TEXTURESETUP
@@ -1893,6 +1899,15 @@ static void GouraudPolygon( int n_points )
 #endif
 
 	n_cmd = BGR_C( m_packet.GouraudPolygon.vertex[ 0 ].n_bgr );
+
+	n_cx1.d = 0;
+	n_cr1.d = 0;
+	n_cg1.d = 0;
+	n_cb1.d = 0;
+	n_cx2.d = 0;
+	n_cr2.d = 0;
+	n_cg2.d = 0;
+	n_cb2.d = 0;
 
 	SOLIDSETUP
 
@@ -2118,6 +2133,19 @@ static void GouraudTexturedPolygon( int n_points )
 
 	n_clutx = ( m_packet.GouraudTexturedPolygon.vertex[ 0 ].n_texture.w.h & 0x3f ) << 4;
 	n_cluty = ( m_packet.GouraudTexturedPolygon.vertex[ 0 ].n_texture.w.h >> 6 ) & 0x3ff;
+
+	n_cx1.d = 0;
+	n_cr1.d = 0;
+	n_cg1.d = 0;
+	n_cb1.d = 0;
+	n_cu1.d = 0;
+	n_cv1.d = 0;
+	n_cx2.d = 0;
+	n_cr2.d = 0;
+	n_cg2.d = 0;
+	n_cb2.d = 0;
+	n_cu2.d = 0;
+	n_cv2.d = 0;
 
 	decode_tpage( &psxgpu, m_packet.GouraudTexturedPolygon.vertex[ 1 ].n_texture.w.h );
 	TEXTURESETUP
@@ -2839,6 +2867,10 @@ static void FlatTexturedRectangle( void )
 	n_clutx = ( m_packet.FlatTexturedRectangle.n_texture.w.h & 0x3f ) << 4;
 	n_cluty = ( m_packet.FlatTexturedRectangle.n_texture.w.h >> 6 ) & 0x3ff;
 
+	n_r.d = 0;
+	n_g.d = 0;
+	n_b.d = 0;
+
 	TEXTURESETUP
 	SPRITESETUP
 
@@ -2933,6 +2965,10 @@ static void Sprite8x8( void )
 	n_clutx = ( m_packet.Sprite8x8.n_texture.w.h & 0x3f ) << 4;
 	n_cluty = ( m_packet.Sprite8x8.n_texture.w.h >> 6 ) & 0x3ff;
 
+	n_r.d = 0;
+	n_g.d = 0;
+	n_b.d = 0;
+
 	TEXTURESETUP
 	SPRITESETUP
 
@@ -3026,6 +3062,10 @@ static void Sprite16x16( void )
 
 	n_clutx = ( m_packet.Sprite16x16.n_texture.w.h & 0x3f ) << 4;
 	n_cluty = ( m_packet.Sprite16x16.n_texture.w.h >> 6 ) & 0x3ff;
+
+	n_r.d = 0;
+	n_g.d = 0;
+	n_b.d = 0;
 
 	TEXTURESETUP
 	SPRITESETUP

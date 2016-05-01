@@ -109,7 +109,6 @@ Notes:
 */
 
 #include "driver.h"
-#include "state.h"
 #include "cdrom.h"
 #include "cpu/mips/psx.h"
 #include "includes/psx.h"
@@ -315,7 +314,7 @@ static DRIVER_INIT( konamigv )
 	psx_dma_install_write_handler(5, scsi_dma_write);
 }
 
-static MACHINE_INIT( konamigv )
+static MACHINE_RESET( konamigv )
 {
 	psx_machine_init();
 
@@ -340,7 +339,7 @@ static MACHINE_DRIVER_START( konamigv )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION( 0 )
 
-	MDRV_MACHINE_INIT( konamigv )
+	MDRV_MACHINE_RESET( konamigv )
 	MDRV_NVRAM_HANDLER(konamigv_93C46)
 
 	/* video hardware */
@@ -352,7 +351,6 @@ static MACHINE_DRIVER_START( konamigv )
 	MDRV_PALETTE_INIT( psx )
 	MDRV_VIDEO_START( psx_type2 )
 	MDRV_VIDEO_UPDATE( psx )
-	MDRV_VIDEO_STOP( psx )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
@@ -974,7 +972,7 @@ INPUT_PORTS_END
 ROM_START( konamigv )
 	GV_BIOS
 
-	ROM_REGION( 0x0000080, REGION_USER2, 0 ) /* default eeprom */
+	ROM_REGION( 0x0000080, REGION_USER2, ROMREGION_ERASE00 ) /* default eeprom */
 ROM_END
 
 ROM_START( susume )

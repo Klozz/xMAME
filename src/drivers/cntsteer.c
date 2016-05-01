@@ -26,7 +26,6 @@
 *******************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/ay8910.h"
 #include "sound/2203intf.h"
@@ -722,7 +721,7 @@ static const gfx_decode zerotrgt_gfxdecodeinfo[] =
 
 /***************************************************************************/
 
-MACHINE_INIT( zerotrgt )
+MACHINE_RESET( zerotrgt )
 {
 	nmimask = 0;
 }
@@ -786,7 +785,7 @@ static MACHINE_DRIVER_START( zerotrgt )
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
 
-	MDRV_MACHINE_INIT(zerotrgt)
+	MDRV_MACHINE_RESET(zerotrgt)
 
 	/* interleave 200? */
 	MDRV_GFXDECODE(zerotrgt_gfxdecodeinfo)
@@ -845,7 +844,7 @@ ROM_START( cntsteer )
 	ROM_LOAD( "by18", 0x20000, 0x2000, CRC(1e9ce047) SHA1(7579ba6b401eb1bfc7d2d9311ebab623bd1095a2) )
 	ROM_LOAD( "by20", 0x30000, 0x2000, CRC(e2198c9e) SHA1(afea262db9154301f4b9e53e1fc91985dd934170) )
 
-	ROM_REGION( 0x200, REGION_PROMS, 0 )
+	ROM_REGION( 0x200, REGION_PROMS, ROMREGION_ERASE00 )
 ROM_END
 
 ROM_START( zerotrgt )

@@ -17,11 +17,10 @@ READ16_HANDLER( midtunit_input_r );
 DRIVER_INIT( mktunit );
 DRIVER_INIT( jdreddp );
 DRIVER_INIT( nbajam );
-DRIVER_INIT( nbajam );
 DRIVER_INIT( nbajamte );
 DRIVER_INIT( mk2 );
 
-MACHINE_INIT( midtunit );
+MACHINE_RESET( midtunit );
 
 READ16_HANDLER( midtunit_sound_state_r );
 READ16_HANDLER( midtunit_sound_r );

@@ -108,6 +108,8 @@
 
 #include "includes/28f008sa.h"
 
+static void pcw16_machine_stop(void);
+
 /* interrupt counter */
 unsigned long pcw16_interrupt_counter;
 /* video control */
@@ -1340,7 +1342,7 @@ static CENTRONICS_CONFIG cent_config =
 	pc_lpt_handshake_in
 };
 
-static MACHINE_INIT( pcw16 )
+static MACHINE_RESET( pcw16 )
 {
 	/* flash 0 */
 	flash_init(0);
@@ -1376,15 +1378,16 @@ static MACHINE_INIT( pcw16 )
 	/* initialise keyboard */
 	at_keyboard_init(AT_KEYBOARD_TYPE_AT);
 	at_keyboard_set_scan_code_set(3);
-	at_keyboard_set_input_port_base(4);
 
 	pcw16_reset();
 
 	beep_set_state(0,0);
 	beep_set_frequency(0,3750);
+
+	add_exit_callback(pcw16_machine_stop);
 }
 
-static MACHINE_STOP( pcw16 )
+static void pcw16_machine_stop(void)
 {
 	/* flash 0 */
 	flash_store(0,"pcw16f1.nv");
@@ -1419,8 +1422,7 @@ static MACHINE_DRIVER_START( pcw16 )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( pcw16 )
-	MDRV_MACHINE_STOP( pcw16 )
+	MDRV_MACHINE_RESET( pcw16 )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1453,18 +1455,31 @@ ROM_START(pcw16)
 	ROM_LOAD("pcw045.sys",0x10000, 524288, CRC(c642f498))
 ROM_END
 
-static void pcw16_printer_getinfo(struct IODevice *dev)
+static void pcw16_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
-	printer_device_getinfo(dev);
-	dev->count = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		default:										printer_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void pcw16_floppy_getinfo(struct IODevice *dev)
+static void pcw16_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	floppy_device_getinfo(dev, floppyoptions_pc);
-	dev->count = 2;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 2; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_pc; break;
+
+		default:										floppy_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(pcw16)

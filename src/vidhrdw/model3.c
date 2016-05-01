@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/poly.h"
 #include <math.h>
 
@@ -61,8 +60,9 @@ extern int model3_irq_state;
 extern int model3_step;
 extern int model3_draw_crosshair;
 
+extern UINT32 *model3_vrom;
+
 UINT64 *paletteram64;
-static UINT32 *vrom;
 
 static UINT8 model3_layer_enable = 0;
 static UINT32 layer_modulate_r;
@@ -120,7 +120,6 @@ static float ambient_light_intensity;
 VIDEO_START( model3 )
 {
 	int j,t;
-	vrom = (UINT32*)memory_region(REGION_USER2);
 
 	bitmap3d = auto_bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height);
 	if (!bitmap3d)
@@ -131,12 +130,7 @@ VIDEO_START( model3 )
 		return 1;
 
 	m3_char_ram = auto_malloc(0x100000);
-	if( !m3_char_ram )
-		return 1;
-
 	m3_tile_ram = auto_malloc(0x8000);
-	if( !m3_tile_ram )
-		return 1;
 
 	memset(m3_char_ram, 0, 0x100000);
 	memset(m3_tile_ram, 0, 0x8000);
@@ -145,9 +139,6 @@ VIDEO_START( model3 )
 	memset(pal_lookup, 0, 65536*2);
 
 	texture_fifo = auto_malloc(0x100000);
-	if( !texture_fifo ) {
-		return 1;
-	}
 
 	/* 2x 4MB texture sheets */
 	texture_ram[0] = auto_malloc(0x400000);
@@ -550,7 +541,7 @@ WRITE64_HANDLER( real3d_polygon_ram_w )
 	}
 }
 
-const unsigned char texture_decode[64] =
+static const unsigned char texture_decode[64] =
 {
 	 0,  1,  4,  5,  8,  9, 12, 13,
 	 2,  3,  6,  7, 10, 11, 14, 15,
@@ -641,7 +632,7 @@ static void real3d_upload_texture(UINT32 header, UINT32 *data)
 		case 0x80:		/* Gamma-table ? */
 			break;
 		default:
-			osd_die("Unknown texture type: %02X: ", header >> 24);
+			fatalerror("Unknown texture type: %02X: ", header >> 24);
 			break;
 	}
 }
@@ -701,7 +692,6 @@ void real3d_vrom_texture_dma(UINT32 src, UINT32 dst, int length, int byteswap)
 	if((dst & 0xff) == 0) {
 
 		UINT32 address, header;
-		UINT32 *rom;
 
 		if (byteswap) {
 			address = BYTE_REVERSE32(program_read_dword_64le((src+0)^4));
@@ -710,8 +700,7 @@ void real3d_vrom_texture_dma(UINT32 src, UINT32 dst, int length, int byteswap)
 			address = program_read_dword_64le((src+0)^4);
 			header = program_read_dword_64le((src+4)^4);
 		}
-		rom = (UINT32*)memory_region(REGION_USER2);
-		real3d_upload_texture(header, (UINT32*)&rom[address]);
+		real3d_upload_texture(header, (UINT32*)&model3_vrom[address]);
 	}
 }
 
@@ -829,7 +818,7 @@ void push_matrix_stack(void)
 	matrix_stack_ptr++;
 	if (matrix_stack_ptr >= MATRIX_STACK_SIZE)
 	{
-		osd_die("push_matrix_stack: matrix stack overflow");
+		fatalerror("push_matrix_stack: matrix stack overflow");
 	}
 
 	memcpy( &matrix_stack[matrix_stack_ptr], &matrix_stack[matrix_stack_ptr-1], sizeof(MATRIX));
@@ -840,7 +829,7 @@ void pop_matrix_stack(void)
 	matrix_stack_ptr--;
 	if (matrix_stack_ptr < 0)
 	{
-		osd_die("pop_matrix_stack: matrix stack underflow");
+		fatalerror("pop_matrix_stack: matrix stack underflow");
 	}
 }
 
@@ -873,7 +862,7 @@ INLINE void push_triangle(int alpha, TRIANGLE *tri)
 
 		if (alpha_triangle_buffer_ptr >= MAX_TRIANGLES)
 		{
-			osd_die("push_triangle: triangle buffer overflow!\n");
+			fatalerror("push_triangle: triangle buffer overflow!");
 		}
 	}
 	else
@@ -883,7 +872,7 @@ INLINE void push_triangle(int alpha, TRIANGLE *tri)
 
 		if (triangle_buffer_ptr >= MAX_TRIANGLES)
 		{
-			osd_die("push_triangle: triangle buffer overflow!\n");
+			fatalerror("push_triangle: triangle buffer overflow!");
 		}
 	}
 }
@@ -1335,14 +1324,14 @@ static UINT32 *get_memory_pointer(UINT32 address)
 	if (address & 0x800000)
 	{
 		if (address >= 0x840000) {
-			osd_die("get_memory_pointer: invalid display list memory address %08X\n", address);
+			fatalerror("get_memory_pointer: invalid display list memory address %08X", address);
 		}
 		return &display_list_ram[address & 0x7fffff];
 	}
 	else
 	{
 		if (address >= 0x100000) {
-			osd_die("get_memory_pointer: invalid node ram address %08X\n", address);
+			fatalerror("get_memory_pointer: invalid node ram address %08X", address);
 		}
 		return &culling_ram[address];
 	}
@@ -1369,7 +1358,7 @@ static void traverse_list4(UINT32 address)
 
 	if ((link & 0xffffff) > 0x100000)		/* VROM model */
 	{
-		draw_model(&vrom[link & 0xffffff]);
+		draw_model(&model3_vrom[link & 0xffffff]);
 	}
 	else {		/* model in polygon ram */
 		/* TODO: polygon ram actually overrides the lowest 4MB of VROM.
@@ -1457,7 +1446,7 @@ static void traverse_node(UINT32 address)
 					case 0x03:		/* both of these link to models, is there any difference ? */
 						if ((link & 0xffffff) > 0x100000)		/* VROM model */
 						{
-							draw_model(&vrom[link & 0xffffff]);
+							draw_model(&model3_vrom[link & 0xffffff]);
 						}
 						else {		/* model in polygon ram */
 							/* TODO: polygon ram actually overrides the lowest 4MB of VROM.

@@ -4,6 +4,9 @@
 
     General core utilities and macros used throughout MAME.
 
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
 ***************************************************************************/
 
 #pragma once
@@ -14,7 +17,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <ctype.h>
 #include "osd_cpu.h"
 
 
@@ -47,14 +49,30 @@ typedef struct _machine_config machine_config;
 typedef struct _rom_load_data rom_load_data;
 typedef struct _xml_data_node xml_data_node;
 typedef struct _performance_info performance_info;
-typedef struct _osd_file osd_file;
+typedef struct _osd_create_params osd_create_params;
+typedef struct _gfx_element gfx_element;
+typedef struct _input_port_entry input_port_entry;
+typedef struct _input_port_default_entry input_port_default_entry;
+typedef struct _mame_file mame_file;
+typedef struct _chd_file chd_file;
+typedef enum _osd_file_error osd_file_error;
 
 
 /* pen_t is used to represent pixel values in mame_bitmaps */
 typedef UINT32 pen_t;
 
+/* rgb_t is used to represent 32-bit (A)RGB values */
+typedef UINT32 rgb_t;
+
+/* stream_sample_t is used to represent a single sample in a sound stream */
+typedef INT32 stream_sample_t;
+
+/* input code is used to represent an abstracted input type */
+typedef UINT32 input_code;
+
 
 /* mame_bitmaps are used throughout the code */
+typedef struct _mame_bitmap mame_bitmap;
 struct _mame_bitmap
 {
 	int width,height;	/* width and height of the bitmap */
@@ -71,16 +89,15 @@ struct _mame_bitmap
 	pen_t (*read)(struct _mame_bitmap *bitmap,int x,int y);
 	void (*plot_box)(struct _mame_bitmap *bitmap,int x,int y,int width,int height,pen_t pen);
 };
-typedef struct _mame_bitmap mame_bitmap;
 
 
 /* rectangles are used throughout the code */
+typedef struct _rectangle rectangle;
 struct _rectangle
 {
 	int min_x,max_x;
 	int min_y,max_y;
 };
-typedef struct _rectangle rectangle;
 
 
 
@@ -156,6 +173,20 @@ typedef union
     Common macros
 
 ***************************************************************************/
+
+/* Standard MAME assertion macros */
+#undef assert
+#undef assert_always
+
+#ifdef MAME_DEBUG
+#define assert(x)	do { if (!(x)) fatalerror("assert: %s:%d: %s", __FILE__, __LINE__, #x); } while (0)
+#define assert_always(x, msg) do { if (!(x)) fatalerror("Fatal error: %s\nCaused by assert: %s:%d: %s", msg, __FILE__, __LINE__, #x); } while (0)
+#else
+#define assert(x)
+#define assert_always(x, msg) do { if (!(x)) fatalerror("Fatal error: %s (%s:%d)", msg, __FILE__, __LINE__); } while (0)
+#endif
+
+
 
 /* Standard MIN/MAX macros */
 #ifndef MIN
@@ -318,20 +349,28 @@ typedef union
 ***************************************************************************/
 
 /* since stricmp is not part of the standard, we use this instead */
-INLINE int mame_stricmp(const char *s1, const char *s2)
-{
-	for (;;)
- 	{
-		int c1 = tolower(*s1++);
-		int c2 = tolower(*s2++);
-		if (c1 == 0 || c1 != c2)
-			return c1 - c2;
- 	}
-}
+int mame_stricmp(const char *s1, const char *s2);
 
 /* this macro prevents people from using stricmp directly */
 #undef stricmp
 #define stricmp !MUST_USE_MAME_STRICMP_INSTEAD!
+
+
+/* since strnicmp is not part of the standard, we use this instead */
+int mame_strnicmp(const char *s1, const char *s2, size_t n);
+
+/* this macro prevents people from using strnicmp directly */
+#undef strnicmp
+#define strnicmp !MUST_USE_MAME_STRNICMP_INSTEAD!
+
+
+/* since strdup is not part of the standard, we use this instead */
+char *mame_strdup(const char *str);
+
+/* this macro prevents people from using strdup directly */
+#undef strdup
+#define strdup !MUST_USE_MAME_STRDUP_INSTEAD!
+
 
 /* compute the intersection of two rectangles */
 INLINE void sect_rect(rectangle *dst, const rectangle *src)
@@ -341,6 +380,7 @@ INLINE void sect_rect(rectangle *dst, const rectangle *src)
 	if (src->min_y > dst->min_y) dst->min_y = src->min_y;
 	if (src->max_y < dst->max_y) dst->max_y = src->max_y;
 }
+
 
 /* convert a series of 32 bits into a float */
 INLINE float u2f(UINT32 v)
@@ -353,6 +393,7 @@ INLINE float u2f(UINT32 v)
 	return u.ff;
 }
 
+
 /* convert a float into a series of 32 bits */
 INLINE UINT32 f2u(float f)
 {
@@ -364,8 +405,9 @@ INLINE UINT32 f2u(float f)
 	return u.vv;
 }
 
+
 /* convert a series of 64 bits into a double */
-INLINE float u2d(UINT64 v)
+INLINE double u2d(UINT64 v)
 {
 	union {
 		double dd;
@@ -374,6 +416,7 @@ INLINE float u2d(UINT64 v)
 	u.vv = v;
 	return u.dd;
 }
+
 
 /* convert a double into a series of 64 bits */
 INLINE UINT64 d2u(double d)
@@ -432,6 +475,60 @@ INLINE INT32 fixed_mul_shift(INT32 val1, INT32 val2, UINT8 shift)
 
 /***************************************************************************
 
+    Binary coded decimal
+
+***************************************************************************/
+
+INLINE int bcd_adjust(int value)
+{
+	if ((value & 0xf) >= 0xa)
+		value = value + 0x10 - 0xa;
+	if ((value & 0xf0) >= 0xa0)
+		value = value - 0xa0 + 0x100;
+	return value;
+}
+
+
+INLINE int dec_2_bcd(int a)
+{
+	return (a % 10) | ((a / 10) << 4);
+}
+
+
+INLINE int bcd_2_dec(int a)
+{
+	return (a & 0xf) + (a >> 4) * 10;
+}
+
+
+
+/***************************************************************************
+
+    Gregorian calendar code
+
+***************************************************************************/
+
+INLINE int gregorian_is_leap_year(int year)
+{
+	return !(year % 100 ? year % 4 : year % 400);
+}
+
+
+/* months are one counted */
+INLINE int gregorian_days_in_month(int month, int year)
+{
+	if (month == 2)
+		return gregorian_is_leap_year(year) ? 29 : 28;
+	else if (month == 4 || month == 6 || month == 9 || month == 11)
+		return 30;
+	else
+		return 31;
+}
+
+
+
+/***************************************************************************
+
     Compiler-specific nastiness
 
 ***************************************************************************/
@@ -445,13 +542,15 @@ INLINE INT32 fixed_mul_shift(INT32 val1, INT32 val2, UINT8 shift)
 
 /* Some optimizations/warnings cleanups for GCC */
 #if defined(__GNUC__) && (__GNUC__ >= 3)
-#define ATTR_UNUSED			__attribute__((__unused__))
-#define ATTR_NORETURN		__attribute__((noreturn))
-#define ATTR_PRINTF(x,y)	__attribute__((format(printf, x, y)))
-#define ATTR_MALLOC			__attribute__((malloc))
-#define ATTR_PURE			__attribute__((pure))
-#define ATTR_CONST			__attribute__((const))
-#define UNEXPECTED(exp)		__builtin_expect((exp), 0)
+#define ATTR_UNUSED				__attribute__((__unused__))
+#define ATTR_NORETURN			__attribute__((noreturn))
+#define ATTR_PRINTF(x,y)		__attribute__((format(printf, x, y)))
+#define ATTR_MALLOC				__attribute__((malloc))
+#define ATTR_PURE				__attribute__((pure))
+#define ATTR_CONST				__attribute__((const))
+#define UNEXPECTED(exp)			__builtin_expect((exp), 0)
+#define TYPES_COMPATIBLE(a,b)	__builtin_types_compatible_p(a, b)
+#define RESTRICT				__restrict__
 #else
 #define ATTR_UNUSED
 #define ATTR_NORETURN
@@ -459,19 +558,30 @@ INLINE INT32 fixed_mul_shift(INT32 val1, INT32 val2, UINT8 shift)
 #define ATTR_MALLOC
 #define ATTR_PURE
 #define ATTR_CONST
-#define UNEXPECTED(exp)		(exp)
+#define UNEXPECTED(exp)			(exp)
+#define TYPES_COMPATIBLE(a,b)	1
+#define RESTRICT
 #endif
 
 
 
 /* And some MSVC optimizations/warnings */
 #if defined(_MSC_VER) && (_MSC_VER >= 1200)
-#define DECL_NORETURN		__declspec(noreturn)
+#define DECL_NORETURN			__declspec(noreturn)
 #else
 #define DECL_NORETURN
 #endif
 
 
+
+/***************************************************************************
+
+    Function prototypes
+
+***************************************************************************/
+
+/* Used by assert(), so definition here instead of mame.h */
+DECL_NORETURN void CLIB_DECL fatalerror(const char *text,...) ATTR_PRINTF(1,2) ATTR_NORETURN;
 
 
 #endif	/* __MAMECORE_H__ */

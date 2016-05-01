@@ -35,9 +35,11 @@
 
 #include <math.h>
 #include "driver.h"
-#include "machine/z80fmly.h"
+#include "machine/z80ctc.h"
+#include "machine/z80pio.h"
+#include "machine/z80sio.h"
 #include "vidhrdw/generic.h"
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 #include "includes/mbee.h"
 #include "devices/basicdsk.h"
 #include "devices/cartslot.h"
@@ -171,7 +173,7 @@ INPUT_PORTS_START( mbee )
     PORT_BIT( 0xc0, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
-gfx_layout mbee_charlayout =
+const gfx_layout mbee_charlayout =
 {
     8,16,                   /* 8 x 16 characters */
     256,                    /* 256 characters */
@@ -191,7 +193,7 @@ static gfx_decode mbee_gfxdecodeinfo[] =
 	{ -1 }   /* end of array */
 };
 
-static UINT8 palette[] =
+static const UINT8 palette[] =
 {
     0x00,0x00,0x00, /* black    */
     0xf0,0x00,0x00, /* red      */
@@ -238,7 +240,7 @@ static PALETTE_INIT( mbee )
 	}
 }
 
-struct z80_irq_daisy_chain mbee_daisy_chain[] =
+static const struct z80_irq_daisy_chain mbee_daisy_chain[] =
 {
     { z80ctc_reset, z80ctc_irq_state, z80ctc_irq_ack, z80ctc_irq_reti, 0 }, /* CTC number 0 */
     { 0, 0, 0, 0, -1}      /* end mark */
@@ -257,7 +259,7 @@ static MACHINE_DRIVER_START( mbee )
 	MDRV_VBLANK_DURATION(2500)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( mbee )
+	MDRV_MACHINE_RESET( mbee )
 
 	MDRV_GFXDECODE(mbee_gfxdecodeinfo)
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -292,9 +294,6 @@ ROM_START( mbee )
     ROM_LOAD("bas522b.rom",  0xa000, 0x2000, CRC(b21d9679) SHA1(332844433763331e9483409cd7da3f90ac58259d))
     ROM_LOAD("edasm.rom",    0xc000, 0x2000, CRC(1af1b3a9) SHA1(d035a997c2dbbb3918b3395a3a5a1076aa203ee5))
     ROM_LOAD("charrom.bin",  0xf000, 0x1000, CRC(1f9fcee4) SHA1(e57ac94e03638075dde68a0a8c834a4f84ba47b0))
-
-    ROM_REGION(0x1000,REGION_GFX1,0)
-    /* videoram and colorram are remapped here */
 ROM_END
 
 ROM_START( mbeepc85 )
@@ -303,9 +302,6 @@ ROM_START( mbeepc85 )
     ROM_LOAD("bas522b.rom",  0xa000, 0x2000, CRC(b21d9679) SHA1(332844433763331e9483409cd7da3f90ac58259d))
     ROM_LOAD("wbee12.rom",   0xc000, 0x2000, CRC(0fc21cb5) SHA1(33b3995988fc51ddef1568e160dfe699867adbd5))
     ROM_LOAD("charrom.bin",  0xf000, 0x1000, CRC(1f9fcee4) SHA1(e57ac94e03638075dde68a0a8c834a4f84ba47b0))
-
-    ROM_REGION(0x1000,REGION_GFX1,0)
-    /* videoram and colorram are remapped here */
 ROM_END
 
 ROM_START( mbeepc )
@@ -314,18 +310,12 @@ ROM_START( mbeepc )
     ROM_LOAD("bas522b.rom",  0xa000, 0x2000, CRC(b21d9679) SHA1(332844433763331e9483409cd7da3f90ac58259d))
     ROM_LOAD("telc321.rom",  0xe000, 0x2000, CRC(15b9d2df) SHA1(6e7606099d036f87230b3595eb873be60c190f11))
     ROM_LOAD("charrom.bin",  0xf000, 0x1000, CRC(1f9fcee4) SHA1(e57ac94e03638075dde68a0a8c834a4f84ba47b0))
-
-    ROM_REGION(0x1000,REGION_GFX1,0)
-    /* videoram and colorram are remapped here */
 ROM_END
 
 ROM_START( mbee56 )
     ROM_REGION(0x10000,REGION_CPU1,0)
     ROM_LOAD("56kb.rom",     0xe000, 0x1000, CRC(28211224) SHA1(b6056339402a6b2677b0e6c57bd9b78a62d20e4f))
     ROM_LOAD("charrom.bin",  0xf000, 0x1000, CRC(1f9fcee4) SHA1(e57ac94e03638075dde68a0a8c834a4f84ba47b0))
-
-    ROM_REGION(0x1000,REGION_GFX1,0)
-    /* videoram and colorram are remapped here */
 ROM_END
 
 /***************************************************************************
@@ -334,29 +324,52 @@ ROM_END
 
 ***************************************************************************/
 
-static void mbee_cassette_getinfo(struct IODevice *dev)
+static void mbee_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
-	cassette_device_getinfo(dev, NULL, NULL, (cassette_state) -1);
-	dev->count = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		default:										cassette_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void mbee_cartslot_getinfo(struct IODevice *dev)
+static void mbee_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 1;
-	dev->file_extensions = "rom\0";
-	dev->load = device_load_mbee_cart;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_mbee_cart; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void mbee_floppy_getinfo(struct IODevice *dev)
+static void mbee_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	legacybasicdsk_device_getinfo(dev);
-	dev->count = 4;
-	dev->file_extensions = "dsk\0";
-	dev->load = device_load_basicdsk_floppy;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 4; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_basicdsk_floppy; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+
+		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
+	}
 }
 
 

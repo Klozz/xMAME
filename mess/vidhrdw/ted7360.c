@@ -354,7 +354,6 @@ Video part
 */
 #include <math.h>
 #include <stdio.h>
-#include "osd_cpu.h"
 #include "driver.h"
 #include "utils.h"
 #include "sound/custom.h"
@@ -485,7 +484,7 @@ bool ted7360_rom;
 static int lines;
 static int timer1_active, timer2_active, timer3_active;
 static mame_timer *timer1, *timer2, *timer3;
-static bool cursor1 = false;
+static int cursor1 = FALSE;
 static read8_handler vic_dma_read;
 static read8_handler vic_dma_read_rom;
 static int chargenaddr, bitmapaddr, videoaddr;
@@ -602,7 +601,7 @@ INTERRUPT_GEN( ted7360_frame_interrupt )
 	if ((ted7360[0x1f] & 0xf) >= 0x0f)
 	{
 /*  if (count>=CURSORRATE) { */
-		cursor1 ^= true;
+		cursor1 ^= TRUE;
 		ted7360[0x1f] &= ~0xf;
 		count = 0;
 	}
@@ -931,19 +930,21 @@ WRITE8_HANDLER ( ted7360_port_w )
 	return val;
 }
 
+static void ted7360_video_stop(void)
+{
+	freegfx(cursorelement);
+}
+
 VIDEO_START( ted7360 )
 {
-	cursorelement = decodegfx (cursormask, &cursorlayout);
+	cursorelement = allocgfx(&cursorlayout);
+	decodegfx(cursorelement, cursormask, 0, 1);
 	cursorelement->colortable = cursorcolortable;
 	cursorcolortable[1] = Machine->pens[1];
 	cursorelement->total_colors = 2;
 	ted7360_bitmap = auto_bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height);
+	add_exit_callback(ted7360_video_stop);
 	return 0;
-}
-
-VIDEO_STOP( ted7360 )
-{
-	freegfx (cursorelement);
 }
 
 static void ted7360_draw_character (int ybegin, int yend, int ch, int yoff, int xoff,
@@ -1048,7 +1049,7 @@ static void ted7360_drawlines (int first, int last)
 
 	lastline = last;
 
-	if (osd_skip_this_frame ())
+	if (skip_this_frame ())
 		return;
 
 	/* top part of display not rastered */

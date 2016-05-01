@@ -410,7 +410,7 @@ static MACHINE_DRIVER_START( zx80 )
 	MDRV_FRAMES_PER_SECOND(ZX81_PAL_FRAMES_PER_SECOND)
 	MDRV_VBLANK_DURATION(ZX81_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(zx80)
+	MDRV_MACHINE_RESET(zx80)
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -438,7 +438,7 @@ static MACHINE_DRIVER_START( zx81 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(zx81_map, 0)
 
-	MDRV_MACHINE_INIT(zx81)
+	MDRV_MACHINE_RESET(zx81)
 
 	MDRV_GFXDECODE(zx81_gfxdecodeinfo)
 	MDRV_PALETTE_INIT(zx81)
@@ -460,7 +460,7 @@ static MACHINE_DRIVER_START( pc8300 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(pc8300_map, 0)
 
-	MDRV_MACHINE_INIT(pc8300)
+	MDRV_MACHINE_RESET(pc8300)
 	MDRV_GFXDECODE(pc8300_gfxdecodeinfo)
 	MDRV_PALETTE_INIT(zx81)
 MACHINE_DRIVER_END
@@ -471,7 +471,7 @@ static MACHINE_DRIVER_START( pow3000 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(pc8300_map, 0)
 
-	MDRV_MACHINE_INIT(pc8300)
+	MDRV_MACHINE_RESET(pc8300)
 	MDRV_GFXDECODE(pow3000_gfxdecodeinfo)
 	MDRV_PALETTE_INIT(zx81)
 MACHINE_DRIVER_END
@@ -550,11 +550,23 @@ static struct CassetteOptions zx81_cassette_options = {
 	44100		/* sample frequency */
 };
 
-static void zx80_cassette_getinfo(struct IODevice *dev)
+static void zx80_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
-	cassette_device_getinfo(dev, zx80_o_format, &zx81_cassette_options, CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED);
-	dev->count = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) zx80_o_format; break;
+		case DEVINFO_PTR_CASSETTE_OPTIONS:				info->p = (void *) &zx81_cassette_options; break;
+
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED; break;
+
+		default:										cassette_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(zx80)
@@ -563,11 +575,23 @@ SYSTEM_CONFIG_START(zx80)
 	CONFIG_RAM(16 * 1024)
 SYSTEM_CONFIG_END
 
-static void zx81_cassette_getinfo(struct IODevice *dev)
+static void zx81_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
-	cassette_device_getinfo(dev, zx81_p_format, &zx81_cassette_options, CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED);
-	dev->count = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) zx81_p_format; break;
+		case DEVINFO_PTR_CASSETTE_OPTIONS:				info->p = (void *) &zx81_cassette_options; break;
+
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED; break;
+
+		default:										cassette_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(zx81)

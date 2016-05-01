@@ -7,11 +7,10 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 UINT8 *tp84_videoram2, *tp84_colorram2;
 
-int col0;
+static int col0;
 
 /*
 sprites are multiplexed, so we have to buffer the spriteram
@@ -230,9 +229,6 @@ VIDEO_START( tp84 )
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 
 	sprite_mux_buffer = auto_malloc(256 * spriteram_size);
-
-	if (!sprite_mux_buffer)
-		return 1;
 
 	return 0;
 }

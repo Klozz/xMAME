@@ -29,7 +29,6 @@ Driver by Takahiro Nogi (nogi@kt.rim.or.jp) 1999/12/17 -
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/dac.h"
 #include "sound/3812intf.h"
 
@@ -50,7 +49,7 @@ VIDEO_UPDATE( ninjemak );
 
 
 
-static MACHINE_INIT( galivan )
+static MACHINE_RESET( galivan )
 {
 	unsigned char *RAM = memory_region(REGION_CPU1);
 
@@ -276,10 +275,10 @@ INPUT_PORTS_START( galivan )
 	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x40, 0x40, "Invulnerability (Cheat)")
+	PORT_DIPNAME( 0x40, 0x40, "Power Invulnerability (Cheat)")
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x80, 0x80, "Life Invulnerability (Cheat)")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
@@ -319,7 +318,7 @@ INPUT_PORTS_START( dangar )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x80, 0x80, "Alternate Enemies")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
@@ -364,7 +363,7 @@ INPUT_PORTS_START( dangar2 )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown) )
+	PORT_DIPNAME( 0x80, 0x80, "Alternate Enemies")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
@@ -405,7 +404,7 @@ INPUT_PORTS_START( dangarb )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown) )
+	PORT_DIPNAME( 0x80, 0x80, "Alternate Enemies")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
@@ -576,7 +575,7 @@ static MACHINE_DRIVER_START( galivan )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(galivan)
+	MDRV_MACHINE_RESET(galivan)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -620,7 +619,7 @@ static MACHINE_DRIVER_START( ninjemak )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(galivan)
+	MDRV_MACHINE_RESET(galivan)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

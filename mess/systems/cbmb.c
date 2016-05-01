@@ -161,10 +161,10 @@ when problems start with -log and look into error.log file
 #include "vidhrdw/generic.h"
 #include "cpu/m6502/m6509.h"
 #include "sound/sid6581.h"
+#include "machine/6526cia.h"
 
 #define VERBOSE_DBG 0
 #include "includes/cbm.h"
-#include "includes/cia6526.h"
 #include "includes/tpi6525.h"
 #include "includes/vic6567.h"
 #include "includes/crtc6845.h"
@@ -237,7 +237,7 @@ static ADDRESS_MAP_START( cbmb_readmem , ADDRESS_SPACE_PROGRAM, 8)
 	/* disk units */
 	AM_RANGE(0xfda00, 0xfdaff) AM_READ( sid6581_0_port_r )
 	/* db00 coprocessor */
-	AM_RANGE(0xfdc00, 0xfdcff) AM_READ( cia6526_0_port_r )
+	AM_RANGE(0xfdc00, 0xfdcff) AM_READ( cia_0_r )
 	/* dd00 acia */
 	AM_RANGE(0xfde00, 0xfdeff) AM_READ( tpi6525_0_port_r)
 	AM_RANGE(0xfdf00, 0xfdfff) AM_READ( tpi6525_1_port_r)
@@ -303,7 +303,7 @@ static ADDRESS_MAP_START( cbmb_writemem , ADDRESS_SPACE_PROGRAM, 8)
 	/* disk units */
 	AM_RANGE(0xfda00, 0xfdaff) AM_WRITE( sid6581_0_port_w)
 	/* db00 coprocessor */
-	AM_RANGE(0xfdc00, 0xfdcff) AM_WRITE( cia6526_0_port_w)
+	AM_RANGE(0xfdc00, 0xfdcff) AM_WRITE( cia_0_w)
 	/* dd00 acia */
 	AM_RANGE(0xfde00, 0xfdeff) AM_WRITE( tpi6525_0_port_w)
 	AM_RANGE(0xfdf00, 0xfdfff) AM_WRITE( tpi6525_1_port_w)
@@ -374,7 +374,7 @@ static ADDRESS_MAP_START( cbm500_readmem , ADDRESS_SPACE_PROGRAM, 8)
 	/* disk units */
 	AM_RANGE(0xfda00, 0xfdaff) AM_READ( sid6581_0_port_r )
 	/* db00 coprocessor */
-	AM_RANGE(0xfdc00, 0xfdcff) AM_READ( cia6526_0_port_r )
+	AM_RANGE(0xfdc00, 0xfdcff) AM_READ( cia_0_r )
 	/* dd00 acia */
 	AM_RANGE(0xfde00, 0xfdeff) AM_READ( tpi6525_0_port_r)
 	AM_RANGE(0xfdf00, 0xfdfff) AM_READ( tpi6525_1_port_r)
@@ -441,7 +441,7 @@ static ADDRESS_MAP_START( cbm500_writemem , ADDRESS_SPACE_PROGRAM, 8)
 	/* disk units */
 	AM_RANGE(0xfda00, 0xfdaff) AM_WRITE( sid6581_0_port_w)
 	/* db00 coprocessor */
-	AM_RANGE(0xfdc00, 0xfdcff) AM_WRITE( cia6526_0_port_w)
+	AM_RANGE(0xfdc00, 0xfdcff) AM_WRITE( cia_0_w)
 	/* dd00 acia */
 	AM_RANGE(0xfde00, 0xfdeff) AM_WRITE( tpi6525_0_port_w)
 	AM_RANGE(0xfdf00, 0xfdfff) AM_WRITE( tpi6525_1_port_w)
@@ -874,7 +874,7 @@ static MACHINE_DRIVER_START( cbm600 )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(0)
 
-	MDRV_MACHINE_INIT( cbmb )
+	MDRV_MACHINE_RESET( cbmb )
 
     /* video hardware */
 #ifdef PET_TEST_CODE
@@ -924,7 +924,7 @@ static MACHINE_DRIVER_START( cbm500 )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(0)
 
-	MDRV_MACHINE_INIT( cbmb )
+	MDRV_MACHINE_RESET( cbmb )
 
 	MDRV_IMPORT_FROM( vh_vic2 )
 
@@ -940,16 +940,32 @@ MACHINE_DRIVER_END
 #define init_cbm600pal cbm600pal_driver_init
 #define init_cbm700 cbm700_driver_init
 
-static void cbmb_cbmcartslot_getinfo(struct IODevice *dev)
+static void cbmb_cbmcartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
-	cbmcartslot_device_getinfo(dev);
-	dev->file_extensions = "crt\00010\00020\00040\00060\0";
+	switch(state)
+	{
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crt,10,20,40,60"); break;
+
+		default:										cbmcartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void cbmb_quickload_getinfo(struct IODevice *dev)
+static void cbmb_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
-	quickload_device_getinfo(dev, quickload_load_cbmb, CBM_QUICKLOAD_DELAY);
-	dev->file_extensions = "p00\0prg\0";
+	switch(state)
+	{
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbmb; break;
+
+		/* --- the following bits of info are returned as doubles --- */
+		case DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
+
+		default:										quickload_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(cbmb)
@@ -961,10 +977,21 @@ SYSTEM_CONFIG_START(cbmb)
 #endif
 SYSTEM_CONFIG_END
 
-static void cbm500_quickload_getinfo(struct IODevice *dev)
+static void cbm500_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
-	quickload_device_getinfo(dev, quickload_load_cbm500, CBM_QUICKLOAD_DELAY);
-	dev->file_extensions = "p00\0prg\0";
+	switch(state)
+	{
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm500; break;
+
+		/* --- the following bits of info are returned as doubles --- */
+		case DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
+
+		default:										quickload_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(cbm500)

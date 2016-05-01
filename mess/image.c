@@ -49,7 +49,7 @@ struct _mess_image
 static struct _mess_image *images;
 static UINT32 multiple_dev_mask;
 
-static mame_file *image_fopen_custom(mess_image *img, int filetype, int read_or_write);
+static mame_file *image_fopen_custom(mess_image *img, int filetype, int read_or_write, osd_file_error *error);
 
 
 
@@ -94,8 +94,6 @@ int image_init(void)
 	if (count > 0)
 	{
 		images = auto_malloc(count * sizeof(*images));
-		if (!images)
-			return INIT_FAIL;
 		memset(images, 0, count * sizeof(*images));
 	}
 
@@ -180,6 +178,7 @@ static int image_load_internal(mess_image *img, const char *name, int is_create,
 	UINT8 *buffer = NULL;
 	UINT64 size;
 	unsigned int readable, writeable, creatable;
+	osd_file_error ferr = 0;
 
 	/* unload if we are loaded */
 	if (img->status & IMAGE_STATUS_ISLOADED)
@@ -216,7 +215,7 @@ static int image_load_internal(mess_image *img, const char *name, int is_create,
 
 	/* do we need to reset the CPU? */
 	if ((timer_get_time() > 0) && dev->reset_on_load)
-		machine_reset();
+		mame_schedule_soft_reset();
 
 	/* prepare to open the file */
 	img->created = 0;
@@ -244,24 +243,24 @@ static int image_load_internal(mess_image *img, const char *name, int is_create,
 
 	if (readable && !writeable)
 	{
-		file = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_READ);
+		file = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_READ, &ferr);
 	}
 	else if (!readable && writeable)
 	{
-		file = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_WRITE);
+		file = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_WRITE, &ferr);
 		img->writeable = file ? 1 : 0;
 	}
 	else if (readable && writeable)
 	{
-		file = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_RW);
+		file = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_RW, &ferr);
 		img->writeable = file ? 1 : 0;
 
 		if (!file)
 		{
-			file = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_READ);
+			file = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_READ, &ferr);
 			if (!file && creatable)
 			{
-				file = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE);
+				file = image_fopen_custom(img, FILETYPE_IMAGE, OSD_FOPEN_RW_CREATE, &ferr);
 				img->writeable = file ? 1 : 0;
 				img->created = file ? 1 : 0;
 			}
@@ -271,7 +270,21 @@ static int image_load_internal(mess_image *img, const char *name, int is_create,
 	/* did this attempt succeed? */
 	if (!file)
 	{
-		img->err = IMAGE_ERROR_FILENOTFOUND;
+		switch(ferr)
+		{
+			case FILEERR_OUT_OF_MEMORY:
+				img->err = IMAGE_ERROR_OUTOFMEMORY;
+				break;
+			case FILEERR_NOT_FOUND:
+				img->err = IMAGE_ERROR_FILENOTFOUND;
+				break;
+			case FILEERR_ALREADY_OPEN:
+				img->err = IMAGE_ERROR_ALREADYOPEN;
+				break;
+			default:
+				img->err = IMAGE_ERROR_INTERNAL;
+				break;
+		}
 		goto error;
 	}
 
@@ -459,6 +472,7 @@ const char *image_error(mess_image *img)
 		"Out of memory",
 		"File not found",
 		"Invalid image",
+		"File already open",
 		"Unspecified error"
 	};
 
@@ -935,13 +949,13 @@ int image_battery_save(mess_image *img, const void *buffer, int length)
 		if (nvram_filename)
 		{
 			f = mame_fopen(Machine->gamedrv->name, nvram_filename, FILETYPE_NVRAM, 1);
+			free(nvram_filename);
 			if (f)
 			{
 				mame_fwrite(f, buffer, length);
 				mame_fclose(f);
 				return TRUE;
 			}
-			free(nvram_filename);
 		}
 	}
 	return FALSE;
@@ -983,6 +997,7 @@ mess_image *image_from_device_and_index(const struct IODevice *dev, int id)
 	mess_image *image = NULL;
 
 	assert(id < dev->count);
+	assert(images);
 
 	indx = 0;
 	for (i = 0; Machine->devices[i].type < IO_COUNT; i++)
@@ -1119,7 +1134,7 @@ done:
 
 
 
-static mame_file *image_fopen_custom(mess_image *img, int filetype, int read_or_write)
+static mame_file *image_fopen_custom(mess_image *img, int filetype, int read_or_write, osd_file_error *error)
 {
 	const char *sysname;
 	char *lpExt;
@@ -1141,7 +1156,7 @@ static mame_file *image_fopen_custom(mess_image *img, int filetype, int read_or_
 		sysname = gamedrv->name;
 		logerror("image_fopen: trying %s for system %s\n", img->name, sysname);
 
-		img->fp = mame_fopen(sysname, img->name, filetype, read_or_write);
+		img->fp = mame_fopen_error(sysname, img->name, filetype, read_or_write, error);
 
 		if (img->fp && (read_or_write == OSD_FOPEN_READ))
 		{
@@ -1221,7 +1236,7 @@ static mame_file *image_fopen_custom(mess_image *img, int filetype, int read_or_
 					{
 						return NULL;
 					}
-					img->fp = mame_fopen(sysname, newname, filetype, read_or_write);
+					img->fp = mame_fopen_error(sysname, newname, filetype, read_or_write, error);
 					if (img->fp)
 					{
 						image_freeptr(img, img->name);

@@ -21,7 +21,6 @@
 **********************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/h6280/h6280.h"
 #include "sound/2203intf.h"
 #include "sound/msm5205.h"
@@ -91,7 +90,7 @@ static ADDRESS_MAP_START( battlera_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1fe000, 0x1fe001) AM_WRITE(HuC6270_register_w)
 	AM_RANGE(0x1fe002, 0x1fe003) AM_WRITE(HuC6270_data_w)
 	AM_RANGE(0x1ff000, 0x1ff001) AM_WRITE(control_data_w)
-	AM_RANGE(0x1ff402, 0x1ff403) AM_WRITE(H6280_irq_status_w)
+	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(H6280_irq_status_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( battlera_portwrite, ADDRESS_SPACE_IO, 8 )
@@ -146,7 +145,7 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1fe800, 0x1fe80f) AM_WRITE(C6280_0_w)
 	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(MWA8_BANK7) /* Main ram */
 	AM_RANGE(0x1ff000, 0x1ff001) AM_WRITE(battlera_adpcm_reset_w)
-	AM_RANGE(0x1ff402, 0x1ff403) AM_WRITE(H6280_irq_status_w)
+	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(H6280_irq_status_w)
 ADDRESS_MAP_END
 
 /******************************************************************************/
@@ -254,9 +253,9 @@ static const gfx_layout sprites =
 
 static const gfx_decode gfxdecodeinfo[] =
 {
-	{ REGION_GFX1, 0, &tiles,       0,  16 }, /* Dynamically modified */
-	{ REGION_GFX1, 0, &sprites,   256,  16 }, /* Dynamically modified */
-	{ REGION_GFX1, 0, &tiles  ,   256,  16 }, /* Blank tile */
+	{ 0, 0, &tiles,       0,  16 }, /* Dynamically modified */
+	{ 0, 0, &sprites,   256,  16 }, /* Dynamically modified */
+	{ 0, 0, &tiles  ,   256,  16 }, /* Blank tile */
 	{ -1 } /* end of array */
 };
 
@@ -330,9 +329,6 @@ ROM_START( bldwolf )
 
 	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Sound CPU */
 	ROM_LOAD( "es11.rom",   0x00000, 0x10000, CRC(f5b29c9c) SHA1(44dcdf96f8deb9a29aa9d94a8b9cf91a0ed808d4) )
-
-	ROM_REGION( 0x80000, REGION_GFX1, 0 )
-	/* Nothing */
 ROM_END
 
 ROM_START( battlera )
@@ -351,9 +347,6 @@ ROM_START( battlera )
 
 	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Sound CPU */
 	ROM_LOAD( "es11.rom",  0x00000, 0x10000, CRC(f5b29c9c) SHA1(44dcdf96f8deb9a29aa9d94a8b9cf91a0ed808d4) )
-
-	ROM_REGION( 0x80000, REGION_GFX1, 0 )
-	/* Nothing */
 ROM_END
 
 /******************************************************************************/

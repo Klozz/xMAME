@@ -9,7 +9,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
+#include "includes/gridlee.h"
 
 
 /*************************************
@@ -66,8 +66,6 @@ VIDEO_START( gridlee )
 {
 	/* allocate a local copy of video RAM */
 	local_videoram = auto_malloc(256 * 256);
-	if (!local_videoram)
-		return 1;
 
 	/* reset the palette */
 	palettebank_vis = 0;

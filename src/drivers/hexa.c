@@ -1,5 +1,10 @@
 /****************************************************************************
 
+  This hardware is derived from Arkanoid's hardware.  The 1986 date found in
+  the roms probably comes from Arkanoid.  This is a Columns style game and
+  the original Columns wasn't released until 1990 and I find it hard to
+  believe that this would pre-date Columns.
+
 HEXA
 
 driver by Howie Cohen
@@ -25,14 +30,9 @@ d008      bit0/1 = flip screen x/y
 d010      watchdog reset, or IRQ acknowledge, or both
 f000      ????????
 
-NOTES:
-        Needs High score save and load (i think the high score is stored
-                around 0xc709)
-
 *************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 
 
@@ -202,4 +202,4 @@ static DRIVER_INIT( hexa )
 }
 
 
-GAME( 1986?, hexa, 0, hexa, hexa, hexa, ROT0, "D. R. Korea", "Hexa", 0 )
+GAME( 199?, hexa, 0, hexa, hexa, hexa, ROT0, "D. R. Korea", "Hexa", 0 )

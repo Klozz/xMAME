@@ -646,54 +646,54 @@ static PALETTE_INIT( vc20 )
 
 ROM_START (vic20)
 	ROM_REGION (0x10000, REGION_CPU1,0)
-	ROM_LOAD ("901460.03", 0x8000, 0x1000, CRC(83e032a6))
-	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1))
-	ROM_LOAD ("901486.06", 0xe000, 0x2000, CRC(e5e7c174))
+	ROM_LOAD ("901460.03", 0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4))
+	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1) SHA1(587d1e90950675ab6b12d91248a3f0d640d02e8d))
+	ROM_LOAD ("901486.06", 0xe000, 0x2000, CRC(e5e7c174) SHA1(06de7ec017a5e78bd6746d89c2ecebb646efeb19))
 ROM_END
 
 ROM_START (vic1001)
 	ROM_REGION (0x10000, REGION_CPU1,0)
-	ROM_LOAD ("901460.02", 0x8000, 0x1000, CRC(fcfd8a4b))
-	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1))
-	ROM_LOAD ("901486.02", 0xe000, 0x2000, CRC(336900d7))
+	ROM_LOAD ("901460.02", 0x8000, 0x1000, CRC(fcfd8a4b) SHA1(dae61ac03065aa2904af5c123ce821855898c555))
+	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1) SHA1(587d1e90950675ab6b12d91248a3f0d640d02e8d))
+	ROM_LOAD ("901486.02", 0xe000, 0x2000, CRC(336900d7) SHA1(c9ead45e6674d1042ca6199160e8583c23aeac22))
 ROM_END
 
 ROM_START (vic20swe)
 	ROM_REGION (0x10000, REGION_CPU1,0)
-	ROM_LOAD ("nec22101.207", 0x8000, 0x1000, CRC(d808551d))
-	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1))
-	ROM_LOAD ("nec22081.206", 0xe000, 0x2000, CRC(b2a60662))
+	ROM_LOAD ("nec22101.207", 0x8000, 0x1000, CRC(d808551d) SHA1(f403f0b0ce5922bd61bbd768bdd6f0b38e648c9f))
+	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1) SHA1(587d1e90950675ab6b12d91248a3f0d640d02e8d))
+	ROM_LOAD ("nec22081.206", 0xe000, 0x2000, CRC(b2a60662) SHA1(cb3e2f6e661ea7f567977751846ce9ad524651a3))
 ROM_END
 
 ROM_START (vic20v)
 	ROM_REGION (0x10000, REGION_CPU1,0)
-	ROM_LOAD ("901460.03", 0x8000, 0x1000, CRC(83e032a6))
-	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1))
-	ROM_LOAD ("901486.06", 0xe000, 0x2000, CRC(e5e7c174))
+	ROM_LOAD ("901460.03", 0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4))
+	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1) SHA1(587d1e90950675ab6b12d91248a3f0d640d02e8d))
+	ROM_LOAD ("901486.06", 0xe000, 0x2000, CRC(e5e7c174) SHA1(06de7ec017a5e78bd6746d89c2ecebb646efeb19))
 	VC1540_ROM (REGION_CPU2)
 ROM_END
 
 ROM_START (vic20i)
 	ROM_REGION (0x10000, REGION_CPU1,0)
-	ROM_LOAD ("901460.03", 0x8000, 0x1000, CRC(83e032a6))
-	ROM_LOAD ("325329.04", 0xb000, 0x800, CRC(d37b6335))
-	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1))
-	ROM_LOAD ("901486.06", 0xe000, 0x2000, CRC(e5e7c174))
+	ROM_LOAD ("901460.03", 0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4))
+	ROM_LOAD ("325329.04", 0xb000, 0x800, CRC(d37b6335) SHA1(828c965829d21c60e8c2d083caee045c639a270f))
+	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1) SHA1(587d1e90950675ab6b12d91248a3f0d640d02e8d))
+	ROM_LOAD ("901486.06", 0xe000, 0x2000, CRC(e5e7c174) SHA1(06de7ec017a5e78bd6746d89c2ecebb646efeb19))
 /*	C2031_ROM (REGION_CPU2) */
 ROM_END
 
 ROM_START (vc20)
 	ROM_REGION (0x10000, REGION_CPU1,0)
-	ROM_LOAD ("901460.03", 0x8000, 0x1000, CRC(83e032a6))
-	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1))
-	ROM_LOAD ("901486.07", 0xe000, 0x2000, CRC(4be07cb4))
+	ROM_LOAD ("901460.03", 0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4))
+	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1) SHA1(587d1e90950675ab6b12d91248a3f0d640d02e8d))
+	ROM_LOAD ("901486.07", 0xe000, 0x2000, CRC(4be07cb4) SHA1(ce0137ed69f003a299f43538fa9eee27898e621e))
 ROM_END
 
 ROM_START (vc20v)
 	ROM_REGION (0x10000, REGION_CPU1,0)
-	ROM_LOAD ("901460.03", 0x8000, 0x1000, CRC(83e032a6))
-	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1))
-	ROM_LOAD ("901486.07", 0xe000, 0x2000, CRC(4be07cb4))
+	ROM_LOAD ("901460.03", 0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4))
+	ROM_LOAD ("901486.01", 0xc000, 0x2000, CRC(db4c43c1) SHA1(587d1e90950675ab6b12d91248a3f0d640d02e8d))
+	ROM_LOAD ("901486.07", 0xe000, 0x2000, CRC(4be07cb4) SHA1(ce0137ed69f003a299f43538fa9eee27898e621e))
 	VC1541_ROM (REGION_CPU2)
 ROM_END
 
@@ -707,7 +707,7 @@ static MACHINE_DRIVER_START( vic20 )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(0)
 
-	MDRV_MACHINE_INIT( vc20 )
+	MDRV_MACHINE_RESET( vc20 )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -717,7 +717,6 @@ static MACHINE_DRIVER_START( vic20 )
 	MDRV_PALETTE_INIT( vc20 )
 
 	MDRV_VIDEO_START( vic6560 )
-	MDRV_VIDEO_STOP( vic6560 )
 	MDRV_VIDEO_UPDATE( vic6560 )
 
 	/* sound hardware */
@@ -777,19 +776,39 @@ static MACHINE_DRIVER_START( vc20v )
 #endif
 MACHINE_DRIVER_END
 
-static void cbmvc20_cartslot_getinfo(struct IODevice *dev)
+static void cbmvc20_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
-	cartslot_device_getinfo(dev);
-	dev->count = 2;
-	dev->file_extensions = "a0\00020\00040\00060\0rom\0bin\0";
-	dev->init = device_init_vc20_rom;
-	dev->load = device_load_vc20_rom;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 2; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_INIT:							info->init = device_init_vc20_rom; break;
+		case DEVINFO_PTR_LOAD:							info->load = device_load_vc20_rom; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "a0,20,40,60,rom,bin"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void vc20_quickload_getinfo(struct IODevice *dev)
+static void vc20_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
-	quickload_device_getinfo(dev, quickload_load_cbm_vc20, CBM_QUICKLOAD_DELAY);
-	dev->file_extensions = "p00\0prg\0";
+	switch(state)
+	{
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm_vc20; break;
+
+		/* --- the following bits of info are returned as doubles --- */
+		case DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
+
+		default:										quickload_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(vc20)
@@ -822,5 +841,5 @@ COMP ( 1981,	vic1001,	vic20,	0,		vic20,	vic1001,	vic20,	vc20,      "Commodore Bu
 COMP ( 1981,	vc20,		vic20,	0,		vc20,	vc20,		vc20,	vc20,      "Commodore Business Machines Co.",  "VIC20/VC20(German) PAL",       GAME_IMPERFECT_SOUND)
 COMP ( 1981,	vic20swe,	vic20,	0,		vc20,	vic20swe,	vc20,	vc20,      "Commodore Business Machines Co.",  "VIC20 PAL, Swedish Expansion Kit", GAME_IMPERFECT_SOUND)
 /* please leave the following as testdriver only */
-COMP ( 1981,	vic20v, 	vic20,	0,		vic20v, vic20,		vic20,	vc20v,     "Commodore Business Machines Co.",  "VIC20 (NTSC), VC1540", GAME_IMPERFECT_SOUND)
-COMP ( 1981,	vc20v,		vic20,	0,		vc20v,	vic20,		vc20,	vc20v,     "Commodore Business Machines Co.",  "VC20 (PAL), VC1541", GAME_IMPERFECT_SOUND)
+COMP ( 1981,	vic20v, 	vic20,	0,		vic20v, vic20,		vic20,	vc20v,     "Commodore Business Machines Co.",  "VIC20 (NTSC), VC1540", GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
+COMP ( 1981,	vc20v,		vic20,	0,		vc20v,	vic20,		vc20,	vc20v,     "Commodore Business Machines Co.",  "VC20 (PAL), VC1541", GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )

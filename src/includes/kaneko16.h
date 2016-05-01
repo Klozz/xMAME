@@ -4,6 +4,35 @@
 
 ***************************************************************************/
 
+/*----------- defined in machine/kaneko16.c -----------*/
+
+extern UINT16 *mcu_ram; /* for calc3 and toybox */
+
+READ16_HANDLER( galpanib_calc_r );
+WRITE16_HANDLER( galpanib_calc_w );
+
+void calc3_mcu_init(void);
+WRITE16_HANDLER( calc3_mcu_ram_w );
+WRITE16_HANDLER( calc3_mcu_com0_w );
+WRITE16_HANDLER( calc3_mcu_com1_w );
+WRITE16_HANDLER( calc3_mcu_com2_w );
+WRITE16_HANDLER( calc3_mcu_com3_w );
+
+void toybox_mcu_init(void);
+WRITE16_HANDLER( toybox_mcu_com0_w );
+WRITE16_HANDLER( toybox_mcu_com1_w );
+WRITE16_HANDLER( toybox_mcu_com2_w );
+WRITE16_HANDLER( toybox_mcu_com3_w );
+READ16_HANDLER( toybox_mcu_status_r );
+
+
+
+/*----------- defined in drivers/kaneko16.c -----------*/
+
+MACHINE_RESET( kaneko16 );
+
+/*----------- defined in vidhrdw/kaneko16.c -----------*/
+
 WRITE16_HANDLER( kaneko16_display_enable );
 
 /* Tile Layers: */
@@ -69,14 +98,12 @@ VIDEO_START( sandscrp_1xVIEW2 );
 
 VIDEO_UPDATE( kaneko16 );
 
-MACHINE_INIT( kaneko16 );
 
-
-/* in drivers/galpani2.c */
+/*----------- defined in drivers/galpani2.c -----------*/
 
 void galpani2_mcu_run(void);
 
-/* in vidhrdw/galpani2.c */
+/*----------- defined in vidhrdw/galpani2.c -----------*/
 
 extern UINT16 *galpani2_bg8_0,         *galpani2_bg8_1;
 extern UINT16 *galpani2_palette_0,     *galpani2_palette_1;

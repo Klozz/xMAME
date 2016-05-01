@@ -219,7 +219,6 @@ The first sprite data is located at fa0b,then fa1b and so on.
 
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/2203intf.h"
 #include "sound/samples.h"
 
@@ -248,7 +247,7 @@ void ninjakd2_init_samples(void)
 {
 	int i,n;
 	unsigned char *source = memory_region(REGION_SOUND1);
-	int sample_info [9][2] = { {0x0000,0x0A00},{0x0A00,0x1D00},{0x2700,0x1700},
+	static const int sample_info [9][2] = { {0x0000,0x0A00},{0x0A00,0x1D00},{0x2700,0x1700},
 	{0x3E00,0x1500},{0x5300,0x0B00},{0x5E00,0x0A00},{0x6800,0x0E00},{0x7600,0x1E00},{0xF000,0x0400} };
 
 	for (i=0;i<8;i++)
@@ -288,7 +287,7 @@ WRITE8_HANDLER( ninjakd2_bankselect_w )
 WRITE8_HANDLER( ninjakd2_pcm_play_w )
 {
 	int i;
-	int sample_no[9] = { 0x00,0x0A,0x27,0x3E,0x53,0x5E,0x68,0x76,0xF0 };
+	static const int sample_no[9] = { 0x00,0x0A,0x27,0x3E,0x53,0x5E,0x68,0x76,0xF0 };
 
 	for(i=0;i<9;i++)
 	 if (sample_no[i]==data) break;
@@ -327,7 +326,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc208, 0xc209) AM_WRITE(MWA8_RAM) AM_BASE(&ninjakd2_scrollx_ram)
 	AM_RANGE(0xc20a, 0xc20b) AM_WRITE(MWA8_RAM) AM_BASE(&ninjakd2_scrolly_ram)
 	AM_RANGE(0xc20c, 0xc20c) AM_WRITE(ninjakd2_background_enable_w) AM_BASE(&ninjakd2_bgenable_ram)
-	AM_RANGE(0xc800, 0xcdff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_swap_w) AM_BASE(&paletteram)
+	AM_RANGE(0xc800, 0xcdff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_be_w) AM_BASE(&paletteram)
 	AM_RANGE(0xd000, 0xd7ff) AM_WRITE(ninjakd2_fgvideoram_w) AM_BASE(&ninjakd2_foreground_videoram) AM_SIZE(&ninjakd2_foregroundram_size)
 	AM_RANGE(0xd800, 0xdfff) AM_WRITE(ninjakd2_bgvideoram_w) AM_BASE(&ninjakd2_background_videoram) AM_SIZE(&ninjakd2_backgroundram_size)
 	AM_RANGE(0xe000, 0xf9ff) AM_WRITE(MWA8_RAM)

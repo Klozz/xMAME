@@ -23,7 +23,7 @@
 #define LLANDER_TONE_6K_SND			NODE_12
 #define LLANDER_THRUST_EXPLOD_SND	NODE_13
 
-const struct discrete_lfsr_desc llander_lfsr={
+static const struct discrete_lfsr_desc llander_lfsr={
 	DISC_CLK_IS_FREQ,
 	16,			/* Bit Length */
 	0,			/* Reset Value */
@@ -75,7 +75,7 @@ DISCRETE_SOUND_START(llander_discrete_interface)
 	DISCRETE_ADDER3(NODE_90, 1, LLANDER_TONE_3K_SND, LLANDER_TONE_6K_SND, LLANDER_THRUST_EXPLOD_SND)	/* Mix all four sound sources */
 	DISCRETE_GAIN(NODE_91, NODE_90, 65534.0/(9.2+9.2+600+1000))
 
-	DISCRETE_OUTPUT(NODE_91, 100)		/* Take the output from the mixer */
+	DISCRETE_OUTPUT(NODE_90, 65534.0/(9.2+9.2+600+1000))		/* Take the output from the mixer */
 DISCRETE_SOUND_END
 
 WRITE8_HANDLER( llander_snd_reset_w )

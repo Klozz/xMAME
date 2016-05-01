@@ -1,15 +1,18 @@
-/*###################################################################################################
-**
-**
-**      drccore.c
-**      x86 Dynamic recompiler support routines.
-**      Written by Aaron Giles
-**
-**
-**#################################################################################################*/
+/***************************************************************************
 
+    x86drc.c
+
+    x86 Dynamic recompiler support routines.
+
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
+***************************************************************************/
+
+#include "osdepend.h"
 #include "driver.h"
 #include "x86drc.h"
+#include "debugger.h"
 
 #define LOG_DISPATCHES		0
 
@@ -32,9 +35,9 @@ static void log_dispatch(drc_core *drc);
 #endif
 
 
-/*###################################################################################################
-**  EXTERNAL INTERFACES
-**#################################################################################################*/
+/***************************************************************************
+    EXTERNAL INTERFACES
+***************************************************************************/
 
 /*------------------------------------------------------------------
     drc_init
@@ -92,9 +95,12 @@ drc_core *drc_init(UINT8 cpunum, drc_config *config)
 	drc->sequence_count_max = config->max_instructions;
 	drc->sequence_list = malloc(drc->sequence_count_max * sizeof(*drc->sequence_list));
 	drc->tentative_count_max = config->max_instructions;
-	drc->tentative_list = malloc(drc->tentative_count_max * sizeof(*drc->tentative_list));
-	if (!drc->sequence_list || !drc->tentative_list)
-		return NULL;
+	if (drc->tentative_count_max)
+	{
+		drc->tentative_list = malloc(drc->tentative_count_max * sizeof(*drc->tentative_list));
+		if (!drc->sequence_list || !drc->tentative_list)
+			return NULL;
+	}
 
 	/* seed the cache */
 	drc_cache_reset(drc);
@@ -211,8 +217,8 @@ void drc_begin_sequence(drc_core *drc, UINT32 pc)
 	{
 		/* create a new copy of the recompile table */
 		drc->lookup_l1[l1index] = malloc(sizeof(*drc->lookup_l2_recompile) * (1 << drc->l2bits));
-		if (!drc->lookup_l1[l1index])
-			exit(1);
+		assert_always(drc->lookup_l1[l1index], "Out of memory");
+
 		memcpy(drc->lookup_l1[l1index], drc->lookup_l2_recompile, sizeof(*drc->lookup_l2_recompile) * (1 << drc->l2bits));
 	}
 
@@ -259,8 +265,7 @@ void drc_end_sequence(drc_core *drc)
 void drc_register_code_at_cache_top(drc_core *drc, UINT32 pc)
 {
 	pc_ptr_pair *pair = &drc->sequence_list[drc->sequence_count++];
-	if (drc->sequence_count > drc->sequence_count_max)
-		osd_die("drc_register_code_at_cache_top: too many instructions!\n");
+	assert_always(drc->sequence_count <= drc->sequence_count_max, "drc_register_code_at_cache_top: too many instructions!");
 
 	pair->target = drc->cache_top;
 	pair->pc = pc;
@@ -350,12 +355,12 @@ void drc_append_verify_code(drc_core *drc, void *code, UINT8 length)
 void drc_append_call_debugger(drc_core *drc)
 {
 #ifdef MAME_DEBUG
-	if (mame_debug)
+	if (Machine->debug_mode)
 	{
 		link_info link;
-		_cmp_m32abs_imm(&mame_debug, 0);								/* cmp  [mame_debug],0 */
+		_cmp_m32abs_imm(&Machine->debug_mode, 0);						/* cmp  [Machine->debug_mode],0 */
 		_jcc_short_link(COND_E, &link);									/* je   skip */
-		drc_append_save_call_restore(drc, (genf *)MAME_Debug, 0);		/* save volatiles */
+		drc_append_save_call_restore(drc, (genf *)mame_debug_hook, 0);	/* save volatiles */
 		_resolve_link(&link);
 	}
 #endif
@@ -473,8 +478,7 @@ void drc_append_fixed_dispatcher(drc_core *drc, UINT32 newpc)
 void drc_append_tentative_fixed_dispatcher(drc_core *drc, UINT32 newpc)
 {
 	pc_ptr_pair *pair = &drc->tentative_list[drc->tentative_count++];
-	if (drc->tentative_count > drc->tentative_count_max)
-		osd_die("drc_append_tentative_fixed_dispatcher: too many tentative branches!\n");
+	assert_always(drc->tentative_count <= drc->tentative_count_max, "drc_append_tentative_fixed_dispatcher: too many tentative branches!");
 
 	pair->target = drc->cache_top;
 	pair->pc = newpc;
@@ -557,45 +561,37 @@ void drc_append_restore_sse_rounding(drc_core *drc)
     by the functionality of DasmI386
 ------------------------------------------------------------------*/
 
-void drc_dasm(FILE *f, unsigned pc, void *begin, void *end)
+void drc_dasm(FILE *f, const void *begin, const void *end)
 {
-#if 0
 	extern int i386_dasm_one(char *buffer, UINT32 eip, UINT8 *oprom, int addr_size, int op_size);
 
 	char buffer[256];
-	char buffer2[256];
-	UINT8 *addr = begin;
-	UINT8 *addr_end = end;
-	unsigned offset;
+	const UINT8 *begin_ptr = (const UINT8 *) begin;
+	const UINT8 *end_ptr = (const UINT8 *) end;
+	UINT32 pc = (UINT32) begin;
+	int length;
 
-	activecpu_dasm(buffer, pc);
-	if (addr == addr_end)
+	while(begin_ptr < end_ptr)
 	{
-		logerror("%08x: %s\t(NOP)\n", pc, buffer);
-	}
-	else
-	{
-		logerror("%08x: %s\t(%08x-%08x)\n", pc, buffer, (UINT32)addr, (UINT32)addr_end - 1);
-
-		while(addr < addr_end)
-		{
-			offset = i386_dasm_one(buffer, (UINT32)addr, addr, 1, 1);
-			sprintf(buffer2, "\t%08x: %s\n", (UINT32)addr, buffer);
-			logerror("%s", buffer2);
-			if (f)
-				fputs(buffer2, f);
-			addr += offset & DASMFLAG_LENGTHMASK;
-		}
-	}
+#if defined(MAME_DEBUG) && HAS_I386
+		length = i386_dasm_one(buffer, pc, (UINT8 *) begin_ptr, 1, 1) & DASMFLAG_LENGTHMASK;
+#else
+		sprintf(buffer, "%02X", *begin_ptr);
+		length = 1;
 #endif
+
+		fprintf(f, "%08X:\t%s\n", (unsigned) pc, buffer);
+		begin_ptr += length;
+		pc += length;
+	}
 }
 
 
 
 
-/*###################################################################################################
-**  INTERNAL CODEGEN
-**#################################################################################################*/
+/***************************************************************************
+    INTERNAL CODEGEN
+***************************************************************************/
 
 /*------------------------------------------------------------------
     append_entry_point
@@ -696,15 +692,17 @@ UINT32 drc_x86_get_features(void)
 #else /* !_MSC_VER */
 	__asm__
 	(
+	        "pushl %%ebx         ; "
 		"movl $1,%%eax       ; "
 		"xorl %%ebx,%%ebx    ; "
 		"xorl %%ecx,%%ecx    ; "
 		"xorl %%edx,%%edx    ; "
 		"cpuid               ; "
 		"movl %%edx,%0       ; "
+                "popl %%ebx          ; "
 	: "=&a" (features)		/* result has to go in eax */
 	: 				/* no inputs */
-	: "%ebx", "%ecx", "%edx"	/* clobbers ebx, ecx and edx */
+	: "%ecx", "%edx"	/* clobbers ebx, ecx and edx */
 	);
 #endif /* MSC_VER */
 	return features;

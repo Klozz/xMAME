@@ -1,8 +1,4 @@
 #include "driver.h"
-#include "vidhrdw/generic.h"
-
-extern unsigned char *spriteram,*spriteram_2;
-extern size_t spriteram_size;
 
 unsigned char *timeplt_videoram,*timeplt_colorram;
 static tilemap *bg_tilemap;
@@ -123,7 +119,7 @@ VIDEO_START( timeplt )
 	sprite_mux_buffer = auto_malloc(256 * spriteram_size);
 	sprite_mux_buffer_2 = auto_malloc(256 * spriteram_size);
 
-	if (!bg_tilemap || !sprite_mux_buffer || !sprite_mux_buffer_2)
+	if (!bg_tilemap)
 		return 1;
 
 	return 0;

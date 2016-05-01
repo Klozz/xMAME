@@ -37,23 +37,18 @@
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/s2636.h"
 #include "cpu/s2650/s2650.h"
 #include "sound/sn76477.h"
 
 #define SAA5050_VBLANK 2500
 
-int malzak_bank1;
-int malzak_bank2;
+static int malzak_bank1;
 
-extern int temp_x,temp_y;
+extern int malzak_x;
+extern int malzak_y;
 
 extern unsigned char* saa5050_vidram;  /* Video RAM for SAA 5050 */
-extern unsigned char* s2636_1_ram;  /* Video RAM for S2636 #1 */
-extern unsigned char* s2636_2_ram;  /* Video RAM for S2636 #2 */
-extern unsigned char s2636_1_dirty[4];
-extern unsigned char s2636_2_dirty[4];
 
 /* in vidhrdw/malzak.c */
 VIDEO_START( malzak );
@@ -249,13 +244,13 @@ static WRITE8_HANDLER( port40_w )
 
 static WRITE8_HANDLER( port60_w )
 {
-	temp_x = data;
+	malzak_x = data;
 /*  logerror("I/O: port 0x60 write 0x%02x\n",data); */
 }
 
 static WRITE8_HANDLER( portc0_w )
 {
-	temp_y = data;
+	malzak_y = data;
 /*  logerror("I/O: port 0xc0 write 0x%02x\n",data); */
 }
 
@@ -443,7 +438,7 @@ static PALETTE_INIT( malzak )
 }
 
 
-MACHINE_INIT(malzak)
+MACHINE_RESET(malzak)
 {
 /*  val++; */
 /*  printf("val = %X\n",val); */
@@ -489,7 +484,7 @@ static MACHINE_DRIVER_START( malzak )
 	MDRV_PALETTE_INIT(malzak)
 	MDRV_COLORTABLE_LENGTH(128)
 
-/*  MDRV_MACHINE_INIT(malzak) */
+/*  MDRV_MACHINE_RESET(malzak) */
 
 	MDRV_VIDEO_START(malzak)
 	MDRV_VIDEO_UPDATE(malzak)

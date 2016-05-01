@@ -4,6 +4,9 @@
 
     Generic graphic functions.
 
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
 *********************************************************************/
 
 #pragma once
@@ -11,10 +14,14 @@
 #ifndef __DRAWGFX_H__
 #define __DRAWGFX_H__
 
-#include "palette.h"
+#include "mamecore.h"
 
-#define MAX_GFX_PLANES 8
-#define MAX_GFX_SIZE 256
+#define MAX_GFX_PLANES		8
+#define MAX_GFX_SIZE		32
+#define MAX_ABS_GFX_SIZE	1024
+
+#define EXTENDED_XOFFS		{ 0 }
+#define EXTENDED_YOFFS		{ 0 }
 
 #define RGN_FRAC(num,den) (0x80000000 | (((num) & 0x0f) << 27) | (((den) & 0x0f) << 23))
 #define IS_FRAC(offset) ((offset) & 0x80000000)
@@ -29,13 +36,15 @@
 
 struct _gfx_layout
 {
-	UINT16 width,height; /* width and height (in pixels) of chars/sprites */
-	UINT32 total; /* total numer of chars/sprites in the rom */
-	UINT16 planes; /* number of bitplanes */
+	UINT16 width,height;				/* width and height (in pixels) of chars/sprites */
+	UINT32 total;						/* total number of chars/sprites in the rom */
+	UINT16 planes;						/* number of bitplanes */
 	UINT32 planeoffset[MAX_GFX_PLANES]; /* start of every bitplane (in bits) */
-	UINT32 xoffset[MAX_GFX_SIZE]; /* position of the bit corresponding to the pixel */
-	UINT32 yoffset[MAX_GFX_SIZE]; /* of the given coordinates */
-	UINT32 charincrement; /* distance between two consecutive characters/sprites (in bits) */
+	UINT32 xoffset[MAX_GFX_SIZE];		/* position of the bit corresponding to the pixel */
+	UINT32 yoffset[MAX_GFX_SIZE];		/* of the given coordinates */
+	UINT32 charincrement;				/* distance between two consecutive characters/sprites (in bits) */
+	const UINT32 *extxoffs;				/* extended X offset array for really big layouts */
+	const UINT32 *extyoffs;				/* extended Y offset array for really big layouts */
 };
 typedef struct _gfx_layout gfx_layout;
 
@@ -73,8 +82,9 @@ struct _gfx_element
 	UINT32 line_modulo;	/* amount to add to get to the next line (usually = width) */
 	UINT32 char_modulo;	/* = line_modulo * height */
 	UINT32 flags;
+	gfx_layout layout;	/* references the original layout */
 };
-typedef struct _gfx_element gfx_element;
+/* In mamecore.h: typedef struct _gfx_element gfx_element; */
 
 #define GFX_PACKED				1	/* two 4bpp pixels are packed in one byte of gfxdata */
 #define GFX_SWAPXY				2	/* characters are mirrored along the top-left/bottom-right diagonal */
@@ -145,9 +155,11 @@ extern int pdrawgfx_shadow_lowpri;
 #define read_pixel(bm,x,y)		(*(bm)->read)(bm,x,y)
 #define plot_box(bm,x,y,w,h,p)	(*(bm)->plot_box)(bm,x,y,w,h,p)
 
+void drawgfx_init(void);
+
 void decodechar(gfx_element *gfx,int num,const unsigned char *src,const gfx_layout *gl);
-gfx_element *decodegfx(const unsigned char *src,const gfx_layout *gl);
-void set_pixel_functions(mame_bitmap *bitmap);
+gfx_element *allocgfx(const gfx_layout *gl);
+void decodegfx(gfx_element *gfx, const UINT8 *src, UINT32 first, UINT32 count);
 void freegfx(gfx_element *gfx);
 void drawgfx(mame_bitmap *dest,const gfx_element *gfx,
 		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
@@ -179,47 +191,47 @@ void extract_scanline16(mame_bitmap *bitmap,int x,int y,int length,UINT16 *dst);
 
 
 /* Alpha blending functions */
-extern int alpha_active;
-void alpha_init(void);
-INLINE void alpha_set_level(int level) {
-	if(level == 0)
-		level = -1;
-	drawgfx_alpha_cache.alphas = drawgfx_alpha_cache.alpha[level+1];
-	drawgfx_alpha_cache.alphad = drawgfx_alpha_cache.alpha[255-level];
+INLINE void alpha_set_level(int level)
+{
+	assert(level >= 0 && level <= 256);
+	drawgfx_alpha_cache.alphas = drawgfx_alpha_cache.alpha[level];
+	drawgfx_alpha_cache.alphad = drawgfx_alpha_cache.alpha[256-level];
 }
 
-INLINE UINT32 alpha_blend16( UINT32 d, UINT32 s )
+
+INLINE UINT32 alpha_blend16(UINT32 d, UINT32 s)
 {
 	const UINT8 *alphas = drawgfx_alpha_cache.alphas;
 	const UINT8 *alphad = drawgfx_alpha_cache.alphad;
-	return (alphas[s & 0x1f] | (alphas[(s>>5) & 0x1f] << 5) | (alphas[(s>>10) & 0x1f] << 10))
-		+ (alphad[d & 0x1f] | (alphad[(d>>5) & 0x1f] << 5) | (alphad[(d>>10) & 0x1f] << 10));
+	return (alphas[s & 0x1f] | (alphas[(s >> 5) & 0x1f] << 5) | (alphas[(s >> 10) & 0x1f] << 10))
+		+ (alphad[d & 0x1f] | (alphad[(d >> 5) & 0x1f] << 5) | (alphad[(d >> 10) & 0x1f] << 10));
 }
 
 
-INLINE UINT32 alpha_blend32( UINT32 d, UINT32 s )
+INLINE UINT32 alpha_blend32(UINT32 d, UINT32 s)
 {
 	const UINT8 *alphas = drawgfx_alpha_cache.alphas;
 	const UINT8 *alphad = drawgfx_alpha_cache.alphad;
-	return (alphas[s & 0xff] | (alphas[(s>>8) & 0xff] << 8) | (alphas[(s>>16) & 0xff] << 16))
-		+ (alphad[d & 0xff] | (alphad[(d>>8) & 0xff] << 8) | (alphad[(d>>16) & 0xff] << 16));
+	return (alphas[s & 0xff] | (alphas[(s >> 8) & 0xff] << 8) | (alphas[(s >> 16) & 0xff] << 16))
+		+ (alphad[d & 0xff] | (alphad[(d >> 8) & 0xff] << 8) | (alphad[(d >> 16) & 0xff] << 16));
 }
 
-INLINE UINT32 alpha_blend_r16( UINT32 d, UINT32 s, UINT8 level )
+
+INLINE UINT32 alpha_blend_r16(UINT32 d, UINT32 s, UINT8 level)
 {
 	const UINT8 *alphas = drawgfx_alpha_cache.alpha[level];
-	const UINT8 *alphad = drawgfx_alpha_cache.alpha[255 - level];
-	return (alphas[s & 0x1f] | (alphas[(s>>5) & 0x1f] << 5) | (alphas[(s>>10) & 0x1f] << 10))
-		+ (alphad[d & 0x1f] | (alphad[(d>>5) & 0x1f] << 5) | (alphad[(d>>10) & 0x1f] << 10));
+	const UINT8 *alphad = drawgfx_alpha_cache.alpha[256 - level];
+	return (alphas[s & 0x1f] | (alphas[(s >> 5) & 0x1f] << 5) | (alphas[(s >> 10) & 0x1f] << 10))
+		+ (alphad[d & 0x1f] | (alphad[(d >> 5) & 0x1f] << 5) | (alphad[(d >> 10) & 0x1f] << 10));
 }
 
 
 INLINE UINT32 alpha_blend_r32( UINT32 d, UINT32 s, UINT8 level )
 {
 	const UINT8 *alphas = drawgfx_alpha_cache.alpha[level];
-	const UINT8 *alphad = drawgfx_alpha_cache.alpha[255 - level];
-	return (alphas[s & 0xff] | (alphas[(s>>8) & 0xff] << 8) | (alphas[(s>>16) & 0xff] << 16))
-		+ (alphad[d & 0xff] | (alphad[(d>>8) & 0xff] << 8) | (alphad[(d>>16) & 0xff] << 16));
+	const UINT8 *alphad = drawgfx_alpha_cache.alpha[256 - level];
+	return (alphas[s & 0xff] | (alphas[(s >> 8) & 0xff] << 8) | (alphas[(s >> 16) & 0xff] << 16))
+		+ (alphad[d & 0xff] | (alphad[(d >> 8) & 0xff] << 8) | (alphad[(d >> 16) & 0xff] << 16));
 }
 
 /*

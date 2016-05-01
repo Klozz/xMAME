@@ -72,7 +72,7 @@ static void apple1_dsp_ready_end(int dummy);
    rather than updating them when they are read; thus they don't need
    handler functions. */
 
-struct pia6821_interface apple1_pia0 =
+static const pia6821_interface apple1_pia0 =
 {
 	apple1_pia0_kbdin,				/* Port A input (keyboard) */
 	0,								/* Port B input (display status) */
@@ -170,10 +170,10 @@ DRIVER_INIT( apple1 )
 
 
 /*****************************************************************************
-**	MACHINE_INIT:  actions to perform on each cold boot.
+**	MACHINE_RESET:  actions to perform on each cold boot.
 *****************************************************************************/
 
-MACHINE_INIT( apple1 )
+MACHINE_RESET( apple1 )
 {
 	/* Reset the PIA and the display hardware. */
 	pia_reset();

@@ -9,7 +9,7 @@
 #include "machine/8255ppi.h"
 #include "vidhrdw/tms9928a.h"
 #include "includes/svi318.h"
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 #include "devices/basicdsk.h"
 #include "devices/printer.h"
 #include "devices/cartslot.h"
@@ -18,80 +18,59 @@
 #include "sound/dac.h"
 #include "sound/ay8910.h"
 
-static ADDRESS_MAP_START( svi318_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x7fff) AM_READ( MRA8_BANK1 )
+static ADDRESS_MAP_START( svi318_mem, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE( 0x0000, 0x7fff) AM_READWRITE( MRA8_BANK1, svi318_writemem0 )
 	AM_RANGE( 0x8000, 0xbfff) AM_READ( MRA8_BANK2 )
 	AM_RANGE( 0xc000, 0xffff) AM_READ( MRA8_BANK3 )
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( svi318_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x7fff) AM_WRITE( svi318_writemem0 )
 	AM_RANGE( 0x8000, 0xffff) AM_WRITE( svi318_writemem1 )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( svi318_readport, ADDRESS_SPACE_IO, 8 )
+
+
+static ADDRESS_MAP_START( svi318_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_FLAGS( AMEF_UNMAP(0xff) )
 	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE( 0x12, 0x12) AM_READ( svi318_printer_r )
-	AM_RANGE( 0x30, 0x30) AM_READ( wd179x_status_r )
-	AM_RANGE( 0x31, 0x31) AM_READ( wd179x_track_r )
-	AM_RANGE( 0x32, 0x32) AM_READ( wd179x_sector_r )
-	AM_RANGE( 0x33, 0x33) AM_READ( wd179x_data_r )
-	AM_RANGE( 0x34, 0x34) AM_READ( svi318_fdc_irqdrq_r )
-	AM_RANGE( 0x84, 0x84) AM_READ( TMS9928A_vram_r )
-	AM_RANGE( 0x85, 0x85) AM_READ( TMS9928A_register_r )
-	AM_RANGE( 0x90, 0x90) AM_READ( AY8910_read_port_0_r )
-	AM_RANGE( 0x98, 0x9a) AM_READ( svi318_ppi_r )
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( svi318_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE( 0x10, 0x11) AM_WRITE( svi318_printer_w )
-	AM_RANGE( 0x30, 0x30) AM_WRITE( wd179x_command_w )
-	AM_RANGE( 0x31, 0x31) AM_WRITE( wd179x_track_w )
-	AM_RANGE( 0x32, 0x32) AM_WRITE( wd179x_sector_w )
-	AM_RANGE( 0x33, 0x33) AM_WRITE( wd179x_data_w )
-	AM_RANGE( 0x34, 0x34) AM_WRITE( svi318_fdc_drive_motor_w )
+	AM_RANGE( 0x12, 0x12) AM_READ( svi318_printer_r )
+	AM_RANGE( 0x30, 0x30) AM_READWRITE( wd179x_status_r, wd179x_command_w )
+	AM_RANGE( 0x31, 0x31) AM_READWRITE( wd179x_track_r, wd179x_track_w )
+	AM_RANGE( 0x32, 0x32) AM_READWRITE( wd179x_sector_r, wd179x_sector_w )
+	AM_RANGE( 0x33, 0x33) AM_READWRITE( wd179x_data_r, wd179x_data_w )
+	AM_RANGE( 0x34, 0x34) AM_READWRITE( svi318_fdc_irqdrq_r, svi318_fdc_drive_motor_w )
 	AM_RANGE( 0x38, 0x38) AM_WRITE( svi318_fdc_density_side_w )
 	AM_RANGE( 0x80, 0x80) AM_WRITE( TMS9928A_vram_w )
 	AM_RANGE( 0x81, 0x81) AM_WRITE( TMS9928A_register_w )
-	AM_RANGE( 0x88, 0x88) AM_WRITE( AY8910_control_port_0_w )
-	AM_RANGE( 0x8c, 0x8c) AM_WRITE( AY8910_write_port_0_w )
-	AM_RANGE( 0x96, 0x97) AM_WRITE( svi318_ppi_w )
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( svi318_readport2, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(0xff) )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE( 0x12, 0x12) AM_READ( svi318_printer_r )
-	AM_RANGE( 0x30, 0x30) AM_READ( wd179x_status_r )
-	AM_RANGE( 0x31, 0x31) AM_READ( wd179x_track_r )
-	AM_RANGE( 0x32, 0x32) AM_READ( wd179x_sector_r )
-	AM_RANGE( 0x33, 0x33) AM_READ( wd179x_data_r )
-	AM_RANGE( 0x34, 0x34) AM_READ( svi318_fdc_irqdrq_r )
-	AM_RANGE( 0x50, 0x51) AM_READ( svi318_crtc_r )
 	AM_RANGE( 0x84, 0x84) AM_READ( TMS9928A_vram_r )
 	AM_RANGE( 0x85, 0x85) AM_READ( TMS9928A_register_r )
+	AM_RANGE( 0x88, 0x88) AM_WRITE( AY8910_control_port_0_w )
+	AM_RANGE( 0x8c, 0x8c) AM_WRITE( AY8910_write_port_0_w )
 	AM_RANGE( 0x90, 0x90) AM_READ( AY8910_read_port_0_r )
+	AM_RANGE( 0x96, 0x97) AM_WRITE( svi318_ppi_w )
 	AM_RANGE( 0x98, 0x9a) AM_READ( svi318_ppi_r )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( svi318_writeport2, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( svi318_io2, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_FLAGS( AMEF_UNMAP(0xff) )
 	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE( 0x10, 0x11) AM_WRITE( svi318_printer_w )
-	AM_RANGE( 0x30, 0x30) AM_WRITE( wd179x_command_w )
-	AM_RANGE( 0x31, 0x31) AM_WRITE( wd179x_track_w )
-	AM_RANGE( 0x32, 0x32) AM_WRITE( wd179x_sector_w )
-	AM_RANGE( 0x33, 0x33) AM_WRITE( wd179x_data_w )
-	AM_RANGE( 0x34, 0x34) AM_WRITE( svi318_fdc_drive_motor_w )
+	AM_RANGE( 0x12, 0x12) AM_READ( svi318_printer_r )
+	AM_RANGE( 0x30, 0x30) AM_READWRITE( wd179x_status_r, wd179x_command_w )
+	AM_RANGE( 0x31, 0x31) AM_READWRITE( wd179x_track_r, wd179x_track_w )
+	AM_RANGE( 0x32, 0x32) AM_READWRITE( wd179x_sector_r, wd179x_sector_w )
+	AM_RANGE( 0x33, 0x33) AM_READWRITE( wd179x_data_r, wd179x_data_w )
+	AM_RANGE( 0x34, 0x34) AM_READWRITE( svi318_fdc_irqdrq_r, svi318_fdc_drive_motor_w )
 	AM_RANGE( 0x38, 0x38) AM_WRITE( svi318_fdc_density_side_w )
-	AM_RANGE( 0x50, 0x51) AM_WRITE( svi318_crtc_w )
+	AM_RANGE( 0x50, 0x51) AM_READWRITE( svi318_crtc_r, svi318_crtc_w )
 	AM_RANGE( 0x58, 0x58) AM_WRITE( svi318_crtcbank_w )
 	AM_RANGE( 0x80, 0x80) AM_WRITE( TMS9928A_vram_w )
 	AM_RANGE( 0x81, 0x81) AM_WRITE( TMS9928A_register_w )
+	AM_RANGE( 0x84, 0x84) AM_READ( TMS9928A_vram_r )
+	AM_RANGE( 0x85, 0x85) AM_READ( TMS9928A_register_r )
 	AM_RANGE( 0x88, 0x88) AM_WRITE( AY8910_control_port_0_w )
 	AM_RANGE( 0x8c, 0x8c) AM_WRITE( AY8910_write_port_0_w )
+	AM_RANGE( 0x90, 0x90) AM_READ( AY8910_read_port_0_r )
 	AM_RANGE( 0x96, 0x97) AM_WRITE( svi318_ppi_w )
+	AM_RANGE( 0x98, 0x9a) AM_READ( svi318_ppi_r )
 ADDRESS_MAP_END
 
 /*
@@ -356,15 +335,14 @@ static const TMS9928a_interface tms9928a_interface =
 static MACHINE_DRIVER_START( svi318 )
 	/* Basic machine hardware */
 	MDRV_CPU_ADD_TAG( "main", Z80, 3579545 )	/* 3.579545 Mhz */
-	MDRV_CPU_PROGRAM_MAP( svi318_readmem, svi318_writemem )
-	MDRV_CPU_IO_MAP( svi318_readport, svi318_writeport )
+	MDRV_CPU_PROGRAM_MAP( svi318_mem, 0 )
+	MDRV_CPU_IO_MAP( svi318_io, 0 )
 	MDRV_CPU_VBLANK_INT( svi318_interrupt, 1 )
 	MDRV_FRAMES_PER_SECOND(50)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( svi318 )
-	MDRV_MACHINE_STOP( svi318 )
+	MDRV_MACHINE_RESET( svi318 )
 
 	/* Video hardware */
 	MDRV_TMS9928A( &tms9928a_interface )
@@ -384,8 +362,8 @@ static MACHINE_DRIVER_START( svi328b )
 	MDRV_IMPORT_FROM( svi318 )
 
 	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_IO_MAP( svi318_readport2, svi318_writeport2 )
-	MDRV_MACHINE_INIT( svi328b )
+	MDRV_CPU_IO_MAP( svi318_io2, 0 )
+	MDRV_MACHINE_RESET( svi328b )
 
 	/* video hardware */
 	MDRV_SCREEN_SIZE(640, 400)
@@ -428,37 +406,68 @@ ROM_START (svi328c)
     ROM_LOAD ("svi806se.rom", 0x0000, 0x1000, CRC(daea8956) SHA1(3f16d5513ad35692488ae7d864f660e76c6e8ed3))
 ROM_END
 
-static void svi318_printer_getinfo(struct IODevice *dev)
+static void svi318_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
-	printer_device_getinfo(dev);
-	dev->count = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		default:										printer_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void svi318_cassette_getinfo(struct IODevice *dev)
+static void svi318_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
-	cassette_device_getinfo(dev, svi_cassette_formats, NULL, (cassette_state) -1);
-	dev->count = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) svi_cassette_formats; break;
+
+		default:										cassette_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void svi318_cartslot_getinfo(struct IODevice *dev)
+static void svi318_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 1;
-	dev->file_extensions = "rom\0";
-	dev->load = device_load_svi318_cart;
-	dev->unload = device_unload_svi318_cart;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_svi318_cart; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_svi318_cart; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void svi318_floppy_getinfo(struct IODevice *dev)
+static void svi318_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	legacybasicdsk_device_getinfo(dev);
-	dev->count = 2;
-	dev->file_extensions = "dsk\0";
-	dev->load = device_load_svi318_floppy;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 2; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_svi318_floppy; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+
+		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(svi318)

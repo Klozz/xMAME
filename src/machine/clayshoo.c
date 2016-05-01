@@ -8,6 +8,7 @@
 
 #include "driver.h"
 #include "machine/8255ppi.h"
+#include "includes/clayshoo.h"
 
 
 static UINT8 input_port_select;
@@ -78,7 +79,7 @@ static ppi8255_interface ppi8255_intf =
 };
 
 
-MACHINE_INIT( clayshoo )
+MACHINE_RESET( clayshoo )
 {
 	ppi8255_init(&ppi8255_intf);
 }

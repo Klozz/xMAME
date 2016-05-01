@@ -53,12 +53,11 @@ JALCF1   BIN     1,048,576  02-07-99  1:11a JALCF1.BIN
 *******************************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/okim6295.h"
 
 static tilemap *tx_tilemap,*bg_tilemap;
-UINT16 *ac_txvram,*ac_bgvram;
-UINT16 *ac_vregs;
+static UINT16 *ac_txvram,*ac_bgvram;
+static UINT16 *ac_vregs;
 
 static UINT32 bg_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
 {
@@ -155,9 +154,6 @@ VIDEO_START( acommand )
 		return 1;
 
 	ac_vregs = auto_malloc(0x80);
-
-	if(!ac_vregs)
-		return 1;
 
 	tilemap_set_transparent_pen(tx_tilemap,15);
 
@@ -281,7 +277,7 @@ static WRITE16_HANDLER(ac_txscroll_w)
 
 /******************************************************************************************/
 
-UINT16 *ac_devram;
+static UINT16 *ac_devram;
 
 
 static READ16_HANDLER(ac_devices_r)

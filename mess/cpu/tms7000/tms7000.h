@@ -21,7 +21,6 @@
 #define _TMS7000_H
 
 #include "memory.h"
-#include "osd_cpu.h"
 
 enum { TMS7000_PC=1, TMS7000_SP, TMS7000_ST, TMS7000_IDLE, TMS7000_T1_CL, TMS7000_T1_PS, TMS7000_T1_DEC };
 
@@ -56,7 +55,7 @@ extern WRITE8_HANDLER( tms7000_internal_w );
 extern  READ8_HANDLER( tms7000_internal_r );
 
 #ifdef MAME_DEBUG
-extern unsigned Dasm7000 (char *buffer, unsigned pc);
+extern unsigned tms7000_dasm( char *buffer, offs_t pc, UINT8 *oprom, UINT8 *opram, int bytes );
 #endif
 
 #endif /* _TMS7000_H */

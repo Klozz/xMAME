@@ -1,10 +1,7 @@
 #include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/segaic24.h"
-
-#include <stdlib.h>
 #include <math.h>
+
 
 
 UINT16 *model1_display_list0, *model1_display_list1;
@@ -1422,16 +1419,13 @@ VIDEO_START(model1)
 	quaddb  = auto_malloc(1000000*sizeof(struct quad));
 	quadind = auto_malloc(1000000*sizeof(struct quad *));
 
-	if(!tgp_ram || !pointdb || !quaddb || !quadind)
-		return 1;
-
 	pointpt = pointdb;
 	quadpt = quaddb;
 	listctl[0] = listctl[1] = 0;
 
-	state_save_register_UINT16("video", 0, "colors",  tgp_ram, 0x100000-0x40000);
-	state_save_register_UINT32("video", 0, "polys",  poly_ram, 0x40000);
-	state_save_register_UINT16("video", 0, "listctl", listctl, 2);
+	state_save_register_global_pointer(tgp_ram, 0x100000-0x40000);
+	state_save_register_global_pointer(poly_ram, 0x40000);
+	state_save_register_global_array(listctl);
 	return 0;
 }
 

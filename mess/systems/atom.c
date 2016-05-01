@@ -80,7 +80,7 @@ static ADDRESS_MAP_START( atom_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x09ff) AM_RAM
 	AM_RANGE(0x0a00, 0x0a04) AM_READWRITE(atom_8271_r, atom_8271_w)
 	AM_RANGE(0x0a05, 0x7fff) AM_RAM
-	AM_RANGE(0x8000, 0x97ff) AM_READWRITE(videoram_r, videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size) /* VDG 6847 */
+	AM_RANGE(0x8000, 0x97ff) AM_RAM AM_BASE(&videoram) /* VDG 6847 */
 	AM_RANGE(0x9800, 0x9fff) AM_RAM
 	AM_RANGE(0xb000, 0xb003) AM_READWRITE(ppi8255_0_r, ppi8255_0_w) /* PPIA 8255 */
 	AM_RANGE(0xb800, 0xbbff) AM_READWRITE(via_0_r, via_0_w)			/* VIA 6522 */
@@ -217,14 +217,16 @@ static MACHINE_DRIVER_START( atom )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M65C02, 1000000)        /* 0,894886 Mhz */
 	MDRV_CPU_PROGRAM_MAP(atom_mem, 0)
-	MDRV_CPU_VBLANK_INT(m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME)
-	MDRV_FRAMES_PER_SECOND(50)
-	MDRV_VBLANK_DURATION(128)
+	MDRV_FRAMES_PER_SECOND(M6847_PAL_FRAMES_PER_SECOND)
 
-	MDRV_MACHINE_INIT( atom )
+	MDRV_MACHINE_RESET( atom )
 
 	/* video hardware */
-	MDRV_M6847_PAL( atom )
+	MDRV_VIDEO_START(atom)
+	MDRV_VIDEO_UPDATE(m6847)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_RGB_DIRECT | VIDEO_NEEDS_6BITS_PER_GUN)
+	MDRV_SCREEN_SIZE(320, 25+192+26)
+	MDRV_VISIBLE_AREA(0, 319, 1, 239)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -238,7 +240,7 @@ static MACHINE_DRIVER_START( atomeb )
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_PROGRAM_MAP(atomeb_mem, 0 )
 
-	MDRV_MACHINE_INIT( atomeb )
+	MDRV_MACHINE_RESET( atomeb )
 MACHINE_DRIVER_END
 
 
@@ -268,34 +270,61 @@ ROM_START (atomeb)
 	ROM_LOAD ("atomicw.rom",0x018000,0x1000, CRC(a3fd737d) SHA1(d418d9322c69c49106ed2c268ad0864c0f2c4c1b))
 ROM_END
 
-static void atom_cassette_getinfo(struct IODevice *dev)
+static void atom_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
-	cassette_device_getinfo(dev, NULL, NULL, (cassette_state) -1);
-	dev->count = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		default:										cassette_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void atom_floppy_getinfo(struct IODevice *dev)
+static void atom_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	legacybasicdsk_device_getinfo(dev);
-	dev->count = 2;
-	dev->file_extensions = "ssd\0";
-	dev->load = device_load_atom_floppy;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 2; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_atom_floppy; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "ssd"); break;
+
+		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void atom_printer_getinfo(struct IODevice *dev)
+static void atom_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
-	printer_device_getinfo(dev);
-	dev->count = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		default:										printer_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void atom_quickload_getinfo(struct IODevice *dev)
+static void atom_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* quickload */
-	quickload_device_getinfo(dev, quickload_load_atom, 0.0);
-	dev->file_extensions = "atm\0";
+	switch(state)
+	{
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "atm"); break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_atom; break;
+
+		default:										quickload_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(atom)

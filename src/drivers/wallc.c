@@ -48,7 +48,6 @@ Thanks to HIGHWAYMAN for providing info on how to get to these epoxies
 ****************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/res_net.h"
 #include "sound/ay8910.h"
 
@@ -82,8 +81,8 @@ static PALETTE_INIT( wallc )
 {
 	int i;
 
-	const int resistances_rg[2] = { 330, 220 };
-	const int resistances_b[3] = { 655, 330, 220 };
+	static const int resistances_rg[2] = { 330, 220 };
+	static const int resistances_b[3] = { 655, 330, 220 };
 	double weights_r[2], weights_g[2], weights_b[3];
 
 	compute_resistor_weights(0,	255,	-1.0,

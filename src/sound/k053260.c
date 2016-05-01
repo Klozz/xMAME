@@ -4,7 +4,9 @@
 
 *********************************************************/
 
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
+#include "cpuintrf.h"
 #include "k053260.h"
 
 /* 2004-02-28: Fixed ppcm decoding. Games sound much better now.*/
@@ -213,9 +215,6 @@ static void *k053260_start(int sndindex, int clock, const void *config)
 
 	ic->delta_table = ( unsigned long * )auto_malloc( 0x1000 * sizeof( unsigned long ) );
 
-	if ( ic->delta_table == 0 )
-		return NULL;
-
 	ic->channel = stream_create( 0, 2, Machine->sample_rate, ic, K053260_update );
 
 	InitDeltaTable( ic, clock );
@@ -263,8 +262,7 @@ void K053260_write( int chip, offs_t offset, UINT8 data )
 		return;
 	}
 
-	if ( Machine->sample_rate != 0 )
-		stream_update( ic->channel, 0 );
+	stream_update( ic->channel, 0 );
 
 	/* before we update the regs, we need to check for a latched reg */
 	if ( r == 0x28 ) {
@@ -456,7 +454,7 @@ READ16_HANDLER( K053260_1_lsb_r )
  * Generic get_info
  **************************************************************************/
 
-static void k053260_set_info(void *token, UINT32 state, union sndinfo *info)
+static void k053260_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -465,7 +463,7 @@ static void k053260_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void k053260_get_info(void *token, UINT32 state, union sndinfo *info)
+void k053260_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

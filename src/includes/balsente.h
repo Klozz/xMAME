@@ -6,9 +6,6 @@
 
 ***************************************************************************/
 
-#include "driver.h"
-
-
 /*----------- defined in machine/balsente.c -----------*/
 
 extern UINT8 balsente_shooter;
@@ -18,7 +15,7 @@ extern UINT8 balsente_adc_shift;
 extern UINT16 *shrike_shared;
 extern UINT16 *shrike_io;
 
-MACHINE_INIT( balsente );
+MACHINE_RESET( balsente );
 
 void balsente_noise_gen(int chip, int count, short *buffer);
 

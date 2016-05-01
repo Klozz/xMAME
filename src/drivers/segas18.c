@@ -170,8 +170,6 @@ static void system18_generic_init(int _rom_board)
 	segaic16_tileram_0   = auto_malloc(0x10000);
 	segaic16_textram_0   = auto_malloc(0x01000);
 	workram              = auto_malloc(0x04000);
-	if (!segaic16_spriteram_0 || !paletteram16 || !segaic16_tileram_0 || !segaic16_textram_0 || !workram)
-		osd_die("Out of memory allocating RAM space\n");
 
 	/* init the memory mapper */
 	segaic16_memory_mapper_init(0, region_info_list[rom_board], sound_w, sound_r);
@@ -192,7 +190,12 @@ static void system18_generic_init(int _rom_board)
  *
  *************************************/
 
-MACHINE_INIT( system18 )
+static void boost_interleave(int param)
+{
+	cpu_boost_interleave(0, TIME_IN_MSEC(10));
+}
+
+MACHINE_RESET( system18 )
 {
 	segaic16_memory_mapper_reset();
 	segaic16_tilemap_reset(0);
@@ -200,7 +203,7 @@ MACHINE_INIT( system18 )
 
 	/* if we are running with a real live 8751, we need to boost the interleave at startup */
 	if (Machine->drv->cpu[2].cpu_type == CPU_I8751)
-		cpu_boost_interleave(0, TIME_IN_MSEC(10));
+		timer_set(TIME_NOW, 0, boost_interleave);
 }
 
 
@@ -1137,7 +1140,7 @@ static INPUT_PORTS_START( mwalk )
 	PORT_DIPNAME( 0x10, 0x00, "Play Mode" )
 	PORT_DIPSETTING(    0x10, "2 Players" )
 	PORT_DIPSETTING(    0x00, "3 Players" )
-	PORT_DIPNAME( 0x20, 0x20, "Coin Chute" )
+	PORT_DIPNAME( 0x20, 0x00, "Coin Chute" )
 	PORT_DIPSETTING(    0x20, "Common" )
 	PORT_DIPSETTING(    0x00, "Individual" )
 	PORT_DIPNAME( 0xc0, 0x40, DEF_STR( Difficulty ) )
@@ -1154,7 +1157,7 @@ static INPUT_PORTS_START( mwalka )
 	PORT_DIPNAME( 0x10, 0x10, "Play Mode" )
 	PORT_DIPSETTING(    0x00, "2 Players" )
 	PORT_DIPSETTING(    0x10, "3 Players" )
-	PORT_DIPNAME( 0x20, 0x00, "Coin Chute" )
+	PORT_DIPNAME( 0x20, 0x20, "Coin Chute" )
 	PORT_DIPSETTING(    0x00, "Common" )
 	PORT_DIPSETTING(    0x20, "Individual" )
 INPUT_PORTS_END
@@ -1275,7 +1278,7 @@ static MACHINE_DRIVER_START( system18 )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(1000000 * (262 - 224) / (262 * 60))
 
-	MDRV_MACHINE_INIT(system18)
+	MDRV_MACHINE_RESET(system18)
 	MDRV_NVRAM_HANDLER(system18)
 
 	/* video hardware */
@@ -1343,7 +1346,7 @@ ROM_START( astorm )
 	ROM_LOAD16_BYTE( "epr13181.bin", 0x000001, 0x40000, CRC(78cd3b26) SHA1(a81b807c5da625d8e4648ae80c41e4ca3870c0fa) )
 
 	ROM_REGION( 0x2000, REGION_USER1, 0 )	/* decryption key */
-	/* not dumped */
+	ROM_LOAD( "317-????.key", 0x0000, 0x2000, NO_DUMP )
 
 	ROM_REGION( 0xc0000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
 	ROM_LOAD( "epr13073.bin", 0x00000, 0x40000, CRC(df5d0a61) SHA1(79ad71de348f280bad847566c507b7a31f022292) )
@@ -1924,9 +1927,7 @@ ROM_START( mwalk )
 	ROM_LOAD( "mpr13249.b6", 0x190000, 0x40000, CRC(623edc5d) SHA1(c32d9f818d40f311877fbe6532d9e95b6045c3c4) )
 
 	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* protection MCU */
-	/* extra byte on the end is security info put there by the eprom reader software.... */
-	/* not verified if mcu is the same on the other sets.. */
-	ROM_LOAD( "315-5437.bin", 0x00000, 0x1001,  CRC(3e2aeb90) SHA1(f889a42cef9a8ddbfa888692b45b74c3cb8fa054) )
+	ROM_LOAD( "315-5437.ic4", 0x00000, 0x1000,  CRC(4bf63bc1) SHA1(2766ab30b466b079febb30c488adad9ea56813f7) )
 ROM_END
 
 /**************************************************************************************************************************
@@ -1964,7 +1965,7 @@ ROM_START( mwalku )
 	ROM_LOAD( "mpr13249.b6", 0x190000, 0x40000, CRC(623edc5d) SHA1(c32d9f818d40f311877fbe6532d9e95b6045c3c4) )
 
 	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* protection MCU */
-	ROM_LOAD( "315-5437.bin", 0x00000, 0x1001, BAD_DUMP CRC(3e2aeb90) SHA1(f889a42cef9a8ddbfa888692b45b74c3cb8fa054) )
+	ROM_LOAD( "315-5437.ic4", 0x00000, 0x1000,  CRC(4bf63bc1) SHA1(2766ab30b466b079febb30c488adad9ea56813f7) )
 ROM_END
 
 /**************************************************************************************************************************
@@ -2002,9 +2003,8 @@ ROM_START( mwalkj )
 	ROM_LOAD( "mpr13249.b6", 0x190000, 0x40000, CRC(623edc5d) SHA1(c32d9f818d40f311877fbe6532d9e95b6045c3c4) )
 
 	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* protection MCU */
-	/* extra byte on the end is security info put there by the eprom reader software.... */
-	/* not verified if mcu is the same on the other sets.. */
-	ROM_LOAD( "315-5437.bin", 0x00000, 0x1001, BAD_DUMP CRC(3e2aeb90) SHA1(f889a42cef9a8ddbfa888692b45b74c3cb8fa054) )
+	/* not verified if mcu is the same as the other sets.. */
+	ROM_LOAD( "315-5437.ic4", 0x00000, 0x1000, BAD_DUMP CRC(4bf63bc1) SHA1(2766ab30b466b079febb30c488adad9ea56813f7) )
 ROM_END
 
 

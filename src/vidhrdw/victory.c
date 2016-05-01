@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 
 /* globally-accessible storage */
@@ -84,10 +83,6 @@ VIDEO_START( victory )
 	bgdirty = auto_malloc(32 * 32);
 	chardirty = auto_malloc(256);
 	scandirty = auto_malloc(512);
-
-	/* fail if something went wrong */
-	if (!rram || !gram || !bram || !bgbitmap || !fgbitmap || !bgdirty || !chardirty || !scandirty)
-		return 1;
 
 	/* mark everything dirty */
 	memset(bgdirty, 1, 32 * 32);

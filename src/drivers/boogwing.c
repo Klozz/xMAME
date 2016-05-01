@@ -61,7 +61,6 @@
 #include "cpu/m68000/m68000.h"
 #include "cpu/h6280/h6280.h"
 #include "decocrpt.h"
-#include "vidhrdw/generic.h"
 #include "deco16ic.h"
 #include "decoprot.h"
 #include "sound/2151intf.h"
@@ -129,7 +128,7 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x130000, 0x130001) AM_WRITE(OKIM6295_data_1_w)
 	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(MWA8_BANK8)
 	AM_RANGE(0x1fec00, 0x1fec01) AM_WRITE(H6280_timer_w)
-	AM_RANGE(0x1ff402, 0x1ff403) AM_WRITE(H6280_irq_status_w)
+	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(H6280_irq_status_w)
 ADDRESS_MAP_END
 
 /**********************************************************************************/

@@ -145,7 +145,6 @@
 **************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/8255ppi.h"
 #include "turbo.h"
 #include "machine/segacrpt.h"
@@ -579,7 +578,7 @@ static MACHINE_DRIVER_START( turbo )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(turbo)
+	MDRV_MACHINE_RESET(turbo)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -610,7 +609,7 @@ static MACHINE_DRIVER_START( subroc3d )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(subroc3d)
+	MDRV_MACHINE_RESET(subroc3d)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
@@ -645,7 +644,7 @@ static MACHINE_DRIVER_START( buckrog )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
-	MDRV_MACHINE_INIT(buckrog)
+	MDRV_MACHINE_RESET(buckrog)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -712,8 +711,6 @@ ROM_START( turbo )
 	ROM_LOAD( "epr1242.rom", 0x3800, 0x0800, CRC(04866769) SHA1(1f9c0d53766fdaf8de57d3df05f291c2ca3dc5fb) )
 	ROM_LOAD( "epr1243.rom", 0x4000, 0x0800, CRC(29854c48) SHA1(cab89bc30f83d9746931ddf6f95a6d0c8a517e5d) )
 
-	ROM_REGION( 0x200, REGION_GFX4, 0 )		/* number data (copied at init time) */
-
 	ROM_REGION( 0x1000, REGION_PROMS, 0 )	/* various PROMs */
 	ROM_LOAD( "pr1121.bin",	 0x0000, 0x0200, CRC(7692f497) SHA1(42468c0705df9928e15ff8deb7e793a6c0c04353) )	/* palette */
 	ROM_LOAD( "pr1122.bin",	 0x0200, 0x0400, CRC(1a86ce70) SHA1(cab708b9a089b2e28f2298c1e4fae6e200923527) )	/* sprite priorities */
@@ -768,8 +765,6 @@ ROM_START( turboa )
 	ROM_LOAD( "epr1242.rom", 0x3800, 0x0800, CRC(04866769) SHA1(1f9c0d53766fdaf8de57d3df05f291c2ca3dc5fb) )
 	ROM_LOAD( "epr1243.rom", 0x4000, 0x0800, CRC(29854c48) SHA1(cab89bc30f83d9746931ddf6f95a6d0c8a517e5d) )
 
-	ROM_REGION( 0x200, REGION_GFX4, 0 )		/* number data (copied at init time) */
-
 	ROM_REGION( 0x1000, REGION_PROMS, 0 )	/* various PROMs */
 	ROM_LOAD( "pr1121.bin",	 0x0000, 0x0200, CRC(7692f497) SHA1(42468c0705df9928e15ff8deb7e793a6c0c04353) )	/* palette */
 	ROM_LOAD( "pr1122.bin",	 0x0200, 0x0400, CRC(1a86ce70) SHA1(cab708b9a089b2e28f2298c1e4fae6e200923527) )	/* sprite priorities */
@@ -823,8 +818,6 @@ ROM_START( turbob )
 	ROM_LOAD( "epr1241.rom", 0x3000, 0x0800, CRC(1109358a) SHA1(27a5351a4e87309671e72115299420315a93dba6) )
 	ROM_LOAD( "epr1242.rom", 0x3800, 0x0800, CRC(04866769) SHA1(1f9c0d53766fdaf8de57d3df05f291c2ca3dc5fb) )
 	ROM_LOAD( "epr1243.rom", 0x4000, 0x0800, CRC(29854c48) SHA1(cab89bc30f83d9746931ddf6f95a6d0c8a517e5d) )
-
-	ROM_REGION( 0x200, REGION_GFX4, 0 )		/* number data (copied at init time) */
 
 	ROM_REGION( 0x1000, REGION_PROMS, 0 )	/* various PROMs */
 	ROM_LOAD( "pr1121.bin",	 0x0000, 0x0200, CRC(7692f497) SHA1(42468c0705df9928e15ff8deb7e793a6c0c04353) )	/* palette */

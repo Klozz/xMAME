@@ -28,7 +28,6 @@ needs more color combination to render its graphics.
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 
 
@@ -170,7 +169,7 @@ PALETTE_INIT( rallyx )
 		for (i = 0;i < 64;i++)
 		{
 			int bits,r,g,b;
-			int map[4] = { 0x00, 0x47, 0x97, 0xde };
+			static const int map[4] = { 0x00, 0x47, 0x97, 0xde };
 
 			bits = (i >> 0) & 0x03;
 			r = map[bits];

@@ -70,7 +70,6 @@ write:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/i8039/i8039.h"
 #include "vicdual.h"
 #include "sound/ay8910.h"
@@ -79,36 +78,6 @@ write:
 
 
 #define	PSG_CLOCK_CARNIVAL	( 3579545 / 3 )	/* Hz */
-
-
-extern unsigned char *vicdual_characterram;
-PALETTE_INIT( vicdual );
-WRITE8_HANDLER( vicdual_characterram_w );
-READ8_HANDLER( vicdual_characterram_r );
-WRITE8_HANDLER( vicdual_palette_bank_w );
-VIDEO_UPDATE( vicdual );
-
-/* Carnival sound handlers */
-extern const char *carnival_sample_names[];
-WRITE8_HANDLER( carnival_sh_port1_w );
-WRITE8_HANDLER( carnival_sh_port2_w );
-READ8_HANDLER( carnival_music_port_t1_r );
-WRITE8_HANDLER( carnival_music_port_1_w );
-WRITE8_HANDLER( carnival_music_port_2_w );
-
-/* Depth Charge sound handlers */
-extern const char *depthch_sample_names[];
-WRITE8_HANDLER( depthch_sh_port1_w );
-
-/* Invinco sound handlers */
-extern const char *invinco_sample_names[];
-WRITE8_HANDLER( invinco_sh_port2_w );
-
-/* Pulsar sound handlers */
-extern const char *pulsar_sample_names[];
-WRITE8_HANDLER( pulsar_sh_port1_w );
-WRITE8_HANDLER( pulsar_sh_port2_w );
-
 
 /* all the games reset the main CPU when a coin is dropped */
 static int coin_port;
@@ -1247,7 +1216,7 @@ MACHINE_DRIVER_END
 
 mame_timer *croak_timer;
 
-static MACHINE_INIT( frogs )
+static MACHINE_RESET( frogs )
 {
 	croak_timer = timer_alloc(croak_callback);
 }
@@ -1256,7 +1225,7 @@ static MACHINE_DRIVER_START( frogs )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(2ports)
-	MDRV_MACHINE_INIT(frogs)
+	MDRV_MACHINE_RESET(frogs)
 
 	/* sound hardware */
 	MDRV_SOUND_ADD(SAMPLES, 0)

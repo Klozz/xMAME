@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cloud9.h"
 
 
@@ -285,7 +284,7 @@ VIDEO_START( cloud9 )
 	tmpbitmap = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height);
 	cloud9_vram2 = auto_malloc(videoram_size);
 
-	if (!tmpbitmap || !cloud9_vram2)
+	if (!tmpbitmap)
 		return 1;
 
 	memset(cloud9_vram2, 0, videoram_size);

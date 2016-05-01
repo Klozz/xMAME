@@ -329,7 +329,10 @@
 #define DSP_FIR_C6		0x6F
 #define DSP_FIR_C7		0x7F
 
-extern MACHINE_INIT( snes );
+/*----------- defined in machine/snes.c -----------*/
+
+extern MACHINE_START( snes );
+extern MACHINE_RESET( snes );
 
 extern READ8_HANDLER( snes_r_bank1 );
 extern READ8_HANDLER( snes_r_bank2 );
@@ -345,7 +348,8 @@ extern WRITE8_HANDLER( snes_w_bank6 );
 extern WRITE8_HANDLER( snes_w_io );
 extern WRITE8_HANDLER( snes_w_sram );
 
-extern INTERRUPT_GEN(snes_scanline_interrupt);
+extern int snes_validate_infoblock( UINT8 *infoblock, UINT16 offset );
+
 extern void snes_gdma( UINT8 channels );
 extern void snes_hdma_init(void);
 extern void snes_hdma(void);
@@ -355,7 +359,6 @@ extern UINT8  *snes_vram;			/* Video RAM (Should be 16-bit, but it's easier this
 extern UINT16 *snes_cgram;			/* Colour RAM */
 extern UINT16 *snes_oam;			/* Object Attribute Memory */
 extern UINT8  *snes_ram;			/* Main memory */
-extern VIDEO_UPDATE( snes );
 struct SNES_PPU_STRUCT
 {
 	struct
@@ -416,7 +419,17 @@ struct SNES_PPU_STRUCT
 	UINT8 update_offsets;
 	UINT8 mode;
 };
-extern struct SNES_PPU_STRUCT snes_ppu;
+
+struct snes_cart_info
+{
+	UINT8  mode;		/* ROM memory mode */
+	UINT32 sram;		/* Amount of sram in cart */
+	UINT32 sram_max;	/* Maximum amount sram in cart (based on ROM mode) */
+};
+
+extern struct snes_cart_info snes_cart;
+
+/*----------- defined in sndhrdw/snes.c -----------*/
 
 /* (APU) Sound related */
 extern UINT8 *spc_ram;			/* SPC main memory */
@@ -429,16 +442,6 @@ extern WRITE8_HANDLER( spc_ram_w );
 extern READ8_HANDLER( spc_ipl_r );
 extern void *snes_sh_start(int clock, const struct CustomSound_interface *config);
 extern void snes_sh_update( void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length );
-extern int snes_validate_infoblock( UINT8 *infoblock, UINT16 offset );
-
-struct snes_cart_info
-{
-	UINT8  mode;		/* ROM memory mode */
-	UINT32 sram;		/* Amount of sram in cart */
-	UINT32 sram_max;	/* Maximum amount sram in cart (based on ROM mode) */
-};
-
-extern struct snes_cart_info snes_cart;
 
 /* Stuff from OpenSPC 0.3.99 by Brad Martin */
 
@@ -479,17 +482,6 @@ typedef struct                      /* Source directory entry       */
     unsigned short  lptr;           /* Loop pointer in sample data  */
     } src_dir_type;
 
-/*========== CONSTANTS ==========*/
-
-extern const int    TS_CYC;
-
-/*========== VARIABLES ==========*/
-
-extern int          keyed_on;
-extern int          keys;           /* 8-bits for 8 voices          */
-extern voice_state_type
-                    voice_state[ 8 ];
-
 /*========== MACROS ==========*/
 
 /* The functions to actually read and write to the DSP registers must be
@@ -517,5 +509,12 @@ void DSP_Update                     /* Mix one sample of audio      */
     (
     short *             sound_ptr   /* Pointer to mix audio into    */
     );
+
+/*----------- defined in vidhrdw/snes.c -----------*/
+
+extern struct SNES_PPU_STRUCT snes_ppu;
+
+extern VIDEO_UPDATE( snes );
+
 
 #endif /* _SNES_H_ */

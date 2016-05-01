@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "nmk004.h"
 #include "sound/2203intf.h"
 #include "sound/okim6295.h"
 
@@ -269,7 +270,7 @@ static void effects_update(int channel)
 							return;
 
 						default:
-							osd_die("effects channel %d unsupported token %02x\n",channel,token);
+							fatalerror("effects channel %d unsupported token %02x",channel,token);
 					}
 				}
 			} while (token == 0xef || (token & 0xf0) == 0xf0);
@@ -449,9 +450,7 @@ static void fm_update(int channel)
 							return;
 
 						default:
-logerror("fm channel %d unsupported token %02x\n",channel,token);
-exit(0);
-							break;
+							fatalerror("fm channel %d unsupported token %02x",channel,token);
 					}
 				}
 			} while (token == 0xef || (token & 0xf0) == 0xf0);
@@ -800,11 +799,10 @@ static void psg_update(int channel)
 
 			/* token is the note to play */
 			psg->note = token;
-if ((psg->note & 0x0f) > NOTE_PAUSE)
-{
-	logerror("PSG channel %d invalid note %02x\n",channel,psg->note);
-	exit(0);
-}
+			if ((psg->note & 0x0f) > NOTE_PAUSE)
+			{
+				fatalerror("PSG channel %d invalid note %02x",channel,psg->note);
+			}
 
 			/* optional note length (otherwise use the same length as the previous one) */
 			if (read8(psg->current) & 0x80)
@@ -967,8 +965,7 @@ static void get_command(void)
 						channel -= PSG_CHANNELS;
 						if (channel >= EFFECTS_CHANNELS)
 						{
-							logerror("too many effects channels\n");
-							exit(0);
+							fatalerror("too many effects channels");
 						}
 						NMK004_state.effects_control[channel].current = table_start;
 						NMK004_state.effects_control[channel].return_address_depth = 0;
@@ -1020,7 +1017,7 @@ void NMK004_irq(int irq)
 }
 
 
-void NMK004_init(void)
+static void real_nmk004_init(int param)
 {
 	static UINT8 ym2203_init[] =
 	{
@@ -1050,6 +1047,12 @@ void NMK004_init(void)
 	NMK004_state.protection_check = 0;
 }
 
+void NMK004_init(void)
+{
+	/* we have to do this via a timer because we get called before the sound reset */
+	timer_set(TIME_NOW, 0, real_nmk004_init);
+}
+
 
 WRITE16_HANDLER( NMK004_w )
 {
@@ -1070,3 +1073,4 @@ last = res;
 
 	return res;
 }
+

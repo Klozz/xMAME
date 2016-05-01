@@ -275,7 +275,7 @@ static MACHINE_DRIVER_START( a7800_ntsc )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( a7800 )
+	MDRV_MACHINE_RESET( a7800 )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_SIZE(640,262)
@@ -335,30 +335,48 @@ ROM_START (a7800p)
     ROM_LOAD ("7800pal.rom", 0xc000, 0x4000, CRC(d5b61170) SHA1(5a140136a16d1d83e4ff32a19409ca376a8df874))
 ROM_END
 
-static void a7800_ntsc_cartslot_getinfo(struct IODevice *dev)
+static void a7800_ntsc_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 1;
-	dev->file_extensions = "a78\0";
-	dev->must_be_loaded = 1;
-	dev->load = device_load_a7800_cart;
-	dev->partialhash = a7800_partialhash;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_a7800_cart; break;
+		case DEVINFO_PTR_PARTIAL_HASH:					info->partialhash = a7800_partialhash; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "a78"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(a7800_ntsc)
 	CONFIG_DEVICE(a7800_ntsc_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
-static void a7800_pal_cartslot_getinfo(struct IODevice *dev)
+static void a7800_pal_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 1;
-	dev->file_extensions = "a78\0";
-	dev->must_be_loaded = 1;
-	dev->load = device_load_a7800_cart;
-	dev->partialhash = a7800_partialhash;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_a7800_cart; break;
+		case DEVINFO_PTR_PARTIAL_HASH:					info->partialhash = a7800_partialhash; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "a78"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(a7800_pal)

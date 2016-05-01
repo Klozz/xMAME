@@ -12,7 +12,7 @@ ToDo: Fix Sprites for Cocktail
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
+#include "profiler.h"
 
 /* Defined in driver */
 extern UINT16 *mcatadv_videoram1, *mcatadv_videoram2;
@@ -235,7 +235,7 @@ VIDEO_START( mcatadv )
 	spriteram_old = auto_malloc(spriteram_size);
 	vidregs_old = auto_malloc(0xf);
 
-	if(!mcatadv_tilemap1 || !mcatadv_tilemap2 || !spriteram_old || !vidregs_old)
+	if(!mcatadv_tilemap1 || !mcatadv_tilemap2)
 		return 1;
 
 	memset(spriteram_old,0,spriteram_size);

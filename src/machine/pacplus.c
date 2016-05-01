@@ -1,5 +1,5 @@
 #include "driver.h"
-#include "vidhrdw/generic.h"
+#include "includes/pacman.h"
 
 
 static unsigned char decrypt(int addr, unsigned char e)

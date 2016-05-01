@@ -9,7 +9,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 
 unsigned char *astrof_color;
@@ -80,8 +79,7 @@ static void modify_palette(void)
 ***************************************************************************/
 VIDEO_START( astrof )
 {
-	if ((colorram = auto_malloc(videoram_size)) == 0)
-		return 1;
+	colorram = auto_malloc(videoram_size);
 	if (video_start_generic())
 		return 1;
 

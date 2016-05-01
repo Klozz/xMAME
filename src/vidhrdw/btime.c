@@ -9,7 +9,6 @@ This file is also used by scregg.c
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 
 unsigned char *lnc_charbank;
@@ -123,7 +122,7 @@ PALETTE_INIT( lnc )
 }
 
 
-MACHINE_INIT( lnc )
+MACHINE_RESET( lnc )
 {
     *lnc_charbank = 1;
 }
@@ -139,8 +138,7 @@ VIDEO_START( bnj )
     if (video_start_generic() != 0)
         return 1;
 
-    if ((dirtybuffer2 = auto_malloc(bnj_backgroundram_size)) == 0)
-        return 1;
+    dirtybuffer2 = auto_malloc(bnj_backgroundram_size);
     memset(dirtybuffer2,1,bnj_backgroundram_size);
 
     /* the background area is twice as wide as the screen */

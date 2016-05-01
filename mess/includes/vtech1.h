@@ -15,10 +15,9 @@ extern int vtech1_latch;
  Machine Initialisations
 ******************************************************************************/
 
-MACHINE_INIT( laser110 );
-MACHINE_INIT( laser200 );
-MACHINE_INIT( laser210 );
-MACHINE_INIT( laser310 );
+MACHINE_START( laser110 );
+MACHINE_START( laser210 );
+MACHINE_START( laser310 );
 
 
 /******************************************************************************
@@ -52,4 +51,5 @@ WRITE8_HANDLER( vtech1_memory_bank_w );
 
 void vtech1_interrupt(void);
 
+VIDEO_START( vtech1m );
 VIDEO_START( vtech1 );

@@ -10,8 +10,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "tilemap.h"
-#include "vidhrdw/generic.h"
 
 UINT16 *thoop2_vregs;
 UINT16 *thoop2_videoram;
@@ -104,9 +102,6 @@ VIDEO_START( thoop2 )
 
 	for (i = 0; i < 5; i++){
 		sprite_table[i] = auto_malloc(512*sizeof(int));
-		if (!sprite_table[i]){
-			return 1;
-		}
 	}
 
 	return 0;

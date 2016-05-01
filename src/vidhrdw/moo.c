@@ -9,7 +9,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 
 static int sprite_colorbase;
@@ -101,7 +100,7 @@ static void sortlayers(int *layer,int *pri)
 
 VIDEO_UPDATE(moo)
 {
-	const int K053251_CI[4] = { K053251_CI1, K053251_CI2, K053251_CI3, K053251_CI4 };
+	static const int K053251_CI[4] = { K053251_CI1, K053251_CI2, K053251_CI3, K053251_CI4 };
 	int layers[3];
 	int bg_colorbase, new_colorbase, plane, dirty, alpha;
 

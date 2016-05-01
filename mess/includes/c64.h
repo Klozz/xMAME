@@ -9,8 +9,7 @@
 #define __C64_H_
 
 #include "driver.h"
-
-#include "cia6526.h"
+#include "machine/6526cia.h"
 
 #define C64_DIPS \
      PORT_START \
@@ -135,9 +134,6 @@
 #define ROBOCOP2_MODULE ((input_port_8_r(0)&0x1c)==0x14)
 #define C128_MODULE ((input_port_8_r(0)&0x1c)==0x18)
 
-#define SERIAL8ON (input_port_8_r(0)&2)
-#define SERIAL9ON (input_port_8_r(0)&1)
-
 #define KEY_ARROW_LEFT (input_port_9_word_r(0,0)&0x8000)
 #define KEY_1 (input_port_9_word_r(0,0)&0x4000)
 #define KEY_2 (input_port_9_word_r(0,0)&0x2000)
@@ -224,31 +220,24 @@ void c64_m6510_port_write(UINT8 data);
 READ8_HANDLER ( c64_colorram_read );
 WRITE8_HANDLER ( c64_colorram_write );
 
-extern void c64_driver_init (void);
-extern void c64pal_driver_init (void);
-extern void ultimax_driver_init (void);
-extern void c64gs_driver_init (void);
-extern void sx64_driver_init (void);
-extern void c64_driver_shutdown (void);
-extern void c64_common_init_machine (void);
+DRIVER_INIT( c64 );
+DRIVER_INIT( c64pal );
+DRIVER_INIT( ultimax );
+DRIVER_INIT( c64gs );
+DRIVER_INIT( sx64 );
+void c64_common_init_machine (void);
 
-extern MACHINE_INIT( c64 );
-extern INTERRUPT_GEN( c64_frame_interrupt );
+MACHINE_START( c64 );
+INTERRUPT_GEN( c64_frame_interrupt );
 
 void c64_rom_load(void);
 void c64_rom_recognition (void);
 
-void c64_state(void);
-
 /* private area */
 
 WRITE8_HANDLER ( c64_write_io );
- READ8_HANDLER ( c64_read_io );
-int c64_cia0_port_a_r (int offset);
-int c64_cia0_port_b_r (int offset);
-void c64_cia0_port_a_w (int offset, int data);
+READ8_HANDLER ( c64_read_io );
 WRITE8_HANDLER ( c64_tape_read );
-int c64_cia1_port_a_r (int offset);
 int c64_paddle_read (int which);
 void c64_vic_interrupt (int level);
 
@@ -260,6 +249,6 @@ extern UINT8 c64_keyline[10];
 extern int c128_va1617;
 extern UINT8 *c64_vicaddr, *c128_vicaddr;
 extern UINT8 c64_game, c64_exrom;
-extern struct cia6526_interface c64_cia0, c64_cia1;
+extern const cia6526_interface c64_cia0, c64_cia1;
 
 #endif

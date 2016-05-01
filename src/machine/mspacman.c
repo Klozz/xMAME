@@ -1,6 +1,5 @@
-
 #include "driver.h"
-#include "vidhrdw/generic.h"
+#include "includes/pacman.h"
 
 
 /*
@@ -95,7 +94,7 @@ static unsigned int decrypta2(unsigned int e)
 
 
 
-void mspacman_decode(void)
+static void mspacman_decode(void)
 {
 	int i;
 	unsigned char *RAM;
@@ -178,7 +177,7 @@ void mspacman_decode(void)
 }
 
 
-MACHINE_INIT( mspacman )
+MACHINE_RESET( mspacman )
 {
 	unsigned char *RAM = memory_region(REGION_CPU1);
 	mspacman_decode();

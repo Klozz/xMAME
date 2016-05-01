@@ -2,15 +2,15 @@
 #include "xmame.h"
 #include "driver.h"
 #include "audit.h"
-#include "common.h"
 #include "info.h"
+#include "hash.h"
 #include "sound/samples.h"
 
 #ifdef MESS
-#include "xmess.h"
+#include "infomess.h"
 #endif
 
-static int frontend_list_clones(char *gamename);
+static int frontend_list_clones(const char *gamename);
 static int frontend_list_cpu(void);
 static int frontend_list_gamelistheader(void);
 static int frontend_list_hash(int type);
@@ -30,7 +30,7 @@ enum {
 	LIST_SOURCEFILE, LIST_COLORS,
 #ifdef MESS
 	/* MESS-specific commands */
-	LIST_MESSDEVICES, LIST_MESSTEXT, LIST_MESSCREATEDIR,	
+	LIST_MESSDEVICES, 
 #endif
 	LIST_ROMSIZE, LIST_PALETTESIZE, LIST_ROMS, LIST_CRC, LIST_SHA1, 
 	LIST_MD5, LIST_SAMPLES, LIST_SAMDIR, 
@@ -45,7 +45,8 @@ enum {
 /* Mame frontend interface & commandline */
 /* parsing rountines by Maurizio Zanello */
 
-struct rc_option frontend_list_opts[] = {
+struct rc_option frontend_list_opts[] =
+{
 	/* name, shortname, type, dest, deflt, min, max, func, help */
 	{ "Frontend Related", NULL, rc_seperator, NULL, NULL, 0, 0, NULL, NULL },
 	{ "list", "l", rc_set_int, &list, NULL, LIST_LIST, 0, NULL, "List supported games matching gamename, or all, gamename may contain * and ? wildcards" },
@@ -57,8 +58,6 @@ struct rc_option frontend_list_opts[] = {
 	{ "listcolors", "lcol", rc_set_int, &list, NULL, LIST_COLORS, 0, NULL, "Like -list, with the number of colors used" },
 #ifdef MESS
 	{ "listdevices", NULL, rc_set_int, &list, NULL, LIST_MESSDEVICES, 0, NULL, "list available devices" },
-	{ "listtext", NULL, rc_set_int, &list, NULL, LIST_MESSTEXT, 0, NULL, "list available file extensions" },
-	{ "createdir", NULL, rc_set_int, &list, NULL, LIST_MESSCREATEDIR, 0, NULL, NULL },
 #endif
 	{ "listromsize", "lrs", rc_set_int, &list, NULL, LIST_ROMSIZE, 0, NULL, "Like -list, with the year and size of the roms used" },
 	{ "listpalettesize", "lps", rc_set_int, &list, NULL, LIST_PALETTESIZE, 0, NULL, "Like -list, with the year and palette size of the roms used" },
@@ -278,7 +277,7 @@ char *get_description(int driver)
 	return description;
 }
 
-int frontend_list(char *gamename)
+int frontend_list(const char *gamename)
 {
 	int i, j = 0;
 	const char *header[] = {
@@ -297,8 +296,6 @@ int frontend_list(char *gamename)
 			"--------  ------\n",
 #ifdef MESS
 		/* listdevices      */ "",
-		/* listtext         */ "",
-		/* createdir        */ "",
 #endif
 		/* listromsize      */ "name    \tyear \tsize\n"
 			"--------\t-----\t----\n",
@@ -335,11 +332,13 @@ int frontend_list(char *gamename)
 	};
 
 	machine_config drv;
+	const char *all_games = "*";
 	int matching     = 0;
 	int skipped      = 0;
 
-	if (!gamename)
-		gamename = "";
+	/* HACK: some options REQUIRE gamename field to work: default to "*" */
+	if (!gamename || (strlen(gamename) == 0))
+		gamename = all_games;
 
 	/* 
 	 * since the cpuintrf structure is filled dynamically now, we have to 
@@ -354,7 +353,8 @@ int frontend_list(char *gamename)
 		int count = 0;
 
 		/* first count the drivers */
-		while (drivers[count]) count++;
+		while (drivers[count])
+			count++;
 
 		/* qsort as appropriate */
 		if (sortby == 1)
@@ -394,11 +394,12 @@ int frontend_list(char *gamename)
 
 	fprintf(stdout_file, header[list - 1]);
 
-	for (i=0;drivers[i];i++)
+	for (i = 0; drivers[i]; i++)
 	{
+		const game_driver *clone_of_i = driver_get_clone(drivers[i]);
 		expand_machine_driver(drivers[i]->drv, &drv);	
-		if ( (listclones || drivers[i]->clone_of == 0 ||
-					(drivers[i]->clone_of->flags & NOT_A_DRIVER)) &&
+		if ( (listclones || clone_of_i == NULL ||
+					(clone_of_i->flags & NOT_A_DRIVER)) &&
 				!strwildcmp(gamename, drivers[i]->name) )
 		{
 			matching++;
@@ -432,14 +433,14 @@ int frontend_list(char *gamename)
 					fprintf(stdout_file, "%-10s ", strrchr(drivers[i]->source_file, '/') + 1);
 
 					/* Then, cpus */
-					for(j=0;j<MAX_CPU;j++)
+					for (j = 0; j < MAX_CPU; j++)
 					{
 						const cpu_config *x_cpu = drv.cpu;
 						fprintf(stdout_file, "%-8s ",cputype_name(x_cpu[j].cpu_type));
 					}
 					fprintf(stdout_file, " ");
 
-					for(j=0;j<MAX_SOUND;j++)
+					for (j = 0; j < MAX_SOUND; j++)
 					{
 						const sound_config *x_sound = drv.sound;
 						fprintf(stdout_file, "%-11s ", sndtype_name(x_sound[j].sound_type));
@@ -457,15 +458,17 @@ int frontend_list(char *gamename)
 							const game_driver *maindrv;
 							int foundworking;
 
-							if (drivers[i]->clone_of && !(drivers[i]->clone_of->flags & NOT_A_DRIVER))
-								maindrv = drivers[i]->clone_of;
-							else maindrv = drivers[i];
+							if (clone_of_i && !(clone_of_i->flags & NOT_A_DRIVER))
+								maindrv = clone_of_i;
+							else
+								maindrv = drivers[i];
 
 							foundworking = 0;
 							j = 0;
 							while (drivers[j])
 							{
-								if (drivers[j] == maindrv || drivers[j]->clone_of == maindrv)
+								const game_driver *clone_of_j = driver_get_clone(drivers[j]);
+								if (drivers[j] == maindrv || clone_of_j == maindrv)
 								{
 									if (!(drivers[j]->flags & (GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION)))
 									{
@@ -494,7 +497,7 @@ int frontend_list(char *gamename)
 						{
 							const char **samplenames = NULL;
 #if (HAS_SAMPLES || HAS_VLM5030)
-							for (j = 0;drv.sound[j].sound_type && j < MAX_SOUND; j++)
+							for (j = 0; drv.sound[j].sound_type && j < MAX_SOUND; j++)
 							{
 #if (HAS_SAMPLES)
 								if (drv.sound[j].sound_type == SOUND_SAMPLES)
@@ -541,27 +544,11 @@ int frontend_list(char *gamename)
 							drv.total_colors);
 					break;
 #ifdef MESS
-				case LIST_MESSTEXT: /* all mess specific calls here */
-					{
-						/* send the gamename and arg to mess.c */
-						list_mess_info(gamename, "-listtext", listclones);
-						return 0;
-						break;
-					}
 				case LIST_MESSDEVICES:
-					{
-						/* send the gamename and arg to mess.c */
-						list_mess_info(gamename, "-listdevices", listclones);
-						return 0;
-						break;
-					}
-				case LIST_MESSCREATEDIR:
-					{
-						/* send the gamename and arg to mess.c */
-						list_mess_info(gamename, "-createdir", listclones);
-						return 0;
-						break;
-					}
+					/* send the gamename to MESS */
+					print_mess_devices(gamename);
+					return 0;
+					break;
 #endif
 				case LIST_ROMSIZE:
 					{
@@ -595,13 +582,13 @@ int frontend_list(char *gamename)
 						}
 
 						fprintf(stdout_file, "This is the list of the ROMs required for driver \"%s\".\n"
-									"Name            Size Checksum\n", gamename);
+									"Name            Size Checksum\n", drivers[i]->name);
 						for (region = drivers[i]->rom; region; region = rom_next_region(region))			
 						{
 							for (rom = rom_first_file(region); rom; rom = rom_next_file(rom))
 							{
 								const char *name = ROM_GETNAME(rom);
-								const char* hash = ROM_GETHASHDATA(rom);
+								const char *hash = ROM_GETHASHDATA(rom);
 								int length = -1; /* default is for disks! */
 
 								if (ROMREGION_ISROMDATA(region))
@@ -713,7 +700,7 @@ int frontend_list(char *gamename)
 					if (audit_has_missing_roms (i))
 					{
 						fprintf(stdout_file, "%-10s%-10s%s\n", drivers[i]->name,
-								(drivers[i]->clone_of) ? drivers[i]->clone_of->name : "",
+								clone_of_i ? clone_of_i->name : "",
 								get_description(i));
 						not_found++;
 					}
@@ -841,9 +828,11 @@ int frontend_list(char *gamename)
 						for (region = rom_first_region(drivers[i]); region; region = rom_next_region(region))
 							for (rom = rom_first_file(region); rom; rom = rom_next_file(rom))
 								if (!hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_NO_DUMP))
+								{
 									for (j = 0; drivers[j]; j++)
 									{
-										if (j != i && drivers[j]->clone_of && (drivers[j]->clone_of->flags & NOT_A_DRIVER) == 0 && (drivers[j]->clone_of == drivers[i] || (i < j && drivers[j]->clone_of == drivers[i]->clone_of)))
+										const game_driver *clone_of_j = driver_get_clone(drivers[j]);
+										if (j != i && clone_of_j && (clone_of_j->flags & NOT_A_DRIVER) == 0 && (clone_of_j == drivers[i] || (i < j && clone_of_j == clone_of_i)))
 										{
 											const rom_entry *region1, *rom1;
 											int match = 0;
@@ -900,6 +889,7 @@ int frontend_list(char *gamename)
 
 										}
 									}
+								}
 
 						if (found)
 							incorrect++;
@@ -909,8 +899,8 @@ int frontend_list(char *gamename)
 					break;
 				case LIST_WRONGFPS: /* list drivers with too high frame rate */
 					if ((drv.video_attributes & VIDEO_TYPE_VECTOR) == 0 &&
-							(drivers[i]->clone_of == 0 ||
-							 (drivers[i]->clone_of->flags & NOT_A_DRIVER)) &&
+							(clone_of_i == NULL ||
+							 (clone_of_i->flags & NOT_A_DRIVER)) &&
 							drv.frames_per_second > 57 &&
 							drv.default_visible_area.max_y - drv.default_visible_area.min_y + 1 > 244 &&
 							drv.default_visible_area.max_y - drv.default_visible_area.min_y + 1 <= 256)
@@ -973,20 +963,21 @@ int frontend_list(char *gamename)
 		return 0;
 }
 
-static int frontend_list_clones(char *gamename)
+static int frontend_list_clones(const char *gamename)
 {
 	/* listclones is a special case since the strwildcmp */
 	/* also has to be done on clone_of. */
 	int i;
 
 	fprintf(stdout_file, "Name:    Clone of:\n");
-	for (i=0;drivers[i];i++)
+	for (i = 0; drivers[i]; i++)
 	{
-		if(drivers[i]->clone_of &&
-				!(drivers[i]->clone_of->flags & NOT_A_DRIVER) &&
+		const game_driver *clone_of = driver_get_clone(drivers[i]);
+		if(clone_of &&
+				!(clone_of->flags & NOT_A_DRIVER) &&
 				( !strwildcmp(gamename,drivers[i]->name) ||
-				  !strwildcmp(gamename,drivers[i]->clone_of->name)))
-			fprintf(stdout_file, "%-8s %-8s\n",drivers[i]->name,drivers[i]->clone_of->name);
+				  !strwildcmp(gamename,clone_of->name)))
+			fprintf(stdout_file, "%-8s %-8s\n",drivers[i]->name,clone_of->name);
 	}
 	return 0;
 }
@@ -1016,8 +1007,9 @@ static int frontend_list_cpu(void)
 
 		while (drivers[i])
 		{
+			const game_driver *clone_of = driver_get_clone(drivers[i]);
 			expand_machine_driver(drivers[i]->drv, &drv);	
-			if (drivers[i]->clone_of == 0 || (drivers[i]->clone_of->flags & NOT_A_DRIVER))
+			if (clone_of == NULL || (clone_of->flags & NOT_A_DRIVER))
 			{
 				const cpu_config *x_cpu = drv.cpu;
 

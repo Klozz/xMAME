@@ -121,15 +121,7 @@ TO DO :
 #include "sound/ay8910.h"
 #include "sound/sn76496.h"
 #include "sound/dac.h"
-
-
-DRIVER_INIT( cclimbrj );
-
-extern struct AY8910interface cclimber_ay8910_interface;
-extern struct Samplesinterface cclimber_custom_interface;
-WRITE8_HANDLER( cclimber_sample_trigger_w );
-WRITE8_HANDLER( cclimber_sample_rate_w );
-WRITE8_HANDLER( cclimber_sample_volume_w );
+#include "includes/cclimber.h"
 
 
 /* Send sound data to the sound cpu and cause an nmi */
@@ -3574,14 +3566,14 @@ static const gfx_decode rockclim_gfxdecodeinfo[] =
 
 
 
-gfx_decode galaxian_gfxdecodeinfo[] =
+static gfx_decode galaxian_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &galaxian_charlayout,   0, 8 },
 	{ REGION_GFX1, 0x0000, &galaxian_spritelayout, 0, 8 },
 	{ -1 } /* end of array */
 };
 
-gfx_decode gmgalax_gfxdecodeinfo[] =
+static gfx_decode gmgalax_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &galaxian_charlayout,   0, 16 },
 	{ REGION_GFX1, 0x0000, &galaxian_spritelayout, 0, 16 },
@@ -3629,7 +3621,7 @@ MACHINE_DRIVER_START( galaxian_base )
 
 	MDRV_FRAMES_PER_SECOND(16000.0/132/2)
 
-	MDRV_MACHINE_INIT(galaxian)
+	MDRV_MACHINE_RESET(galaxian)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -3733,7 +3725,7 @@ static MACHINE_DRIVER_START( devilfsg )
 	MDRV_IMPORT_FROM(galaxian)
 	MDRV_CPU_MODIFY("main")
 
-	MDRV_MACHINE_INIT(devilfsg)
+	MDRV_MACHINE_RESET(devilfsg)
 
 	/* video hardware */
 	MDRV_GFXDECODE(pacmanbl_gfxdecodeinfo)
@@ -3784,7 +3776,7 @@ static MACHINE_DRIVER_START( mshuttle )
 	MDRV_CPU_PROGRAM_MAP(mooncrst_readmem,mshuttle_writemem)
 	MDRV_CPU_IO_MAP(mshuttle_readport,mshuttle_writeport)
 
-	MDRV_MACHINE_INIT(devilfsg)
+	MDRV_MACHINE_RESET(devilfsg)
 
 	/* video hardware */
 	MDRV_VIDEO_START(mshuttle)
@@ -4002,7 +3994,7 @@ static MACHINE_DRIVER_START( bagmanmc )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(bagmanmc_readmem,bagmanmc_writemem)
 
-	MDRV_MACHINE_INIT( devilfsg )
+	MDRV_MACHINE_RESET( devilfsg )
 
 	/* video hardware */
 	MDRV_GFXDECODE(bagmanmc_gfxdecodeinfo)
@@ -4036,7 +4028,7 @@ static MACHINE_DRIVER_START( froggrmc )
 	MDRV_CPU_PROGRAM_MAP(frogger_sound_readmem,frogger_sound_writemem)
 	MDRV_CPU_IO_MAP(frogger_sound_readport,frogger_sound_writeport)
 
-	MDRV_MACHINE_INIT(scramble)
+	MDRV_MACHINE_RESET(scramble)
 
 	/* video hardware */
 	MDRV_PALETTE_LENGTH(32+64+2+1)  /* 32 for characters, 64 for stars, 2 for bullets, 1 for background */
@@ -4073,7 +4065,7 @@ static MACHINE_DRIVER_START( ozon1 )
 	MDRV_CPU_IO_MAP(0,ozon1_writeport)
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
 
-	MDRV_MACHINE_INIT(NULL)
+	MDRV_MACHINE_RESET(NULL)
 
 	MDRV_PALETTE_INIT(rockclim)
 	MDRV_PALETTE_LENGTH(32)
@@ -4171,7 +4163,7 @@ static MACHINE_DRIVER_START( harem )
 	MDRV_CPU_PROGRAM_MAP(harem_cpu2,0)
 	MDRV_CPU_IO_MAP(harem_cpu2_io,0)
 
-	MDRV_MACHINE_INIT(NULL)
+	MDRV_MACHINE_RESET(NULL)
 
 	MDRV_PALETTE_INIT(rockclim)
 	MDRV_PALETTE_LENGTH(32)
@@ -4421,6 +4413,27 @@ ROM_START( zerotime )
 
 	ROM_REGION( 0x0020, REGION_PROMS, 0 )
 	ROM_LOAD( "6l.bpr",       0x0000, 0x0020, CRC(c3ac9467) SHA1(f382ad5a34d282056c78a5ec00c30ec43772bae2) )
+ROM_END
+
+ROM_START( starfght )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 64k for code */
+	ROM_LOAD( "ja.1",         0x0000, 0x0400, CRC(c6ab558b) SHA1(2b707e332c57b9ec6a61220ab2b79ed5076d0628) )
+	ROM_LOAD( "jb.2",         0x0400, 0x0400, CRC(34b99fed) SHA1(03d12b19c9aee75313cae6af602c93205d2fd4a8) )
+	ROM_LOAD( "jc.3",         0x0800, 0x0400, CRC(30e28016) SHA1(07a621e5061d85a9559a920d76716ea4db61b674) )
+	ROM_LOAD( "jd.4",         0x0c00, 0x0400, CRC(de7e7770) SHA1(b06043a1d898eb323ddabffd3d2a3b1f63df0e5e) )
+	ROM_LOAD( "je.5",         0x1000, 0x0400, CRC(a916c919) SHA1(b3e264ff92687022a0f2f551d5df36db848b48eb) )
+	ROM_LOAD( "jf.6",         0x1400, 0x0400, CRC(9175882b) SHA1(d9943efcb9245af7f01aecc533a699bdefc7d283) )
+	ROM_LOAD( "jg.7",         0x1800, 0x0400, CRC(707c0f02) SHA1(4cfb18b8161ec6a74663b54120bdc6371ee9dbff) )
+	ROM_LOAD( "jh.8",         0x1c00, 0x0400, CRC(5dd26461) SHA1(173b939287d0261ff069c277a1afd724133f4c88) )
+	ROM_LOAD( "ji.9",         0x2000, 0x0400, CRC(6651fe93) SHA1(eb1d9466090ef723ae20003e5be27059f5bea57b) )
+	ROM_LOAD( "jj.10",        0x2400, 0x0400, CRC(12c721b9) SHA1(1944cd5129115d245ced44da7f1eb4574561c457) )
+
+	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "k1.7a",        0x0000, 0x0800, CRC(977e37cf) SHA1(88ff1e4edadf5cfc83413a1fe999aecf4ba72232) )
+	ROM_LOAD( "k2.9a",        0x0800, 0x0800, CRC(15e387ce) SHA1(d804b1391de5a15c336aa53c812b4a885f830191) )
+
+	ROM_REGION( 0x0020, REGION_PROMS, 0 )
+	ROM_LOAD( "mmi6331.7f",   0x0000, 0x0020, CRC(24652bc4) SHA1(d89575f3749c75dc963317fe451ffeffd9856e4d) ) /* Compatible with 82s123 prom */
 ROM_END
 
 ROM_START( tst_galx )
@@ -5088,7 +5101,7 @@ ROM_START( mooncrst )
 	ROM_LOAD( "mcs_c",        0x1800, 0x0800, CRC(24cfd145) SHA1(08c6599db170dd6ee364c44f70a0f5c0f881b6ef) )
 
 	ROM_REGION( 0x0020, REGION_PROMS, 0 )
-	ROM_LOAD( "l06_prom.bin", 0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) )
+	ROM_LOAD( "mmi6331.6l", 0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) ) /* Compatible with 82s123 prom */
 ROM_END
 
 ROM_START( mooncrsu )
@@ -5109,7 +5122,7 @@ ROM_START( mooncrsu )
 	ROM_LOAD( "mcs_c",        0x1800, 0x0800, CRC(24cfd145) SHA1(08c6599db170dd6ee364c44f70a0f5c0f881b6ef) )
 
 	ROM_REGION( 0x0020, REGION_PROMS, 0 )
-	ROM_LOAD( "l06_prom.bin", 0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) )
+	ROM_LOAD( "mmi6331.6l", 0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) ) /* Compatible with 82s123 prom */
 ROM_END
 
 ROM_START( mooncrsa )
@@ -5130,7 +5143,7 @@ ROM_START( mooncrsa )
 	ROM_LOAD( "mcs_c",        0x1800, 0x0800, CRC(24cfd145) SHA1(08c6599db170dd6ee364c44f70a0f5c0f881b6ef) )
 
 	ROM_REGION( 0x0020, REGION_PROMS, 0 )
-	ROM_LOAD( "l06_prom.bin", 0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) )
+	ROM_LOAD( "mmi6331.6l", 0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) ) /* Compatible with 82s123 prom */
 ROM_END
 
 ROM_START( mooncrsg )
@@ -5151,7 +5164,7 @@ ROM_START( mooncrsg )
 	ROM_LOAD( "mcs_c",        0x1800, 0x0800, CRC(24cfd145) SHA1(08c6599db170dd6ee364c44f70a0f5c0f881b6ef) )
 
 	ROM_REGION( 0x0020, REGION_PROMS, 0 )
-	ROM_LOAD( "l06_prom.bin", 0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) )
+	ROM_LOAD( "mmi6331.6l", 0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) ) /* Compatible with 82s123 prom */
 ROM_END
 
 ROM_START( smooncrs )
@@ -5172,7 +5185,7 @@ ROM_START( smooncrs )
 	ROM_LOAD( "mcs_c",        0x1800, 0x0800, CRC(24cfd145) SHA1(08c6599db170dd6ee364c44f70a0f5c0f881b6ef) )
 
 	ROM_REGION( 0x0020, REGION_PROMS, 0 )
-	ROM_LOAD( "l06_prom.bin", 0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) )
+	ROM_LOAD( "mmi6331.6l", 0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) ) /* Compatible with 82s123 prom */
 ROM_END
 
 ROM_START( mooncrsb )
@@ -5182,7 +5195,6 @@ ROM_START( mooncrsb )
 	ROM_LOAD( "f03.bin",      0x1000, 0x0800, CRC(29a2b0ab) SHA1(e9fc7161d0566e36307c45b7132e2262c0af4845) )
 	ROM_LOAD( "f04.bin",      0x1800, 0x0800, CRC(4c6a5a6d) SHA1(366516f63c9b5239e703e4dfb672659049ddbf44) )
 	ROM_LOAD( "e5",           0x2000, 0x0800, CRC(06d378a6) SHA1(99dbe9fc7f95f8fdce86eb5c32bd1ca1bea0ca3c) )
-
 	ROM_LOAD( "bepr199",      0x2800, 0x0800, CRC(6e84a927) SHA1(82e8e825d157c3c947a3a222bca059a735169c7d) )
 	ROM_LOAD( "e7",           0x3000, 0x0800, CRC(b45af1e8) SHA1(d7020774707234acdaef5c655f667d5ee9e54a13) )
 	ROM_LOAD( "bepr201",      0x3800, 0x0800, CRC(66da55d5) SHA1(39e2f6107e77ee97860147f64b9673cd9a2ae612) )
@@ -5194,7 +5206,7 @@ ROM_START( mooncrsb )
 	ROM_LOAD( "mcs_c",        0x1800, 0x0800, CRC(24cfd145) SHA1(08c6599db170dd6ee364c44f70a0f5c0f881b6ef) )
 
 	ROM_REGION( 0x0020, REGION_PROMS, 0 )
-	ROM_LOAD( "l06_prom.bin", 0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) )
+	ROM_LOAD( "mmi6331.6l", 0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) ) /* Compatible with 82s123 prom */
 ROM_END
 
 ROM_START( mooncrs2 )
@@ -5221,7 +5233,34 @@ ROM_START( mooncrs2 )
 	ROM_CONTINUE(             0x1e00, 0x0200 )
 
 	ROM_REGION( 0x0020, REGION_PROMS, 0 )
-	ROM_LOAD( "l06_prom.bin", 0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) )
+	ROM_LOAD( "mmi6331.6l", 0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) ) /* Compatible with 82s123 prom */
+ROM_END
+
+ROM_START( mooncrs3 ) /* Bootleg by Jeutel, very simular to Moon Cresta (bootleg set 2) */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
+	ROM_LOAD( "b1.7f",  0x0000, 0x0800, CRC(0b28cd8a) SHA1(a1aa0ec63e1dddf4263aa39f6a5fda93108b6e98) )
+	ROM_CONTINUE(       0x2000, 0x0800 )
+	ROM_LOAD( "b2.7h",  0x0800, 0x0800, CRC(74a6f0ca) SHA1(cc8e8193bb6bd62f6cb9ea924e4da5ddc44c4685) )
+	ROM_CONTINUE(       0x2800, 0x0800 )
+	ROM_LOAD( "b3.7j",  0x1000, 0x0800, CRC(eeb34cc9) SHA1(c5e7d5e1989211be949972e4281403b7b4866922) )
+	ROM_CONTINUE(       0x3000, 0x0800 )
+	ROM_LOAD( "b4.7k",  0x1800, 0x0800, CRC(714330e5) SHA1(c681752732c73a6c9bcc9acdcd5c978c455acba0) )
+	ROM_CONTINUE(       0x3800, 0x0800 )
+
+	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "o.1h",  0x0000, 0x0800, CRC(528da705) SHA1(d726ee18b79774c982f88afb2a508eb5d5783193) )
+	ROM_LOAD( "q.1h",  0x0800, 0x0200, CRC(5a4b17ea) SHA1(8a879dc34fdecc8a121c4a87abb981212fb05945) )
+	ROM_CONTINUE(      0x0c00, 0x0200 )	/* this version of the gfx ROMs has two */
+	ROM_CONTINUE(      0x0a00, 0x0200 )	/* groups of 16 sprites swapped */
+	ROM_CONTINUE(      0x0e00, 0x0200 )
+	ROM_LOAD( "p.1k",  0x1000, 0x0800, CRC(4e79ff6b) SHA1(f72386a3766a7fcc7b4b8cedfa58b8d57f911f6f) )
+	ROM_LOAD( "r.1k",  0x1800, 0x0200, CRC(e0edccbd) SHA1(0839a4c9b6e863d12253ae8e1732e80e08702228) )
+	ROM_CONTINUE(      0x1c00, 0x0200 )
+	ROM_CONTINUE(      0x1a00, 0x0200 )
+	ROM_CONTINUE(      0x1e00, 0x0200 )
+
+	ROM_REGION( 0x0020, REGION_PROMS, 0 )
+	ROM_LOAD( "mmi6331.6l", 0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) ) /* Compatible with 82s123 prom */
 ROM_END
 
 ROM_START( fantazia )
@@ -5369,7 +5408,7 @@ ROM_START( skybase )
 	ROM_LOAD( "skybase.9t",   0x3000, 0x1000, CRC(0871291f) SHA1(2e4e802316b55711bcfeb48d84bacd11afff8cb3) )
 
 	ROM_REGION( 0x0020, REGION_PROMS, 0 )
-	ROM_LOAD( "skybase.123",  0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) )
+	ROM_LOAD( "82s123.bpr",  0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) ) /* Color prom */
 ROM_END
 
 ROM_START( moonqsr )
@@ -5591,7 +5630,7 @@ ROM_START( scorpnmc )
 	ROM_LOAD( "k.bin",        0x1000, 0x1000, CRC(a57adb0a) SHA1(d97c7dc4a6c5efb59cc0148e2498156c682c6714) )
 
 	ROM_REGION( 0x0020, REGION_PROMS, 0 )
-	ROM_LOAD( "6331.bin",     0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) )
+	ROM_LOAD( "mmi6331.bpr",  0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) ) /* Compatible with 82s123 prom */
 ROM_END
 
 ROM_START( frogg )
@@ -5992,29 +6031,29 @@ ROM_START( trvchlng )
 ROM_END
 
 ROM_START( luctoday )
-   ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 64k for code */
-   ROM_LOAD( "ltprog1.bin", 0x0000, 0x0800, CRC(59c389b9) SHA1(1e158ced3b56db2c51e422fb4c0b8893565f1956))
-   ROM_LOAD( "ltprog2.bin", 0x2000, 0x0800, CRC(ac3893b1) SHA1(f6b9cd8111b367ff7030cba52fe965959d92568f))
+	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 64k for code */
+	ROM_LOAD( "ltprog1.bin", 0x0000, 0x0800, CRC(59c389b9) SHA1(1e158ced3b56db2c51e422fb4c0b8893565f1956))
+	ROM_LOAD( "ltprog2.bin", 0x2000, 0x0800, CRC(ac3893b1) SHA1(f6b9cd8111b367ff7030cba52fe965959d92568f))
 
-   ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
-   ROM_LOAD( "ltchar2.bin", 0x0000, 0x0800, CRC(8cd73bdc) SHA1(6174f7347d2c96f9c5074bc0da5a370c9b07461b))
-   ROM_LOAD( "ltchar1.bin", 0x0800, 0x0800, CRC(b5ba9946) SHA1(7222cbe8c41ca74b214f4dd5439bf69d90f4644e))
+	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "ltchar2.bin", 0x0000, 0x0800, CRC(8cd73bdc) SHA1(6174f7347d2c96f9c5074bc0da5a370c9b07461b))
+	ROM_LOAD( "ltchar1.bin", 0x0800, 0x0800, CRC(b5ba9946) SHA1(7222cbe8c41ca74b214f4dd5439bf69d90f4644e))
 
-   ROM_REGION( 0x0020, REGION_PROMS, 0 )/*This may not be the correct prom */
-   ROM_LOAD( "74s288.ch", 0x0000, 0x0020, BAD_DUMP CRC(24652bc4) SHA1(d89575f3749c75dc963317fe451ffeffd9856e4d))
+	ROM_REGION( 0x0020, REGION_PROMS, 0 )/*This may not be the correct prom */
+	ROM_LOAD( "74s288.ch", 0x0000, 0x0020, BAD_DUMP CRC(24652bc4) SHA1(d89575f3749c75dc963317fe451ffeffd9856e4d))
 ROM_END
 
 ROM_START( chewing )
-   ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 64k for code */
-   ROM_LOAD( "1.bin", 0x0000, 0x1000, CRC(7470b347) SHA1(315d2631b50a6e469b9538318d95452e8d2e1f69) )
-   ROM_LOAD( "7l.bin", 0x2000, 0x0800, CRC(78ebed36) SHA1(e80185737c8ac448901cf0e60ca50d967c323b34) )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 64k for code */
+	ROM_LOAD( "1.bin", 0x0000, 0x1000, CRC(7470b347) SHA1(315d2631b50a6e469b9538318d95452e8d2e1f69) )
+	ROM_LOAD( "7l.bin", 0x2000, 0x0800, CRC(78ebed36) SHA1(e80185737c8ac448901cf0e60ca50d967c323b34) )
 
-   ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
-   ROM_LOAD( "2.bin", 0x0000, 0x0800, CRC(88c605f3) SHA1(938a9fadfa0994a1d2fc9b3266ec4ccdb5ec6d3a) )
-   ROM_LOAD( "3.bin", 0x0800, 0x0800, CRC(77ac016a) SHA1(fa5b1e79603ca8d2ee7b3d0a78f12d9ffeec3fd4) )
+	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "2.bin", 0x0000, 0x0800, CRC(88c605f3) SHA1(938a9fadfa0994a1d2fc9b3266ec4ccdb5ec6d3a) )
+	ROM_LOAD( "3.bin", 0x0800, 0x0800, CRC(77ac016a) SHA1(fa5b1e79603ca8d2ee7b3d0a78f12d9ffeec3fd4) )
 
-   ROM_REGION( 0x0020, REGION_PROMS, 0 )
-   ROM_LOAD( "74s288.ch", 0x0000, 0x0020, CRC(24652bc4) SHA1(d89575f3749c75dc963317fe451ffeffd9856e4d) )
+	ROM_REGION( 0x0020, REGION_PROMS, 0 )
+	ROM_LOAD( "74s288.ch", 0x0000, 0x0020, CRC(24652bc4) SHA1(d89575f3749c75dc963317fe451ffeffd9856e4d) )
 ROM_END
 
 GAME( 1979, galaxian, 0,        galaxian, galaxian, 0,        ROT90,  "Namco", "Galaxian (Namco set 1)", GAME_SUPPORTS_SAVE )
@@ -6029,6 +6068,7 @@ GAME( 1979, galap4,   galaxian, galaxian, superg,   0,        ROT90,  "hack", "G
 GAME( 1979, galturbo, galaxian, galaxian, superg,   0,        ROT90,  "hack", "Galaxian Turbo", GAME_SUPPORTS_SAVE )
 GAME( 1979, swarm,    galaxian, galaxian, swarm,    0,        ROT90,  "hack", "Swarm", GAME_SUPPORTS_SAVE )
 GAME( 1979, zerotime, galaxian, galaxian, zerotime, 0,        ROT90,  "Petaco S.A.", "Zero Time", GAME_SUPPORTS_SAVE )
+GAME( 1979, starfght, galaxian, galaxian, swarm,    0,        ROT90,  "Jeutel", "Star Fighter", GAME_SUPPORTS_SAVE )
 GAME( 19??, tst_galx, galaxian, galaxian, galaxian, 0,        ROT90,  "Test ROM", "Galaxian Test ROM", GAME_SUPPORTS_SAVE )
 GAME( 1981, gmgalax,  0,        gmgalax,  gmgalax,  gmgalax,  ROT90,  "bootleg", "Ghostmuncher Galaxian (bootleg)", GAME_SUPPORTS_SAVE )
 GAME( 19??, pisces,   0,        pisces,   pisces,   pisces,	  ROT90,  "Subelectro", "Pisces", GAME_SUPPORTS_SAVE )
@@ -6067,6 +6107,7 @@ GAME( 1980, mooncrsg, mooncrst, mooncrst, mooncrsg, mooncrsu, ROT90,  "Gremlin",
 GAME( 1980?,smooncrs, mooncrst, mooncrst, smooncrs, mooncrsu, ROT90,  "Gremlin", "Super Moon Cresta", GAME_SUPPORTS_SAVE )
 GAME( 1980, mooncrsb, mooncrst, mooncrst, mooncrsa, mooncrsu, ROT90,  "bootleg", "Moon Cresta (bootleg set 1)", GAME_SUPPORTS_SAVE )
 GAME( 1980, mooncrs2, mooncrst, mooncrst, mooncrsa, mooncrsu, ROT90,  "Nichibutsu", "Moon Cresta (bootleg set 2)", GAME_SUPPORTS_SAVE )
+GAME( 1980, mooncrs3, mooncrst, mooncrst, mooncrsa, mooncrsu, ROT90,  "bootleg", "Moon Cresta (bootleg set 3)", GAME_SUPPORTS_SAVE ) /* Jeutel bootleg, similar to bootleg set 2 */
 GAME( 1980, fantazia, mooncrst, mooncrst, fantazia, mooncrsu, ROT90,  "bootleg", "Fantazia", GAME_SUPPORTS_SAVE )
 GAME( 1980, eagle,    mooncrst, mooncrst, eagle,    mooncrsu, ROT90,  "Centuri", "Eagle (set 1)", GAME_SUPPORTS_SAVE )
 GAME( 1980, eagle2,   mooncrst, mooncrst, eagle2,   mooncrsu, ROT90,  "Centuri", "Eagle (set 2)", GAME_SUPPORTS_SAVE )

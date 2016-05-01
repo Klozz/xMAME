@@ -10,11 +10,9 @@
  */
 
 #include "driver.h"
-#include "state.h"
 #include "vidhrdw/konamiic.h"
 #include "machine/konamigx.h"
-#include "machine/random.h"
-#include "math.h"
+#include <math.h>
 
 
 static struct
@@ -1242,15 +1240,15 @@ int konamigx_mixer_init(int objdma)
 	gx_primode = 0;
 
 	gx_objzbuf = (UINT8 *)priority_bitmap->base;
-	if (!(gx_shdzbuf = auto_malloc(GX_ZBUFSIZE))) return(1);
-	if (!(gx_objpool = auto_malloc(sizeof(struct GX_OBJ) * (GX_MAX_OBJECTS)))) return(1);
+	gx_shdzbuf = auto_malloc(GX_ZBUFSIZE);
+	gx_objpool = auto_malloc(sizeof(struct GX_OBJ) * (GX_MAX_OBJECTS));
 
 	K053247_export_config(&K053247_ram, &K053247_gfx, &K053247_callback, &K053247_dx, &K053247_dy);
 	K054338_export_config(&K054338_shdRGB);
 
 	if (objdma)
 	{
-		if (!(gx_spriteram = auto_malloc(0x1000))) return(1);
+		gx_spriteram = auto_malloc(0x1000);
 		gx_objdma = 1;
 	}
 	else
@@ -1913,7 +1911,7 @@ WRITE16_HANDLER( K055550_word_w )
 				/* be tied with another 13x128-byte table at 0x205080. */
 				/* Both tables appear "check-only" and have little effect on gameplay. */
 				count =(prot_data[0] & 0xff) + 1;          /* unknown ( byte 0x00) */
-				i     = prot_data[1] >> 16;                /* unknown ( byte 0x1f) */
+				i     = prot_data[1];                      /* unknown ( byte 0x1f) */
 				adr   = prot_data[7]<<16 | prot_data[8];   /* address (dword 0x210e00) */
 				lim   = prot_data[9];                      /* unknown ( word 0x0010) */
 				src   = prot_data[10]<<16 | prot_data[11]; /* unknown (dword zero) */

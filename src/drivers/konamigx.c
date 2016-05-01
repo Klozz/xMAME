@@ -98,9 +98,7 @@
 #define GX_SKIPIDLE  1
 
 #include "driver.h"
-#include "state.h"
 
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
@@ -121,7 +119,8 @@ VIDEO_START(opengolf);
 VIDEO_START(racinfrc);
 VIDEO_UPDATE(konamigx);
 
-MACHINE_INIT(konamigx);
+MACHINE_START(konamigx);
+MACHINE_RESET(konamigx);
 
 WRITE32_HANDLER( konamigx_palette_w );
 WRITE32_HANDLER( konamigx_palette2_w );
@@ -1318,7 +1317,8 @@ static MACHINE_DRIVER_START( konamigx )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(600)
 
-	MDRV_MACHINE_INIT(konamigx)
+	MDRV_MACHINE_START(konamigx)
+	MDRV_MACHINE_RESET(konamigx)
 	MDRV_NVRAM_HANDLER(konamigx_93C46)
 
 	/* video hardware */
@@ -1762,16 +1762,16 @@ INPUT_PORTS_START( le2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START /* mask default type                     sens delta min max */
-	PORT_BIT( 0xff, 0x00, IPT_LIGHTGUN_X ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
 	PORT_START
-	PORT_BIT( 0xff, 0x00, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
 	PORT_START
-	PORT_BIT( 0xff, 0x00, IPT_LIGHTGUN_X ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
 	PORT_START
-	PORT_BIT( 0xff, 0x00, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(2)
 INPUT_PORTS_END
 
 INPUT_PORTS_START( gokuparo )
@@ -2016,10 +2016,10 @@ INPUT_PORTS_START( dragoonj )
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Stereo ))
 	PORT_DIPSETTING(    0x00, DEF_STR( Stereo ))
 	PORT_DIPSETTING(    0x01, DEF_STR( Mono ))
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Flip_Screen ) )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Cabinet ) )
@@ -2136,7 +2136,7 @@ INPUT_PORTS_END
 #define GX_BIOS ROM_LOAD("300a01.34k", 0x000000, 128*1024, CRC(d5fa95f5) SHA1(c483aa98ff8ef40cdac359c19ad23fea5ecc1906) )
 
 ROM_START(konamigx)
-	ROM_REGION( 0x10000, REGION_CPU1, 0)
+	ROM_REGION( 0x800000, REGION_CPU1, 0)
 	GX_BIOS
 ROM_END
 
@@ -3228,7 +3228,15 @@ ROM_END
 /**********************************************************************************/
 /* initializers */
 
-MACHINE_INIT(konamigx)
+MACHINE_START( konamigx )
+{
+	state_save_register_global(konamigx_wrport1_1);
+	state_save_register_global_array(sndto020);
+	state_save_register_global_array(sndto000);
+	return 0;
+}
+
+MACHINE_RESET(konamigx)
 {
 	int i;
 
@@ -3286,10 +3294,6 @@ static DRIVER_INIT(konamigx)
 	esc_cb = 0;
 	snd020_hack = 0;
 	resume_trigger = 0;
-
-	state_save_register_UINT8("KonamiGX", 0, "IRQ enable", &konamigx_wrport1_1, 1);
-	state_save_register_UINT8("KonamiGX", 0, "Sound comms 1", sndto020, 16);
-	state_save_register_UINT8("KonamiGX", 0, "Sound comms 2", sndto000, 16);
 
 	dmadelay_timer = timer_alloc(dmaend_callback);
 

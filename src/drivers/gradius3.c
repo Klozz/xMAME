@@ -16,7 +16,6 @@ konamiic.c. They don't seem to be used by this game.
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
@@ -77,7 +76,7 @@ static WRITE16_HANDLER( K051960_halfword_w )
 static int irqAen,irqBmask;
 
 
-static MACHINE_INIT( gradius3 )
+static MACHINE_RESET( gradius3 )
 {
 	/* start with cpu B halted */
 	cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
@@ -393,7 +392,7 @@ static MACHINE_DRIVER_START( gradius3 )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
-	MDRV_MACHINE_INIT(gradius3)
+	MDRV_MACHINE_RESET(gradius3)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
@@ -445,7 +444,7 @@ ROM_START( gradius3 )
 	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64k for the audio CPU */
 	ROM_LOAD( "945_m05.d9",				0x00000, 0x10000, CRC(c8c45365) SHA1(b9a7b736b52bca42c7b8c8ed64c8df73e0116158) )
 
-	ROM_REGION( 0x20000, REGION_GFX1, 0 )	/* fake */
+	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_ERASE00 )	/* fake */
 	/* gfx data is dynamically generated in RAM */
 
 	ROM_REGION( 0x200000, REGION_GFX2, 0 )	/* graphics (addressable by the main CPU) */
@@ -487,7 +486,7 @@ ROM_START( grdius3a )
 	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64k for the audio CPU */
 	ROM_LOAD( "945_m05.d9",				0x00000, 0x10000, CRC(c8c45365) SHA1(b9a7b736b52bca42c7b8c8ed64c8df73e0116158) )
 
-	ROM_REGION( 0x20000, REGION_GFX1, 0 )	/* fake */
+	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_ERASE00 )	/* fake */
 	/* gfx data is dynamically generated in RAM */
 
 	ROM_REGION( 0x200000, REGION_GFX2, 0 )	/* graphics (addressable by the main CPU) */
@@ -529,7 +528,7 @@ ROM_START( grdius3e )
 	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64k for the audio CPU */
 	ROM_LOAD( "945_m05.d9",				0x00000, 0x10000, CRC(c8c45365) SHA1(b9a7b736b52bca42c7b8c8ed64c8df73e0116158) ) /* 945_r05.d9 */
 
-	ROM_REGION( 0x20000, REGION_GFX1, 0 )	/* fake */
+	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_ERASE00 )	/* fake */
 	/* gfx data is dynamically generated in RAM */
 
 	ROM_REGION( 0x200000, REGION_GFX2, 0 )	/* graphics (addressable by the main CPU) */

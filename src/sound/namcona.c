@@ -32,7 +32,8 @@
 */
 
 #include <math.h>
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "namcona.h"
 
 #define kTwelfthRootTwo 1.059463094
@@ -146,7 +147,7 @@ static const UINT16 VolCtrlSpeedTable[0x80] =
  * ---------x------ 1 if the main CPU has written a new sound command
  * ----------xxxxxx unknown/unused
  */
-UINT16 *
+static UINT16 *
 GetSequenceStatusAddr( struct namcona *chip, struct sequence *pSeq )
 {
 	int offs = pSeq - chip->mSequence;
@@ -1138,10 +1139,7 @@ static void *namcona_start(int sndindex, int clock, const void *config)
 	memset( chip->mSequence, 0x00, sizeof(chip->mSequence) );
 
 	chip->mpMixerBuffer = auto_malloc( sizeof(INT16)*chip->mSampleRate*2 );
-	if( chip->mpMixerBuffer )
-	{
-		chip->mpPitchTable = auto_malloc( sizeof(INT32)*0xff );
-		if( chip->mpPitchTable )
+	chip->mpPitchTable = auto_malloc( sizeof(INT32)*0xff );
 		{
 			int i;
 			for( i=0; i<0xff; i++ )
@@ -1160,10 +1158,8 @@ static void *namcona_start(int sndindex, int clock, const void *config)
 				}
 				chip->mpPitchTable[i] = (INT32)freq;
 			}
-			return chip;
 		}
-	}
-	return NULL;
+	return chip;
 } /* NAMCONA_sh_start */
 
 #if 0
@@ -1301,7 +1297,7 @@ namcona_stop( void *chip )
  * Generic get_info
  **************************************************************************/
 
-static void namcona_set_info(void *token, UINT32 state, union sndinfo *info)
+static void namcona_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -1310,7 +1306,7 @@ static void namcona_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void namcona_get_info(void *token, UINT32 state, union sndinfo *info)
+void namcona_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

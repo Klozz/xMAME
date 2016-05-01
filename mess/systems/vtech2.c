@@ -472,7 +472,7 @@ static MACHINE_DRIVER_START( laser350 )
 	MDRV_VBLANK_DURATION(0)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( laser350 )
+	MDRV_MACHINE_RESET( laser350 )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -497,21 +497,21 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( laser500 )
 	MDRV_IMPORT_FROM( laser350 )
-	MDRV_MACHINE_INIT( laser500 )
+	MDRV_MACHINE_RESET( laser500 )
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( laser700 )
 	MDRV_IMPORT_FROM( laser350 )
-	MDRV_MACHINE_INIT( laser700 )
+	MDRV_MACHINE_RESET( laser700 )
 MACHINE_DRIVER_END
 
 
 ROM_START(laser350)
 	ROM_REGION(0x40000,REGION_CPU1,0)
-	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, CRC(9bed01f7))
+	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, CRC(9bed01f7) SHA1(3210fddfab2f4c7855fa902fb8e2fc18d10d48f1))
 	ROM_REGION(0x00800,REGION_GFX1,0)
-	ROM_LOAD("laser.fnt",   0x00000, 0x00800, CRC(ed6bfb2a))
+	ROM_LOAD("laser.fnt",   0x00000, 0x00800, CRC(ed6bfb2a) SHA1(95e247021a10167b9de1d6ffc91ec4ba83b0ec87))
 	ROM_REGION(0x00100,REGION_GFX2,0)
     /* initialized in init_laser */
 ROM_END
@@ -519,18 +519,18 @@ ROM_END
 
 ROM_START(laser500)
 	ROM_REGION(0x40000,REGION_CPU1,0)
-	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, CRC(9bed01f7))
+	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, CRC(9bed01f7) SHA1(3210fddfab2f4c7855fa902fb8e2fc18d10d48f1))
 	ROM_REGION(0x00800,REGION_GFX1,0)
-	ROM_LOAD("laser.fnt",   0x00000, 0x00800, CRC(ed6bfb2a))
+	ROM_LOAD("laser.fnt",   0x00000, 0x00800, CRC(ed6bfb2a) SHA1(95e247021a10167b9de1d6ffc91ec4ba83b0ec87))
 	ROM_REGION(0x00100,REGION_GFX2,0)
 	/* initialized in init_laser */
 ROM_END
 
 ROM_START(laser700)
 	ROM_REGION(0x40000,REGION_CPU1,0)
-	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, CRC(9bed01f7))
+	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, CRC(9bed01f7) SHA1(3210fddfab2f4c7855fa902fb8e2fc18d10d48f1))
 	ROM_REGION(0x00800,REGION_GFX1,0)
-	ROM_LOAD("laser.fnt",   0x00000, 0x00800, CRC(ed6bfb2a))
+	ROM_LOAD("laser.fnt",   0x00000, 0x00800, CRC(ed6bfb2a) SHA1(95e247021a10167b9de1d6ffc91ec4ba83b0ec87))
 	ROM_REGION(0x00100,REGION_GFX2,0)
 	/* initialized in init_laser */
 ROM_END
@@ -542,33 +542,58 @@ ROM_END
 
 ***************************************************************************/
 
-static void laser_cassette_getinfo(struct IODevice *dev)
+static void laser_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
-	cassette_device_getinfo(dev, vtech2_cassette_formats, NULL, (cassette_state) -1);
-	dev->count = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) vtech2_cassette_formats; break;
+
+		default:										cassette_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void laser_cartslot_getinfo(struct IODevice *dev)
+static void laser_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 1;
-	dev->file_extensions = "rom\0";
-	dev->load = device_load_laser_cart;
-	dev->unload = device_unload_laser_cart;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_laser_cart; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_laser_cart; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void laser_floppy_getinfo(struct IODevice *dev)
+static void laser_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	dev->type = IO_FLOPPY;
-	dev->count = 2;
-	dev->file_extensions = "dsk\0";
-	dev->readable = 1;
-	dev->writeable = 0;
-	dev->creatable = 0;
-	dev->load = device_load_laser_floppy;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_FLOPPY; break;
+		case DEVINFO_INT_READABLE:						info->i = 1; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 0; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case DEVINFO_INT_COUNT:							info->i = 2; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_laser_floppy; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+	}
 }
 
 SYSTEM_CONFIG_START(laser)

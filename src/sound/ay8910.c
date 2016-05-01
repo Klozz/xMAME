@@ -10,13 +10,14 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
+#include "cpuintrf.h"
 #include "ay8910.h"
-#include "state.h"
 
 #define MAX_OUTPUT 0x7fff
 
-#define STEP 0x8000
+#define STEP 2
 
 
 struct AY8910
@@ -25,7 +26,6 @@ struct AY8910
 	int streams;
 	int ready;
 	sound_stream *Channel;
-	int SampleRate;
 	read8_handler PortAread;
 	read8_handler PortBread;
 	write8_handler PortAwrite;
@@ -33,7 +33,6 @@ struct AY8910
 	INT32 register_latch;
 	UINT8 Regs[16];
 	INT32 lastEnable;
-	UINT32 UpdateStep;
 	INT32 PeriodA,PeriodB,PeriodC,PeriodN,PeriodE;
 	INT32 CountA,CountB,CountC,CountN,CountE;
 	UINT32 VolA,VolB,VolC,VolE;
@@ -88,8 +87,8 @@ void _AYWriteReg(struct AY8910 *PSG, int r, int v)
 	case AY_ACOARSE:
 		PSG->Regs[AY_ACOARSE] &= 0x0f;
 		old = PSG->PeriodA;
-		PSG->PeriodA = (PSG->Regs[AY_AFINE] + 256 * PSG->Regs[AY_ACOARSE]) * PSG->UpdateStep;
-		if (PSG->PeriodA == 0) PSG->PeriodA = PSG->UpdateStep;
+		PSG->PeriodA = (PSG->Regs[AY_AFINE] + 256 * PSG->Regs[AY_ACOARSE]) * STEP;
+		if (PSG->PeriodA == 0) PSG->PeriodA = STEP;
 		PSG->CountA += PSG->PeriodA - old;
 		if (PSG->CountA <= 0) PSG->CountA = 1;
 		break;
@@ -97,8 +96,8 @@ void _AYWriteReg(struct AY8910 *PSG, int r, int v)
 	case AY_BCOARSE:
 		PSG->Regs[AY_BCOARSE] &= 0x0f;
 		old = PSG->PeriodB;
-		PSG->PeriodB = (PSG->Regs[AY_BFINE] + 256 * PSG->Regs[AY_BCOARSE]) * PSG->UpdateStep;
-		if (PSG->PeriodB == 0) PSG->PeriodB = PSG->UpdateStep;
+		PSG->PeriodB = (PSG->Regs[AY_BFINE] + 256 * PSG->Regs[AY_BCOARSE]) * STEP;
+		if (PSG->PeriodB == 0) PSG->PeriodB = STEP;
 		PSG->CountB += PSG->PeriodB - old;
 		if (PSG->CountB <= 0) PSG->CountB = 1;
 		break;
@@ -106,16 +105,16 @@ void _AYWriteReg(struct AY8910 *PSG, int r, int v)
 	case AY_CCOARSE:
 		PSG->Regs[AY_CCOARSE] &= 0x0f;
 		old = PSG->PeriodC;
-		PSG->PeriodC = (PSG->Regs[AY_CFINE] + 256 * PSG->Regs[AY_CCOARSE]) * PSG->UpdateStep;
-		if (PSG->PeriodC == 0) PSG->PeriodC = PSG->UpdateStep;
+		PSG->PeriodC = (PSG->Regs[AY_CFINE] + 256 * PSG->Regs[AY_CCOARSE]) * STEP;
+		if (PSG->PeriodC == 0) PSG->PeriodC = STEP;
 		PSG->CountC += PSG->PeriodC - old;
 		if (PSG->CountC <= 0) PSG->CountC = 1;
 		break;
 	case AY_NOISEPER:
 		PSG->Regs[AY_NOISEPER] &= 0x1f;
 		old = PSG->PeriodN;
-		PSG->PeriodN = PSG->Regs[AY_NOISEPER] * PSG->UpdateStep;
-		if (PSG->PeriodN == 0) PSG->PeriodN = PSG->UpdateStep;
+		PSG->PeriodN = PSG->Regs[AY_NOISEPER] * STEP;
+		if (PSG->PeriodN == 0) PSG->PeriodN = STEP;
 		PSG->CountN += PSG->PeriodN - old;
 		if (PSG->CountN <= 0) PSG->CountN = 1;
 		break;
@@ -156,8 +155,8 @@ void _AYWriteReg(struct AY8910 *PSG, int r, int v)
 	case AY_EFINE:
 	case AY_ECOARSE:
 		old = PSG->PeriodE;
-		PSG->PeriodE = ((PSG->Regs[AY_EFINE] + 256 * PSG->Regs[AY_ECOARSE])) * PSG->UpdateStep;
-		if (PSG->PeriodE == 0) PSG->PeriodE = PSG->UpdateStep / 2;
+		PSG->PeriodE = ((PSG->Regs[AY_EFINE] + 256 * PSG->Regs[AY_ECOARSE])) * STEP;
+		if (PSG->PeriodE == 0) PSG->PeriodE = STEP / 2;
 		PSG->CountE += PSG->PeriodE - old;
 		if (PSG->CountE <= 0) PSG->CountE = 1;
 		break;
@@ -622,14 +621,16 @@ static void AY8910_init(struct AY8910 *PSG, int streams,
 		read8_handler portAread,read8_handler portBread,
 		write8_handler portAwrite,write8_handler portBwrite)
 {
-    sample_rate = clock/8;
-
-	PSG->SampleRate = sample_rate;
 	PSG->PortAread = portAread;
 	PSG->PortBread = portBread;
 	PSG->PortAwrite = portAwrite;
 	PSG->PortBwrite = portBwrite;
-	PSG->Channel = stream_create(0,streams,sample_rate,PSG,AY8910Update);
+
+	/* the step clock for the tone and noise generators is the chip clock    */
+	/* divided by 8; for the envelope generator of the AY-3-8910, it is half */
+	/* that much (clock/16), but the envelope of the YM2149 goes twice as    */
+	/* fast, therefore again clock/8.                                        */
+	PSG->Channel = stream_create(0,streams,clock/8,PSG,AY8910Update);
 
 	ay8910_set_clock_ym(PSG,clock);
 }
@@ -637,43 +638,42 @@ static void AY8910_init(struct AY8910 *PSG, int streams,
 
 static void AY8910_statesave(struct AY8910 *PSG, int sndindex)
 {
-	state_save_register_INT32("AY8910",  sndindex, "register_latch", &PSG->register_latch, 1);
-	state_save_register_UINT8("AY8910",  sndindex, "Regs",           PSG->Regs,            16);
-	state_save_register_INT32("AY8910",  sndindex, "lastEnable",     &PSG->lastEnable,     1);
-	state_save_register_UINT32("AY8910", sndindex, "UpdateStep",     &PSG->UpdateStep,     1);
+	state_save_register_item("AY8910", sndindex, PSG->register_latch);
+	state_save_register_item_array("AY8910", sndindex, PSG->Regs);
+	state_save_register_item("AY8910", sndindex, PSG->lastEnable);
 
-	state_save_register_INT32("AY8910",  sndindex, "PeriodA",        &PSG->PeriodA,        1);
-	state_save_register_INT32("AY8910",  sndindex, "PeriodB",        &PSG->PeriodB,        1);
-	state_save_register_INT32("AY8910",  sndindex, "PeriodC",        &PSG->PeriodC,        1);
-	state_save_register_INT32("AY8910",  sndindex, "PeriodN",        &PSG->PeriodN,        1);
-	state_save_register_INT32("AY8910",  sndindex, "PeriodE",        &PSG->PeriodE,        1);
+	state_save_register_item("AY8910", sndindex, PSG->PeriodA);
+	state_save_register_item("AY8910", sndindex, PSG->PeriodB);
+	state_save_register_item("AY8910", sndindex, PSG->PeriodC);
+	state_save_register_item("AY8910", sndindex, PSG->PeriodN);
+	state_save_register_item("AY8910", sndindex, PSG->PeriodE);
 
-	state_save_register_INT32("AY8910",  sndindex, "CountA",         &PSG->CountA,         1);
-	state_save_register_INT32("AY8910",  sndindex, "CountB",         &PSG->CountB,         1);
-	state_save_register_INT32("AY8910",  sndindex, "CountC",         &PSG->CountC,         1);
-	state_save_register_INT32("AY8910",  sndindex, "CountN",         &PSG->CountN,         1);
-	state_save_register_INT32("AY8910",  sndindex, "CountE",         &PSG->CountE,         1);
+	state_save_register_item("AY8910", sndindex, PSG->CountA);
+	state_save_register_item("AY8910", sndindex, PSG->CountB);
+	state_save_register_item("AY8910", sndindex, PSG->CountC);
+	state_save_register_item("AY8910", sndindex, PSG->CountN);
+	state_save_register_item("AY8910", sndindex, PSG->CountE);
 
-	state_save_register_UINT32("AY8910", sndindex, "VolA",           &PSG->VolA,           1);
-	state_save_register_UINT32("AY8910", sndindex, "VolB",           &PSG->VolB,           1);
-	state_save_register_UINT32("AY8910", sndindex, "VolC",           &PSG->VolC,           1);
-	state_save_register_UINT32("AY8910", sndindex, "VolE",           &PSG->VolE,           1);
+	state_save_register_item("AY8910", sndindex, PSG->VolA);
+	state_save_register_item("AY8910", sndindex, PSG->VolB);
+	state_save_register_item("AY8910", sndindex, PSG->VolC);
+	state_save_register_item("AY8910", sndindex, PSG->VolE);
 
-	state_save_register_UINT8("AY8910",  sndindex, "EnvelopeA",      &PSG->EnvelopeA,      1);
-	state_save_register_UINT8("AY8910",  sndindex, "EnvelopeB",      &PSG->EnvelopeB,      1);
-	state_save_register_UINT8("AY8910",  sndindex, "EnvelopeC",      &PSG->EnvelopeC,      1);
+	state_save_register_item("AY8910", sndindex, PSG->EnvelopeA);
+	state_save_register_item("AY8910", sndindex, PSG->EnvelopeB);
+	state_save_register_item("AY8910", sndindex, PSG->EnvelopeC);
 
-	state_save_register_UINT8("AY8910",  sndindex, "OutputA",        &PSG->OutputA,        1);
-	state_save_register_UINT8("AY8910",  sndindex, "OutputB",        &PSG->OutputB,        1);
-	state_save_register_UINT8("AY8910",  sndindex, "OutputC",        &PSG->OutputC,        1);
-	state_save_register_UINT8("AY8910",  sndindex, "OutputN",        &PSG->OutputN,        1);
+	state_save_register_item("AY8910", sndindex, PSG->OutputA);
+	state_save_register_item("AY8910", sndindex, PSG->OutputB);
+	state_save_register_item("AY8910", sndindex, PSG->OutputC);
+	state_save_register_item("AY8910", sndindex, PSG->OutputN);
 
-	state_save_register_INT8("AY8910",   sndindex, "CountEnv",       &PSG->CountEnv,       1);
-	state_save_register_UINT8("AY8910",  sndindex, "Hold",           &PSG->Hold,           1);
-	state_save_register_UINT8("AY8910",  sndindex, "Alternate",      &PSG->Alternate,      1);
-	state_save_register_UINT8("AY8910",  sndindex, "Attack",         &PSG->Attack,         1);
-	state_save_register_UINT8("AY8910",  sndindex, "Holding",        &PSG->Holding,        1);
-	state_save_register_INT32("AY8910",  sndindex, "RNG",            &PSG->RNG,            1);
+	state_save_register_item("AY8910", sndindex, PSG->CountEnv);
+	state_save_register_item("AY8910", sndindex, PSG->Hold);
+	state_save_register_item("AY8910", sndindex, PSG->Alternate);
+	state_save_register_item("AY8910", sndindex, PSG->Attack);
+	state_save_register_item("AY8910", sndindex, PSG->Holding);
+	state_save_register_item("AY8910", sndindex, PSG->RNG);
 }
 
 
@@ -725,16 +725,7 @@ void ay8910_reset_ym(void *chip)
 void ay8910_set_clock_ym(void *chip, int clock)
 {
 	struct AY8910 *PSG = chip;
-
-	/* the step clock for the tone and noise generators is the chip clock    */
-	/* divided by 8; for the envelope generator of the AY-3-8910, it is half */
-	/* that much (clock/16), but the envelope of the YM2149 goes twice as    */
-	/* fast, therefore again clock/8.                                        */
-	/* Here we calculate the number of steps which happen during one sample  */
-	/* at the given sample rate. No. of events = sample rate / (clock/8).    */
-	/* STEP is a multiplier used to turn the fraction into a fixed point     */
-	/* number.                                                               */
-	PSG->UpdateStep = ((double)STEP * PSG->SampleRate * 8 + clock/2) / clock;
+	stream_set_sample_rate(PSG->Channel, clock/8);
 }
 
 void ay8910_write_ym(void *chip, int addr, int data)
@@ -801,6 +792,7 @@ static void *ay8910_start(int sndindex, int clock, const void *config)
 	return ay8910_start_ym(SOUND_AY8910, sndindex+16, clock, 3, intf->portAread, intf->portBread, intf->portAwrite, intf->portBwrite);
 }
 
+
 static void ay8910_stop(void *chip)
 {
 	ay8910_stop_ym(chip);
@@ -811,7 +803,7 @@ static void ay8910_stop(void *chip)
  * Generic get_info
  **************************************************************************/
 
-static void ay8910_set_info(void *token, UINT32 state, union sndinfo *info)
+static void ay8910_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -820,7 +812,7 @@ static void ay8910_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void ay8910_get_info(void *token, UINT32 state, union sndinfo *info)
+void ay8910_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

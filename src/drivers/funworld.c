@@ -291,7 +291,6 @@ Any fixes for this driver should be forwarded to the AGEMAME forum at (http://ww
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 #include "vidhrdw/crtc6845.h"
 #include "machine/6821pia.h"
@@ -618,14 +617,14 @@ static const gfx_decode magiccrd_gfxdecodeinfo[] =
 
 /* PIA Interfaces */
 
-static struct pia6821_interface pia0_intf =
+static const pia6821_interface pia0_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ input_port_0_r, input_port_1_r, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ 0, 0, 0, 0,
 	/*irqs   : A/B             */ 0, 0
 };
 
-static struct pia6821_interface pia1_intf =
+static const pia6821_interface pia1_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ input_port_2_r, input_port_3_r, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ 0, 0, 0, 0,
@@ -830,7 +829,7 @@ ROM_END
 
 ROM_START( magiccrd )
 	ROM_REGION( 0x18000, REGION_CPU1, 0 )
-	ROM_LOAD( "magicard.004", 0x0000, 0x8000,  CRC(f6e948b8) SHA1(7d5983015a508ab135ccbf69b7f3c526c229e3ef) ) /* only last 16kbyte visible? */
+    ROM_LOAD( "magicard.004", 0x0000, 0x8000,  CRC(f6e948b8) SHA1(7d5983015a508ab135ccbf69b7f3c526c229e3ef) ) /* only last 16kbyte visible? */
 	ROM_LOAD( "magicard.01",  0x8000, 0x10000, CRC(c94767d4) SHA1(171ac946bdf2575f9e4a31e534a8e641597af519) ) /* 1ST AND 2ND HALF IDENTICAL */
 
 	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )

@@ -6,7 +6,6 @@ driver by Nicola Salmoria
 
 ***************************************************************************/
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sndhrdw/m72.h"
 #include "sound/dac.h"
 #include "sound/2151intf.h"
@@ -251,7 +250,7 @@ static MACHINE_DRIVER_START( shisen )
 	MDRV_FRAMES_PER_SECOND(55)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(m72_sound)
+	MDRV_MACHINE_RESET(m72_sound)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER|VIDEO_PIXEL_ASPECT_RATIO_1_2)
@@ -412,7 +411,7 @@ ROM_START( matchit )
 	ROM_LOAD( "ic10.06",      0xe0000, 0x10000, CRC(473b349a) SHA1(9f5d08e07c8175bc7ec3854499177af2c398bd76) )
 	ROM_LOAD( "ic11.07",      0xf0000, 0x10000, CRC(d9a60285) SHA1(f8ef211e022e9c8ea25f6d8fb16266867656a591) )
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* samples */
+	ROM_REGION( 0x40000, REGION_SOUND1, ROMREGION_ERASE00 )	/* samples */
 	/* no samples on this board */
 ROM_END
 

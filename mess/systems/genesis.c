@@ -215,7 +215,7 @@ static int genesis_verify_cart(unsigned char *temp,unsigned int len)
 	return retval;
 }
 
-DEVICE_LOAD(genesis_cart)
+int device_load_genesis_cart(mess_image *image, mame_file *file)
 {
 	unsigned char *tmpROMnew, *tmpROM;
 	unsigned char *secondhalf;
@@ -316,55 +316,27 @@ bad:
 
 /* Main Genesis 68k */
 
-static ADDRESS_MAP_START( genesis_68000_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x3fffff) AM_READ(MRA16_ROM)  /* cartridge area */
-	AM_RANGE(0xa00000, 0xa07fff) AM_READ(genesis_68000_z80_read) AM_MIRROR(0x8000) /* z80 area */
+static ADDRESS_MAP_START( genesis_68000_mem, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x3fffff) AM_ROM AM_BASE(&genesis_cartridge) /* cartridge area */
+	AM_RANGE(0xa00000, 0xa07fff) AM_READWRITE(genesis_68000_z80_read, genesis_68000_z80_write) AM_MIRROR(0x8000) /* z80 area */
 	      /* 0xa08000, 0xa0ffff mirrors above */
-	AM_RANGE(0xa10000, 0xa1001f) AM_READ(genesis_68000_io_r)
-	AM_RANGE(0xa11100, 0xa11101) AM_READ(genesis_68000_z80_busreq_r)
-
-	AM_RANGE(0xc00000, 0xdfffff) AM_READ(genesis_68000_vdp_r) /* 0x20 in size, masked in handler */
-
-	AM_RANGE(0xe00000, 0xe0ffff) AM_READ(MRA16_BANK2) AM_MIRROR(0x1f0000)
-	      /* 0xe10000, 0xffffff mirrors above */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( genesis_68000_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x3fffff) AM_WRITE(MWA16_ROM) AM_BASE(&genesis_cartridge) /* cartridge area */
-	AM_RANGE(0xa00000, 0xa07fff) AM_WRITE(genesis_68000_z80_write) AM_MIRROR(0x8000) /* z80 area */
-	      /* 0xa08000, 0xa0ffff mirrors above */
-
-	AM_RANGE(0xa10000, 0xa1001f) AM_WRITE(genesis_68000_io_w)
-
-	AM_RANGE(0xa11100, 0xa11101) AM_WRITE(genesis_68000_z80_busreq_w)
+	AM_RANGE(0xa10000, 0xa1001f) AM_READWRITE(genesis_68000_io_r, genesis_68000_io_w)
+	AM_RANGE(0xa11100, 0xa11101) AM_READWRITE(genesis_68000_z80_busreq_r, genesis_68000_z80_busreq_w)
 	AM_RANGE(0xa11200, 0xa11201) AM_WRITE(genesis_68000_z80_reset_w)
 
-	AM_RANGE(0xc00000, 0xdfffff) AM_WRITE(genesis_68000_vdp_w) /* 0x20 in size, masked in handler */
+	AM_RANGE(0xc00000, 0xdfffff) AM_READWRITE(genesis_68000_vdp_r, genesis_68000_vdp_w) /* 0x20 in size, masked in handler */
 
-	AM_RANGE(0xe00000, 0xe0ffff) AM_WRITE(MWA16_BANK2) AM_MIRROR(0x1f0000)
+	AM_RANGE(0xe00000, 0xe0ffff) AM_RAMBANK(2) AM_MIRROR(0x1f0000)
 	      /* 0xe10000, 0xffffff mirrors above */
 ADDRESS_MAP_END
 
 
 
-static ADDRESS_MAP_START( genesis_z80_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_RAM)/* AM_MIRROR(0x2000) */
+static ADDRESS_MAP_START( genesis_z80_mem, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x1fff) AM_RAM	/* AM_MIRROR(0x2000) */
 	      /* 0x2000, 0x3fff mirrors above */
 /*	AM_RANGE(0x4000, 0x5fff) AM_READ(z80_ym2612_r) */
 	AM_RANGE(0x4000, 0x4000) AM_READ(YM2612_status_port_0_A_r)
-
-/*	AM_RANGE(0x7f00, 0x7fff) AM_READ(genesis_z80_vdp_r) */
-
-	AM_RANGE(0x8000, 0xffff) AM_READ(genesis_banked_68k_r)
-
-/*	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_RAM) */
-
-
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( genesis_z80_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_RAM)/* AM_MIRROR(0x2000) */
-	      /* 0x2000, 0x3fff mirrors above */
 	AM_RANGE(0x4000, 0x5fff) AM_WRITE(z80_ym2612_w)
 /*	AM_RANGE(0x4000, 0x4000) AM_WRITE(YM2612_control_port_0_A_w) */
 /*	AM_RANGE(0x4001, 0x4001) AM_WRITE(YM2612_data_port_0_A_w) */
@@ -374,10 +346,15 @@ static ADDRESS_MAP_START( genesis_z80_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x6000, 0x60ff) AM_WRITE(genesis_z80_bank_sel_w)
 
 	AM_RANGE(0x7f00, 0x7fff) AM_WRITE(genesis_z80_vdp_w)
+/*	AM_RANGE(0x7f00, 0x7fff) AM_READ(genesis_z80_vdp_r) */
 
-/*	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_RAM) */
+	AM_RANGE(0x8000, 0xffff) AM_READ(genesis_banked_68k_r)
+
+/*	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_RAM) */
+
 
 ADDRESS_MAP_END
+
 
 
 INPUT_PORTS_START( genesis )
@@ -414,11 +391,11 @@ static struct YM2612interface ym3438_interface =
 static MACHINE_DRIVER_START( gen_ntsc )
 
 	MDRV_CPU_ADD_TAG("main", M68000, 7670000)
-	MDRV_CPU_PROGRAM_MAP(genesis_68000_readmem,genesis_68000_writemem)
+	MDRV_CPU_PROGRAM_MAP(genesis_68000_mem, 0)
 	MDRV_CPU_VBLANK_INT(genesis_interrupt,262) /* use timers instead? */
 
 	MDRV_CPU_ADD(Z80, 3580000)
-	MDRV_CPU_PROGRAM_MAP(genesis_z80_readmem,genesis_z80_writemem)
+	MDRV_CPU_PROGRAM_MAP(genesis_z80_mem, 0)
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(0)
@@ -433,7 +410,7 @@ static MACHINE_DRIVER_START( gen_ntsc )
 	MDRV_INTERLEAVE(100)
 
 
-	MDRV_MACHINE_INIT(genesis)
+	MDRV_MACHINE_RESET(genesis)
 
 	MDRV_VIDEO_START(genesis)
 	MDRV_VIDEO_UPDATE(genesis)
@@ -484,15 +461,24 @@ ROM_START(gen_jpn)
 	ROM_REGION( 0x10000, REGION_CPU2, 0)
 ROM_END
 
-static void genesis_cartslot_getinfo(struct IODevice *dev)
+static void genesis_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 1;
-	dev->file_extensions = "smd\0bin\0md\0";
-	dev->must_be_loaded = 1;
-	dev->load = device_load_genesis_cart;
-	dev->partialhash = NULL /*genesis_partialhash*/;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_genesis_cart; break;
+		case DEVINFO_PTR_PARTIAL_HASH:					info->partialhash = NULL;	/*genesis_partialhash*/ break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "smd,bin,md"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(genesis)

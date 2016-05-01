@@ -1,5 +1,16 @@
 /***************************************************************************
 
+  NOTE: this hardware is a bootleg of the hardware in nmk16.c
+        twinactn is a bootleg of mustang with different graphics, different
+        sound hardware, and some code shifted around
+
+  todo: either merge this with nmk16.c, or split the bootlegs / non nmk
+        hardware from nmk16.c into an nmk16 bootlegs driver
+
+        understand the 'protection' it may just be some kind of mirroring.
+
+****************************************************************************
+
                               -= Afega Games =-
 
                     driver by   Luca Elia (l.elia@tin.it)
@@ -15,19 +26,26 @@ Sound Chips :   M6295 (AD-65)  +  YM2151 (BS901)  +  YM3012 (BS902)
 ---------------------------------------------------------------------------
 Year + Game                     Notes
 ---------------------------------------------------------------------------
+95 Twin Action                  Does not work for unknown reasons. Protection?
 97 Red Hawk                     US Version of Stagger 1
 98 Sen Jin - Guardian Storm     Some text missing (protection, see service mode)
 98 Stagger I
 98 Bubble 2000                  By Tuning, but it seems to be the same HW
+00 Spectrum 2000                By YomaTech -- NOTE sprite bugs happen on real hw!!
 01 Fire Hawk                    By ESD with different sound hardware: 2 M6295
 ---------------------------------------------------------------------------
 
-The Sen Jin protection supplies some 68k code seen in the 2760-29cf range
+Notes:
+
+- Afega is a Korean company. Its name is an acronym of "Art-Fiction Electronic Game".
+- Sen Jin: protection supplies some 68k code seen in the 2760-29cf range.
+    - or service mode is just complete, these are korean hacks afterall
+- Twinactn: to enter the hidden test mode press both P2 buttons during boot, then
+  P1 button 1 repeatedly.
 
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 
@@ -50,6 +68,9 @@ VIDEO_UPDATE( afega );
 VIDEO_UPDATE( redhawkb );
 VIDEO_UPDATE( bubl2000 );
 VIDEO_UPDATE( firehawk );
+VIDEO_UPDATE( twinactn );
+
+static UINT16 *ram;
 
 /***************************************************************************
 
@@ -67,7 +88,7 @@ READ16_HANDLER( afega_unknown_r )
 
 WRITE16_HANDLER( afega_soundlatch_w )
 {
-	if (ACCESSING_LSB && Machine->sample_rate)
+	if (ACCESSING_LSB)
 	{
 		soundlatch_w(0,data&0xff);
 		cpunum_set_input_line(1, 0, PULSE_LINE);
@@ -113,10 +134,55 @@ static ADDRESS_MAP_START( afega, ADDRESS_SPACE_PROGRAM, 16 )
 /**/AM_RANGE(0x09c000, 0x09c7ff) AM_READWRITE(MRA16_RAM, afega_vram_1_w) AM_BASE(&afega_vram_1)	/* Layer 1 */
 	AM_RANGE(0x0c0000, 0x0c7fff) AM_RAM								/* RAM */
 	AM_RANGE(0x0c8000, 0x0c8fff) AM_RAM AM_SHARE(1) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)	/* Sprites */
-	AM_RANGE(0x0c9000, 0x0cffff) AM_RAM								/* RAM */
+	AM_RANGE(0x0c9000, 0x0cffff) AM_RAM	AM_SHARE(2) AM_BASE(&ram)				/* RAM */
 	AM_RANGE(0x0f8000, 0x0f8fff) AM_RAM AM_SHARE(1)					/* Sprites Mirror */
+	AM_RANGE(0x0f9000, 0x0fffff) AM_RAM	AM_SHARE(2)				/* RAM Mirror (MangChi) */
 ADDRESS_MAP_END
 
+
+/* The high byte of the word written is the address to write to (byte offset), the low byte is data */
+static WRITE16_HANDLER( twinactn_scroll0_w )
+{
+	int byte = ((data >> 8) & 3) ^ 2;
+	int bit  = ((byte & 1) ? 0 : 8);
+	afega_scroll_0[byte / 2] = (afega_scroll_0[byte / 2] & (0xff << (8-bit))) | ((data & 0xff) << bit);
+}
+static WRITE16_HANDLER( twinactn_scroll1_w )
+{
+	int byte = ((data >> 8) & 3) ^ 2;
+	int bit  = ((byte & 1) ? 0 : 8);
+	afega_scroll_1[byte / 2] = (afega_scroll_1[byte / 2] & (0xff << (8-bit))) | ((data & 0xff) << bit);
+}
+
+static WRITE16_HANDLER( twinactn_flipscreen_w )
+{
+	if (ACCESSING_LSB)
+		flip_screen_set(data & 1);
+
+	if (data & (~1))
+		logerror("%06x: unknown flip screen bit written %04x\n", activecpu_get_pc(), data);
+}
+
+static ADDRESS_MAP_START( twinactn, ADDRESS_SPACE_PROGRAM, 16 )
+/*  ADDRESS_MAP_FLAGS( AMEF_ABITS(20) ) */
+	AM_RANGE(0x000000, 0x03ffff) AM_ROM
+	AM_RANGE(0x080000, 0x080001) AM_READ(input_port_0_word_r)		/* Buttons */
+	AM_RANGE(0x080002, 0x080003) AM_READ(input_port_1_word_r)		/* P1 + P2 */
+	AM_RANGE(0x080004, 0x080005) AM_READ(input_port_2_word_r)		/* 2 x DSW */
+	AM_RANGE(0x080014, 0x080015) AM_WRITE(twinactn_flipscreen_w)
+	AM_RANGE(0x080016, 0x080017) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x08001e, 0x08001f) AM_WRITE(afega_soundlatch_w)		/* To Sound CPU */
+/**/AM_RANGE(0x088000, 0x0885ff) AM_READWRITE(MRA16_RAM, afega_palette_w) AM_BASE(&paletteram16) /* Palette */
+/**/AM_RANGE(0x08c000, 0x08c003) AM_RAM AM_WRITE(twinactn_scroll0_w) AM_BASE(&afega_scroll_0)	/* Scroll */
+/**/AM_RANGE(0x08c004, 0x08c007) AM_RAM AM_WRITE(twinactn_scroll1_w) AM_BASE(&afega_scroll_1)	/* */
+	AM_RANGE(0x08c008, 0x08c087) AM_WRITE(MWA16_RAM)				/* */
+/**/AM_RANGE(0x090000, 0x091fff) AM_READWRITE(MRA16_RAM, afega_vram_0_w) AM_BASE(&afega_vram_0)	/* Layer 0 */
+/**/AM_RANGE(0x092000, 0x093fff) AM_RAM								/* ? */
+/**/AM_RANGE(0x09c000, 0x09c7ff) AM_READWRITE(MRA16_RAM, afega_vram_1_w) AM_BASE(&afega_vram_1)	/* Layer 1 */
+	AM_RANGE(0x0f0000, 0x0f7fff) AM_RAM								/* Work RAM */
+	AM_RANGE(0x0f8000, 0x0f8fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)	/* Sprites */
+	AM_RANGE(0x0f9000, 0x0fffff) AM_RAM	AM_BASE(&ram)							/* Work RAM */
+ADDRESS_MAP_END
 
 /***************************************************************************
 
@@ -125,8 +191,17 @@ ADDRESS_MAP_END
 
 
 ***************************************************************************/
+static WRITE8_HANDLER( spec2k_oki1_banking_w )
+{
+ 	if(data == 0xfe)
+ 		OKIM6295_set_bank_base(1, 0);
+ 	else if(data == 0xff)
+ 		OKIM6295_set_bank_base(1, 0x40000);
+}
 
 static ADDRESS_MAP_START( afega_sound_cpu, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0003, 0x0003) AM_WRITE(MWA8_NOP) /* bug in sound prg? */
+	AM_RANGE(0x0004, 0x0004) AM_WRITE(MWA8_NOP) /* bug in sound prg? */
 	AM_RANGE(0x0000, 0xefff) AM_ROM
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM									/* RAM */
 	AM_RANGE(0xf800, 0xf800) AM_READ(soundlatch_r)					/* From Main CPU */
@@ -139,9 +214,29 @@ static ADDRESS_MAP_START( firehawk_sound_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xefff) AM_ROM
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM
 	AM_RANGE(0xfff0, 0xfff0) AM_READ(soundlatch_r)
+	AM_RANGE(0xfff2, 0xfff2) AM_WRITE(spec2k_oki1_banking_w )
 	AM_RANGE(0xfff8, 0xfff8) AM_READWRITE(OKIM6295_status_1_r, OKIM6295_data_1_w)
 	AM_RANGE(0xfffa, 0xfffa) AM_READWRITE(OKIM6295_status_0_r, OKIM6295_data_0_w)
 	AM_RANGE(0xf800, 0xffff) AM_RAM /* not used, only tested */
+ADDRESS_MAP_END
+
+
+static WRITE8_HANDLER( twinactn_oki_bank_w )
+{
+	OKIM6295_set_bank_base(0, (data & 3) * 0x40000);
+
+	if (data & (~3))
+		logerror("%04x: invalid oki bank %02x\n", activecpu_get_pc(), data);
+
+/*  logerror("%04x: oki bank %02x\n", activecpu_get_pc(), data); */
+}
+
+static ADDRESS_MAP_START( twinactn_sound_cpu, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0x87ff) AM_RAM
+	AM_RANGE(0x9000, 0x9000) AM_WRITE(twinactn_oki_bank_w)
+	AM_RANGE(0x9800, 0x9800) AM_READWRITE(OKIM6295_status_0_r, OKIM6295_data_0_w)
+	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)		/* From Main CPU */
 ADDRESS_MAP_END
 
 /***************************************************************************
@@ -308,7 +403,6 @@ INPUT_PORTS_START( redhawkb )
 	PORT_DIPSETTING(      0x8000, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(      0x4000, DEF_STR( 1C_3C ) )
 INPUT_PORTS_END
-
 
 /***************************************************************************
                             Sen Jin - Guardian Storm
@@ -556,6 +650,89 @@ INPUT_PORTS_START( bubl2000 )
 /*  PORT_DIPSETTING(      0x0000, "Disabled" ) */
 INPUT_PORTS_END
 
+/***************************************************************************
+                                Mang Chi
+***************************************************************************/
+
+INPUT_PORTS_START( mangchi )
+	PORT_START_TAG("IN0")	/* $080000.w */
+	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_COIN1    )
+	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_COIN2    )
+	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
+	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_START1   )
+	PORT_BIT(  0x0010, IP_ACTIVE_LOW, IPT_START2   )
+	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_UNKNOWN  )
+	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN  )
+	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN  )
+	PORT_BIT(  0xff00, IP_ACTIVE_LOW, IPT_UNKNOWN  )
+
+	PORT_START_TAG("IN1")	/* $080002.w */
+	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
+	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
+	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
+	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
+	PORT_BIT(  0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
+	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
+	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
+	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
+	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START_TAG("IN2")	/* $080004.w */
+    PORT_DIPNAME( 0x0001, 0x0001, "DSWS" )		/* Setting to on cuases screen issues, Flip Screen? or unfinished test mode? */
+    PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
+    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0002, 0x0002, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0002, DEF_STR( On ) )
+    PORT_DIPNAME( 0x0004, 0x0004, DEF_STR( Unknown ) )
+    PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
+    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0018, 0x0018, "Vs Rounds" )
+	PORT_DIPSETTING(      0x0018, "2" )
+	PORT_DIPSETTING(      0x0010, "3" )
+	PORT_DIPSETTING(      0x0008, "4" )
+	PORT_DIPSETTING(      0x0000, "5" )
+    PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unknown ) )
+    PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
+    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Free_Play ) )
+	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+    PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Unknown ) )
+    PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
+    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+    PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Unknown ) )
+    PORT_DIPSETTING(      0x0100, DEF_STR( Off ) )
+    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+    PORT_DIPNAME( 0x0200, 0x0200, DEF_STR( Unknown ) )
+    PORT_DIPSETTING(      0x0200, DEF_STR( Off ) )
+    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+    PORT_DIPNAME( 0x0400, 0x0400, DEF_STR( Unknown ) )
+    PORT_DIPSETTING(      0x0400, DEF_STR( Off ) )
+    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x1800, 0x1800, DEF_STR( Difficulty ) )	/* Hard to tell levels of difficulty by play :-( */
+	PORT_DIPSETTING(      0x0800, DEF_STR( Easy ) )
+	PORT_DIPSETTING(      0x1800, DEF_STR( Normal ) )
+	PORT_DIPSETTING(      0x1000, DEF_STR( Hard ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
+	PORT_DIPNAME( 0xe000, 0xe000, DEF_STR( Coinage ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(      0x2000, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x4000, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x6000, DEF_STR( 3C_2C ) )
+	PORT_DIPSETTING(      0xe000, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x8000, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(      0xc000, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0xa000, DEF_STR( 1C_3C ) )
+INPUT_PORTS_END
+
 
 /***************************************************************************
                                 Fire Hawk
@@ -683,7 +860,7 @@ INPUT_PORTS_START( spec2k )
 	PORT_DIPNAME( 0x0004, 0x0004, DEF_STR( Free_Play ) )
 	PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0008, 0x0008, "Number of Bomb" )
+	PORT_DIPNAME( 0x0008, 0x0008, "Number of Bombs" )
 	PORT_DIPSETTING(      0x0008, "2" )
 	PORT_DIPSETTING(      0x0000, "3" )
 	PORT_DIPNAME( 0x0010, 0x0010, "Copyright Notice" )
@@ -720,6 +897,91 @@ INPUT_PORTS_START( spec2k )
 	PORT_DIPSETTING(      0x2000, DEF_STR( 2C_3C ) )
 	PORT_DIPSETTING(      0x6000, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(      0xa000, DEF_STR( 1C_3C ) )
+INPUT_PORTS_END
+
+
+/***************************************************************************
+                                Twin Action
+***************************************************************************/
+
+INPUT_PORTS_START( twinactn )
+	PORT_START_TAG("IN0")	/* $080000.w */
+	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_COIN1    )
+	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_COIN2    )
+	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
+	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_START1   )
+	PORT_BIT(  0x0010, IP_ACTIVE_LOW, IPT_START2   )
+	PORT_SERVICE_NO_TOGGLE(0x0020, IP_ACTIVE_LOW   )	/* Test in service mode */
+	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN  )
+	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN  )
+	PORT_BIT(  0xff00, IP_ACTIVE_LOW, IPT_UNKNOWN  )
+
+	PORT_START_TAG("IN1")	/* $080002.w */
+	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
+	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
+	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
+	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
+	PORT_BIT(  0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT(  0x0080, IP_ACTIVE_HIGH,IPT_UNKNOWN )	/* Tested at boot */
+	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
+	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
+	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
+	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
+	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT(  0x8000, IP_ACTIVE_HIGH,IPT_UNKNOWN )	/* Tested at boot */
+
+	PORT_START_TAG("IN2")	/* $080004.w */
+	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0002, 0x0002, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0002, DEF_STR( On ) )
+	PORT_DIPNAME( 0x001c, 0x001c, DEF_STR( Coin_B ) )
+	PORT_DIPSETTING(      0x0010, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(      0x0008, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x0018, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x001c, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x000c, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0014, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x0004, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
+	PORT_DIPNAME( 0x00e0, 0x00e0, DEF_STR( Coin_A ) )
+	PORT_DIPSETTING(      0x0080, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(      0x0040, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x00c0, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x00e0, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x0060, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x00a0, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x0020, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
+
+	PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Flip_Screen ) )
+	PORT_DIPSETTING(      0x0100, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0200, 0x0200, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0200, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0c00, 0x0c00, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(      0x0c00, DEF_STR( Easy ) )
+	PORT_DIPSETTING(      0x0400, DEF_STR( Normal ) )
+	PORT_DIPSETTING(      0x0800, DEF_STR( Hard ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
+	PORT_DIPNAME( 0x1000, 0x1000, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x1000, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x2000, 0x2000, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x2000, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0xc000, 0xc000, DEF_STR( Lives ) )
+	PORT_DIPSETTING(      0x4000, "2" )
+	PORT_DIPSETTING(      0xc000, "3" )
+	PORT_DIPSETTING(      0x8000, "4" )
+	PORT_DIPSETTING(      0x0000, "5" )
 INPUT_PORTS_END
 
 
@@ -778,25 +1040,25 @@ static const gfx_layout layout_16x16x4_swapped =
 
 static const gfx_decode grdnstrm_gfxdecodeinfo[] =
 {
-	{ REGION_GFX1, 0, &layout_16x16x4, 256*1, 16 }, /* [0] Sprites */
-	{ REGION_GFX2, 0, &layout_16x16x8, 256*3, 16 }, /* [1] Layer 0 */
-	{ REGION_GFX3, 0, &layout_8x8x4,   256*2, 16 }, /* [2] Layer 1 */
+	{ REGION_GFX1, 0, &layout_16x16x4,	256*1, 16 }, /* [0] Sprites */
+	{ REGION_GFX2, 0, &layout_16x16x8,	256*3, 16 }, /* [1] Layer 0 */
+	{ REGION_GFX3, 0, &layout_8x8x4,	256*2, 16 }, /* [2] Layer 1 */
 	{ -1 }
 };
 
 static const gfx_decode stagger1_gfxdecodeinfo[] =
 {
-	{ REGION_GFX1, 0, &layout_16x16x4, 256*1, 16 }, /* [0] Sprites */
-	{ REGION_GFX2, 0, &layout_16x16x4,   256*0, 16 }, /* [1] Layer 0 */
-	{ REGION_GFX3, 0, &layout_8x8x4,     256*2, 16 }, /* [2] Layer 1 */
+	{ REGION_GFX1, 0, &layout_16x16x4,	256*1, 16 }, /* [0] Sprites */
+	{ REGION_GFX2, 0, &layout_16x16x4,	256*0, 16 }, /* [1] Layer 0 */
+	{ REGION_GFX3, 0, &layout_8x8x4,	256*2, 16 }, /* [2] Layer 1 */
 	{ -1 }
 };
 
 static const gfx_decode redhawkb_gfxdecodeinfo[] =
 {
-	{ REGION_GFX1, 0, &layout_16x16x4_swapped,   256*1, 16 }, /* [0] Sprites */
-	{ REGION_GFX2, 0, &layout_16x16x4_swapped,   256*0, 16 }, /* [1] Layer 0 */
-	{ REGION_GFX3, 0, &layout_8x8x4,     256*2, 16 }, /* [2] Layer 1 */
+	{ REGION_GFX1, 0, &layout_16x16x4_swapped,	256*1, 16 }, /* [0] Sprites */
+	{ REGION_GFX2, 0, &layout_16x16x4_swapped,	256*0, 16 }, /* [1] Layer 0 */
+	{ REGION_GFX3, 0, &layout_8x8x4,			256*2, 16 }, /* [2] Layer 1 */
 	{ -1 }
 };
 
@@ -951,6 +1213,50 @@ static MACHINE_DRIVER_START( firehawk )
 	MDRV_SOUND_CONFIG(okim6295_interface_region_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
+
+
+INTERRUPT_GEN( interrupt_twinactn )
+{
+	switch ( cpu_getiloops() )
+	{
+		case 0:		irq1_line_hold();	break;
+		case 1:		irq2_line_hold();	break;
+		case 2:		irq4_line_hold();	break;
+	}
+}
+
+static MACHINE_DRIVER_START( twinactn )
+
+	/* basic machine hardware */
+	MDRV_CPU_ADD(M68000,12000000)
+	MDRV_CPU_PROGRAM_MAP(twinactn,0)
+	MDRV_CPU_VBLANK_INT(interrupt_twinactn,3)
+
+	MDRV_CPU_ADD(Z80, 4000000)
+	/* audio CPU */	/* ? */
+	MDRV_CPU_PROGRAM_MAP(twinactn_sound_cpu,0)
+
+	MDRV_FRAMES_PER_SECOND(56)
+	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+
+	/* video hardware */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_SIZE(256, 256)
+	MDRV_VISIBLE_AREA(0, 256-1, 0+16, 256-16-1)
+	MDRV_GFXDECODE(stagger1_gfxdecodeinfo)
+	MDRV_PALETTE_LENGTH(768)
+
+	MDRV_VIDEO_START(afega)
+	MDRV_VIDEO_UPDATE(twinactn)
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+
+	MDRV_SOUND_ADD(OKIM6295, 1000000/132)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+MACHINE_DRIVER_END
+
 
 /***************************************************************************
 
@@ -1188,6 +1494,44 @@ ROM_START( popspops )
 
 	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* Samples */
 	ROM_LOAD( "afega2.u95", 0x00000, 0x40000, CRC(ecd8eeac) SHA1(849beba8f04cc322bb8435fa4c26551a6d0dec64) )
+ROM_END
+
+/*
+Mang-chi by Afega
+
+1x osc 4mhz
+1x osc 12mhz
+1x tmp68hc0000p-10
+1x z80c006
+1x AD65 (MSM6295)
+1x CY5001 (YM2151 rebadged)
+2x dipswitch
+1x fpga
+1x smd ASIC not marked
+
+Dumped by Corrado Tomaselli
+*/
+
+ROM_START( mangchi )
+	ROM_REGION( 0x80000, REGION_CPU1, 0 )		/* 68000 Code */
+	ROM_LOAD16_BYTE( "afega9.u112", 0x00000, 0x40000, CRC(0b1517a5) SHA1(50e307641759bb2a35aff56ef9598364740803a0) )
+	ROM_LOAD16_BYTE( "afega10.u107", 0x00001, 0x40000, CRC(b1d0f33d) SHA1(68b5be3f7911f7299566c5bf5801e90099433613) )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )		/* Z80 Code */
+	ROM_LOAD( "sound.u92", 0x00000, 0x10000, CRC(bec4f9aa) SHA1(18fb2ee06892983c117a62b70cd72a98f60a08b6) )
+
+	ROM_REGION( 0x080000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprites, 16x16x4 */
+	ROM_LOAD16_BYTE( "afega6.uc11", 0x000000, 0x040000, CRC(979efc30) SHA1(227fe1e20137253aac04585d2bbf67091d032e56) )
+	ROM_LOAD16_BYTE( "afega7.uc14", 0x000001, 0x040000, CRC(c5cbcc38) SHA1(86070a9598e80f90ec7892d623e1a975ccc68178) )
+
+	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_DISPOSE )	/* Layer 0, 16x16x8 */
+	ROM_LOAD( "afega5.uc6",  0x000000, 0x80000, CRC(c73261e0) SHA1(0bb66aa315aaecb26169812cf47a6504a74f0db5) )
+	ROM_LOAD( "afega4.uc1",  0x080000, 0x80000, CRC(73940917) SHA1(070305c81de959c9d00b6cf1cc20bbafa204976a) )
+
+	ROM_REGION( 0x100000, REGION_GFX3, ROMREGION_DISPOSE | ROMREGION_ERASEFF )	/* Layer 1, 8x8x4 */
+
+	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* Samples */
+	ROM_LOAD( "afega2.u95", 0x00000, 0x40000, CRC(78c8c1f9) SHA1(eee0d03164a0ac0ddc5186ab56090320e9d33aa7) )
 ROM_END
 
 /***************************************************************************
@@ -1450,7 +1794,7 @@ Note
 */
 
 ROM_START( spec2k )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 68000 Code */
+	ROM_REGION( 0x80000, REGION_CPU1, 0 )	/* 68000 Code */
 	ROM_LOAD16_BYTE( "yonatech5.u124", 0x00000, 0x40000, CRC(72ab5c05) SHA1(182a811982b89b8cda0677547ef0625c274f5c6b) )
 	ROM_LOAD16_BYTE( "yonatech6.u120", 0x00001, 0x40000, CRC(7e44bd9c) SHA1(da59685be14a09ec037743fcec34fb293f7d588d) )
 
@@ -1484,6 +1828,90 @@ static DRIVER_INIT( spec2k )
 	             3,  2,  1,  0 );
 }
 
+/*
+    1995, Afega
+
+    1x TMP68000P-10 (main)
+    1x GOLDSTAR Z8400A (sound)
+    1x AD-65 (equivalent to OKI6295)
+    1x LATTICE pLSI 1032 60LJ A428A48
+    1x oscillator 8.000MHz
+    1x oscillator 12.000MHz
+
+    1x 27256 (SU6)
+    1x 27C010 (SU12)
+    1x 27C020 (SU13)
+    2x 27c4001 (UB11, UB13)
+    3x 27C010 (UJ11, UJ12, UJ13)
+    1x 27C4001 (UI20)
+
+    1x JAMMA edge connector
+    1x trimmer (volume)
+*/
+
+ROM_START( twinactn )
+	ROM_REGION( 0x40000, REGION_CPU1, 0 )		/* 68000 Code */
+	ROM_LOAD16_BYTE( "afega.uj13", 0x00000, 0x20000, CRC(9187701d) SHA1(1da8d1e3969f60c7b0521cd22c723cb51619df9d) )
+	ROM_LOAD16_BYTE( "afega.uj12", 0x00001, 0x20000, CRC(fe8cff9c) SHA1(a1a04deff9e2cb54c69601898cf4e5133c2bc437) )
+
+	ROM_REGION( 0x8000, REGION_CPU2, 0 )		/* Z80 Code */
+	ROM_LOAD( "afega.su6", 0x0000, 0x8000, CRC(3a52dc88) SHA1(87941987d34d93df6df9ff33ccfbd1f5d4a39c51) )	/* 1111xxxxxxxxxxx = 0x00 */
+
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprites, 16x16x4 */
+	ROM_LOAD16_BYTE( "afega.ub11", 0x00000, 0x80000, CRC(287f20d8) SHA1(11faa36b97593c0b5cee70343750ae1ecd2f5b71) )
+	ROM_LOAD16_BYTE( "afega.ub13", 0x00001, 0x80000, CRC(f525f819) SHA1(78ffcb709a3a900d3851392630a11ab58fc0bc75) )
+
+	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE )	/* Layer 0, 16x16x8 */
+	ROM_LOAD( "afega.ui20", 0x00000, 0x80000, CRC(237c8f92) SHA1(bb3131b450bd78d03b789626a465fb9e7a4604a7) )
+
+	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )	/* Layer 1, 8x8x4 */
+	ROM_LOAD( "afega.uj11", 0x00000, 0x20000, CRC(3f439e92) SHA1(27e5b1b0aa3b13fa35e3f83793037314b2942aa2) )
+
+	ROM_REGION( 0x100000, REGION_SOUND1, 0 )	/* Samples */
+	ROM_LOAD( "afega.su12", 0x000000, 0x20000, CRC(91d665f3) SHA1(10b5b07ed28ea78b6d3493afc03e003a8468c007) )
+	ROM_RELOAD(             0x040000, 0x20000 )
+	ROM_RELOAD(             0x080000, 0x20000 )
+	ROM_RELOAD(             0x0c0000, 0x20000 )
+	ROM_RELOAD(             0x020000, 0x20000 )
+	ROM_RELOAD(             0x060000, 0x20000 )
+	ROM_LOAD( "afega.su13", 0x0a0000, 0x20000, CRC(30e1c306) SHA1(c859f11fd329793b11e96264e91c79a557b488a4) )
+	ROM_CONTINUE(           0x0e0000, 0x20000 )
+ROM_END
+
+static WRITE16_HANDLER ( test_2a_mustang_w )
+{
+	data = data >> 8;
+
+	ram[0x2a/2] = (data << 8) | data;
+
+	if (data == 1 || data == 2) {
+		ram[0x2e/2] = 10;
+		ram[0x2c/2] = 0;
+	}
+
+}
+
+static DRIVER_INIT( twinactn )
+{
+#if 0
+	UINT16 *rom = (UINT16 *) memory_region(REGION_CPU1);
+	rom[0x4a2a/2]	=	0x4e71;	/* no freeze on sound test + enable hidden "object test" */
+#endif
+	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
+
+	/* these are the patches for mustang from nmk16.c modified for twinactn */
+	/* we need to figure out how this _really_ works */
+	rom[0x85c/2] = 0x4e71; /* same as mustang */
+	rom[0x85e/2] = 0x4e71; /* same as mustang */
+	rom[0x860/2] = 0x4e71; /* same as mustang */
+	rom[0x8c0/2] = 0x0300; /* same as mustang */
+	rom[0xbee/2] = 0x0300; /* offset shifted.. */
+	rom[0x30c0/2] = 0x0300; /* offset shifted.. */
+
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf902a, 0xf902b, 0, 0, test_2a_mustang_w );
+}
+
+
 /***************************************************************************
 
 
@@ -1492,12 +1920,14 @@ static DRIVER_INIT( spec2k )
 
 ***************************************************************************/
 
-GAME( 1998, stagger1, 0,        stagger1, stagger1, 0,        ROT270, "Afega", "Stagger I (Japan)",                GAME_NOT_WORKING )
-GAME( 1997, redhawk,  stagger1, stagger1, stagger1, redhawk,  ROT270, "Afega", "Red Hawk (US)", GAME_NOT_WORKING )
-GAME( 1997, redhawkb, stagger1, redhawkb, redhawkb, 0,        ROT0, "bootleg", "Red Hawk (bootleg)", GAME_NOT_WORKING )
-GAME( 1998, grdnstrm, 0,        grdnstrm, grdnstrm, grdnstrm, ROT270, "Afega", "Sen Jin - Guardian Storm (Korea)", GAME_NOT_WORKING )
-GAME( 1998, bubl2000, 0,        bubl2000, bubl2000, bubl2000, ROT0,   "Tuning", "Bubble 2000", 0 ) /* on a tuning board (bootleg?) */
-GAME( 1998, hotbubl,  bubl2000, bubl2000, bubl2000, bubl2000, ROT0,   "Pandora", "Hot Bubble" , 0) /* on an afega board .. */
-GAME( 1999, popspops, 0,        popspops, popspops, grdnstrm, ROT0,   "Afega", "Pop's Pop's", 0 )
-GAME( 2001, firehawk, 0,        firehawk, firehawk, 0,        ORIENTATION_FLIP_Y, "ESD", "Fire Hawk", GAME_NOT_WORKING )
-GAME( 2000, spec2k,   0,        firehawk, spec2k,   spec2k,   ORIENTATION_FLIP_Y, "Yonatech", "Spectrum 2000 (Euro)", 0 )
+GAME( 1995, twinactn, 0,        twinactn, twinactn, twinactn, ROT0,               "Afega",    "Twin Action",                      0 )
+GAME( 1997, redhawk,  stagger1, stagger1, stagger1, redhawk,  ROT270,             "Afega",    "Red Hawk (US)",                    GAME_NOT_WORKING )
+GAME( 1997, redhawkb, stagger1, redhawkb, redhawkb, 0,        ROT0,               "bootleg",  "Red Hawk (bootleg)",               GAME_NOT_WORKING )
+GAME( 1998, stagger1, 0,        stagger1, stagger1, 0,        ROT270,             "Afega",    "Stagger I (Japan)",                GAME_NOT_WORKING )
+GAME( 1998, grdnstrm, 0,        grdnstrm, grdnstrm, grdnstrm, ROT270,             "Afega",    "Sen Jin - Guardian Storm (Korea)", GAME_NOT_WORKING )
+GAME( 1998, bubl2000, 0,        bubl2000, bubl2000, bubl2000, ROT0,               "Tuning",   "Bubble 2000",                      0 ) /* on a tuning board (bootleg?) */
+GAME( 1998, hotbubl,  bubl2000, bubl2000, bubl2000, bubl2000, ROT0,               "Pandora",  "Hot Bubble" ,                      0 ) /* on an afega board .. */
+GAME( 1999, popspops, 0,        popspops, popspops, grdnstrm, ROT0,               "Afega",    "Pop's Pop's",                      0 )
+GAME( 2000, mangchi,  0,        bubl2000, mangchi,  bubl2000, ROT0,               "Afega",    "Mang-Chi",                         0 )
+GAME( 2000, spec2k,   0,        firehawk, spec2k,   spec2k,   ORIENTATION_FLIP_Y, "Yonatech", "Spectrum 2000 (Euro)",             GAME_NOT_WORKING )
+GAME( 2001, firehawk, 0,        firehawk, firehawk, 0,        ORIENTATION_FLIP_Y, "ESD",      "Fire Hawk",                        GAME_NOT_WORKING )

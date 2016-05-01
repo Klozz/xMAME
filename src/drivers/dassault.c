@@ -119,7 +119,6 @@ Stephh's notes (based on the games M68000 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/h6280/h6280.h"
 #include "deco16ic.h"
 #include "sound/2203intf.h"
@@ -284,7 +283,7 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x130000, 0x130001) AM_WRITE(OKIM6295_data_1_w)
 	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(MWA8_BANK8)
 	AM_RANGE(0x1fec00, 0x1fec01) AM_WRITE(H6280_timer_w)
-	AM_RANGE(0x1ff402, 0x1ff403) AM_WRITE(H6280_irq_status_w)
+	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(H6280_irq_status_w)
 ADDRESS_MAP_END
 
 /**********************************************************************************/
@@ -569,7 +568,7 @@ static void sound_irq(int state)
 	cpunum_set_input_line(2,1,state);
 }
 
-WRITE8_HANDLER( sound_bankswitch_w )
+static WRITE8_HANDLER( sound_bankswitch_w )
 {
 	/* the second OKIM6295 ROM is bank switched */
 	OKIM6295_set_bank_base(1, (data & 1) * 0x40000);

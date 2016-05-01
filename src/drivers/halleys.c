@@ -158,7 +158,6 @@ Video sync   6 F   Video sync                 Post   6 F   Post
 /* Compiler Directives */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/ay8910.h"
 
@@ -1930,7 +1929,7 @@ INPUT_PORTS_END
 /*************************************************************************** */
 /* Machine Definitions and Initializations */
 
-static MACHINE_INIT( halleys )
+static MACHINE_RESET( halleys )
 {
 	mVectorType     = 0;
 	firq_level      = 0;
@@ -1966,7 +1965,7 @@ static MACHINE_DRIVER_START( halleys )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(halleys)
+	MDRV_MACHINE_RESET(halleys)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2129,30 +2128,30 @@ static int init_common(void)
 
 
 	/* allocate memory for unpacked graphics */
-	if (!(buf = auto_malloc(0x100000))) return(0);
+	buf = auto_malloc(0x100000);
 	gfx_plane02 = buf;
 	gfx_plane13 = buf + 0x80000;
 
 
 	/* allocate memory for render layers */
-	if (!(buf = auto_malloc(SCREEN_BYTESIZE * MAX_LAYERS))) return(0);
+	buf = auto_malloc(SCREEN_BYTESIZE * MAX_LAYERS);
 	for (i=0; i<MAX_LAYERS; buf+=SCREEN_BYTESIZE, i++) render_layer[i] = (WORD*)buf;
 
 
 	/* allocate memory for pre-processed ROMs */
-	if (!(gfx1_base = auto_malloc(0x20000))) return(0);
+	gfx1_base = auto_malloc(0x20000);
 
 
 	/* allocate memory for alpha table */
-	if (!(alpha_table = auto_malloc(sizeof(DWORD) * 0x10000))) return(0);
+	alpha_table = auto_malloc(sizeof(DWORD) * 0x10000);
 
 
 	/* allocate memory for internal palette */
-	if (!(internal_palette = auto_malloc(sizeof(DWORD) * PALETTE_SIZE))) return(0);
+	internal_palette = auto_malloc(sizeof(DWORD) * PALETTE_SIZE);
 
 
 	/* allocate memory for hardware collision list */
-	if (!(collision_list = auto_malloc(MAX_SPRITES))) return(0);;
+	collision_list = auto_malloc(MAX_SPRITES);
 
 
 	/* decrypt main program ROM */

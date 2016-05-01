@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "kangaroo.h"
 
 
@@ -67,8 +66,7 @@ VIDEO_START( kangaroo )
 	if ((tmpbitmap2 = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height)) == 0)
 		return 1;
 
-	if ((videoram = auto_malloc(Machine->drv->screen_width*Machine->drv->screen_height)) == 0)
-		return 1;
+	videoram = auto_malloc(Machine->drv->screen_width*Machine->drv->screen_height);
 
 	return 0;
 }

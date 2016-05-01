@@ -42,7 +42,7 @@ Note:   if MAME_DEBUG is defined, pressing:
 
 **************************************************************************/
 
-#include "vidhrdw/generic.h"
+#include "driver.h"
 #include "kaneko16.h"
 
 
@@ -77,7 +77,7 @@ struct tempsprite
 	int priority;
 };
 
-struct
+static struct
 {
 	struct tempsprite *first_sprite;
 }	spritelist;
@@ -136,9 +136,6 @@ VIDEO_START( kaneko16_sprites )
 {
 	/* 0x400 sprites max */
 	spritelist.first_sprite = (struct tempsprite *)auto_malloc(0x400 * sizeof(spritelist.first_sprite[0]));
-
-	if (	!spritelist.first_sprite	)
-		return 1;
 
 	return 0;
 }

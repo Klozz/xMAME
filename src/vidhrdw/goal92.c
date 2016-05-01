@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 UINT16 *goal92_back_data,*goal92_fore_data,*goal92_textram,*goal92_scrollram16;
 
@@ -148,7 +147,7 @@ VIDEO_START( goal92 )
 
 	buffered_spriteram16 = auto_malloc(0x400*2);
 
-	if (!background_layer || !foreground_layer || !text_layer || !buffered_spriteram16)
+	if (!background_layer || !foreground_layer || !text_layer)
 		return 1;
 
 	tilemap_set_transparent_pen(background_layer,15);

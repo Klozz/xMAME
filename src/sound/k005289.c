@@ -25,7 +25,8 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "k005289.h"
 
 #define FREQBASEBITS	16
@@ -68,8 +69,6 @@ static int make_mixer_table(struct k005289_info *info, int voices)
 
 	/* allocate memory */
 	info->mixer_table = auto_malloc(256 * voices * sizeof(INT16));
-	if (!info->mixer_table)
-		return 1;
 
 	/* find the middle of the table */
 	info->mixer_lookup = info->mixer_table + (128 * voices);
@@ -167,8 +166,7 @@ static void *k005289_start(int sndindex, int clock, const void *config)
 	info->rate = Machine->sample_rate;
 
 	/* allocate a pair of buffers to mix into - 1 second's worth should be more than enough */
-	if ((info->mixer_buffer = auto_malloc(2 * sizeof(short) * Machine->sample_rate)) == 0)
-		return NULL;
+	info->mixer_buffer = auto_malloc(2 * sizeof(short) * Machine->sample_rate);
 
 	/* build the mixer table */
 	if (make_mixer_table(info, 2))
@@ -255,7 +253,7 @@ WRITE8_HANDLER( k005289_keylatch_B_w )
  * Generic get_info
  **************************************************************************/
 
-static void k005289_set_info(void *token, UINT32 state, union sndinfo *info)
+static void k005289_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -264,7 +262,7 @@ static void k005289_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void k005289_get_info(void *token, UINT32 state, union sndinfo *info)
+void k005289_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

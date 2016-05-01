@@ -167,289 +167,204 @@ Notes:
 
 #include "driver.h"
 #include "cpu/mips/mips3.h"
+#include "cpu/rsp/rsp.h"
+#include "streams.h"
+#include "sound/custom.h"
+#include "includes/n64.h"
 
-/* video */
-VIDEO_START(aleck64)
+static READ32_HANDLER( aleck_dips_r )
 {
-	return 0;
-}
-
-VIDEO_UPDATE(aleck64)
-{
-
-}
-
-/* MIPS Interface */
-static UINT32 mi_intr_mask = 0;
-
-static READ32_HANDLER( mi_reg_r )
-{
-	switch (offset)
+	/*return 0xff0fffff; */
+	if (offset == 0)
 	{
-		case 0x0c/4:			/* MI_INTR_MASK_REG */
-			return mi_intr_mask;
-
+		return (readinputport(3) << 16) | 0xffff;
 	}
-
-	return 0;
-}
-
-static WRITE32_HANDLER( mi_reg_w )
-{
-	switch (offset)
+	else if (offset == 1)
 	{
-		case 0x0c/4:		/* MI_INTR_MASK_REG */
-		{
-			if (data & 0x0001) mi_intr_mask &= ~0x1;		/* clear SP mask */
-			if (data & 0x0002) mi_intr_mask |= 0x1;			/* set SP mask */
-			if (data & 0x0004) mi_intr_mask &= ~0x2;		/* clear SI mask */
-			if (data & 0x0008) mi_intr_mask |= 0x2;			/* set SI mask */
-			if (data & 0x0010) mi_intr_mask &= ~0x4;		/* clear AI mask */
-			if (data & 0x0020) mi_intr_mask |= 0x4;			/* set AI mask */
-			if (data & 0x0040) mi_intr_mask &= ~0x8;		/* clear VI mask */
-			if (data & 0x0080) mi_intr_mask |= 0x8;			/* set VI mask */
-			if (data & 0x0100) mi_intr_mask &= ~0x10;		/* clear PI mask */
-			if (data & 0x0200) mi_intr_mask |= 0x10;		/* set PI mask */
-			if (data & 0x0400) mi_intr_mask &= ~0x20;		/* clear DP mask */
-			if (data & 0x0800) mi_intr_mask |= 0x20;		/* set DP mask */
-			break;
-		}
-
-		default:
-			logerror("mi_reg_w: %08X, %08X, %08X\n", data, offset, mem_mask);
-	}
-}
-
-/* Video Interface */
-static READ32_HANDLER( vi_reg_r )
-{
-	switch (offset)
-	{
-		case 0x10/4:		/* VI_CURRENT_REG */
-			return cpu_getscanline();
-
-		default:
-			logerror("vi_reg_r: %08X, %08X\n", offset, mem_mask);
+		return (readinputport(4) << 16) | 0xffff;
 	}
 	return 0;
 }
 
-static WRITE32_HANDLER( vi_reg_w )
-{
-	switch (offset)
-	{
-		default:
-			logerror("vi_reg_w: %08X, %08X, %08X\n", data, offset, mem_mask);
-	}
-}
-
-/* Peripheral Interface */
-
-static UINT32 pi_dram_addr, pi_cart_addr;
-
-static READ32_HANDLER( pi_reg_r )
-{
-	switch (offset)
-	{
-		case 0x10/4:		/* PI_STATUS_REG */
-			return 0;
-
-	}
-	return 0;
-}
-
-static WRITE32_HANDLER( pi_reg_w )
-{
-	switch (offset)
-	{
-		case 0x00/4:		/* PI_DRAM_ADDR_REG */
-		{
-			pi_dram_addr = data;
-			break;
-		}
-
-		case 0x04/4:		/* PI_CART_ADDR_REG */
-		{
-			pi_cart_addr = data;
-			break;
-		}
-
-		case 0x08/4:		/* PI_RD_LEN_REG */
-		{
-			break;
-		}
-
-		case 0x0c/4:		/* PI_WR_LEN_REG */
-		{
-			int i;
-			UINT32 dma_length = (data + 1) / 4;
-
-			for (i=0; i < dma_length; ++i)
-			{
-				UINT32 d = program_read_dword_32be(pi_cart_addr);
-				program_write_dword_32be(pi_dram_addr, d);
-				pi_cart_addr += 4;
-				pi_dram_addr += 4;
-			}
-
-			break;
-		}
-	}
-}
-
-/* RDRAM Interface */
-static READ32_HANDLER( ri_reg_r )
-{
-	return 0;
-}
-
-static WRITE32_HANDLER( ri_reg_w )
-{
-	switch (offset)
-	{
-		default:
-			logerror("ri_reg_w: %08X, %08X, %08X\n", data, offset, mem_mask);
-	}
-}
-
-static ADDRESS_MAP_START( aleck64_map, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x00000000, 0x003fffff) AM_RAM				/* RDRAM */
-	AM_RANGE(0x04000000, 0x04000fff) AM_RAM				/* RSP DMEM */
-	AM_RANGE(0x04001000, 0x04001fff) AM_RAM				/* RSP IMEM */
-	AM_RANGE(0x04300000, 0x043fffff) AM_READWRITE(mi_reg_r, mi_reg_w)	/* MIPS Interface */
-	AM_RANGE(0x04400000, 0x044fffff) AM_READWRITE(vi_reg_r, vi_reg_w)	/* Video Interface */
-	AM_RANGE(0x04600000, 0x046fffff) AM_READWRITE(pi_reg_r, pi_reg_w)	/* Peripheral Interface */
-	AM_RANGE(0x04700000, 0x047fffff) AM_READWRITE(ri_reg_r, ri_reg_w)	/* RDRAM Interface */
-	AM_RANGE(0x10000000, 0x10ffffff) AM_ROM AM_REGION(REGION_USER2, 0)	/* Cartridge */
+static ADDRESS_MAP_START( n64_map, ADDRESS_SPACE_PROGRAM, 32 )
+	AM_RANGE(0x00000000, 0x007fffff) AM_RAM	AM_BASE(&rdram)				/* RDRAM */
+	AM_RANGE(0x04000000, 0x04000fff) AM_RAM AM_SHARE(1)					/* RSP DMEM */
+	AM_RANGE(0x04001000, 0x04001fff) AM_RAM AM_SHARE(2)					/* RSP IMEM */
+	AM_RANGE(0x04040000, 0x040fffff) AM_READWRITE(n64_sp_reg_r, n64_sp_reg_w)	/* RSP */
+	AM_RANGE(0x04100000, 0x041fffff) AM_READWRITE(n64_dp_reg_r, n64_dp_reg_w)	/* RDP */
+	AM_RANGE(0x04300000, 0x043fffff) AM_READWRITE(n64_mi_reg_r, n64_mi_reg_w)	/* MIPS Interface */
+	AM_RANGE(0x04400000, 0x044fffff) AM_READWRITE(n64_vi_reg_r, n64_vi_reg_w)	/* Video Interface */
+	AM_RANGE(0x04500000, 0x045fffff) AM_READWRITE(n64_ai_reg_r, n64_ai_reg_w)	/* Audio Interface */
+	AM_RANGE(0x04600000, 0x046fffff) AM_READWRITE(n64_pi_reg_r, n64_pi_reg_w)	/* Peripheral Interface */
+	AM_RANGE(0x04700000, 0x047fffff) AM_READWRITE(n64_ri_reg_r, n64_ri_reg_w)	/* RDRAM Interface */
+	AM_RANGE(0x04800000, 0x048fffff) AM_READWRITE(n64_si_reg_r, n64_si_reg_w)	/* Serial Interface */
+	AM_RANGE(0x10000000, 0x13ffffff) AM_ROM AM_REGION(REGION_USER2, 0)	/* Cartridge */
 	AM_RANGE(0x1fc00000, 0x1fc007bf) AM_ROM AM_REGION(REGION_USER1, 0)	/* PIF ROM */
-	AM_RANGE(0x1fc007c0, 0x1fc007ff) AM_RAM								/* PIF RAM */
+	AM_RANGE(0x1fc007c0, 0x1fc007ff) AM_READWRITE(n64_pif_ram_r, n64_pif_ram_w)
+
+	AM_RANGE(0xc0800000, 0xc08fffff) AM_READWRITE(aleck_dips_r, MWA32_NOP)
+	AM_RANGE(0xd0000000, 0xd08fffff) AM_NOP
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( rsp_map, ADDRESS_SPACE_PROGRAM, 32 )
+	AM_RANGE(0x04000000, 0x04000fff) AM_RAM AM_BASE(&rsp_dmem) AM_SHARE(1)
+	AM_RANGE(0x04001000, 0x04001fff) AM_RAM AM_BASE(&rsp_imem) AM_SHARE(2)
 ADDRESS_MAP_END
 
 INPUT_PORTS_START( aleck64 )
+	PORT_START_TAG("P1")
+		PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)			/* Button A */
+		PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(1)			/* Button B */
+		PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(1)			/* Button Z */
+		PORT_BIT( 0x1000, IP_ACTIVE_HIGH, IPT_START1 ) 							/* Start */
+		PORT_BIT( 0x0800, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(1)		/* Joypad Up */
+		PORT_BIT( 0x0400, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)	/* Joypad Down */
+		PORT_BIT( 0x0200, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)	/* Joypad Left */
+		PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)	/* Joypad Right */
+		PORT_BIT( 0x00c0, IP_ACTIVE_HIGH, IPT_UNUSED )
+		PORT_BIT( 0x0020, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_PLAYER(1)			/* Pan Left */
+		PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_BUTTON5 ) PORT_PLAYER(1)			/* Pan Right */
+		PORT_BIT( 0x0008, IP_ACTIVE_HIGH, IPT_BUTTON6 ) PORT_PLAYER(1)			/* C Button Up */
+		PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_BUTTON7 ) PORT_PLAYER(1)			/* C Button Down */
+		PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_BUTTON8 ) PORT_PLAYER(1)			/* C Button Left */
+		PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_BUTTON9 ) PORT_PLAYER(1)			/* C Button Right */
+
+	PORT_START_TAG("P1_ANALOG_X")
+		PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_MINMAX(0x00,0xff) PORT_SENSITIVITY(30) PORT_KEYDELTA(30) PORT_PLAYER(1)
+
+	PORT_START_TAG("P1_ANALOG_Y")
+		PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_MINMAX(0xff,0x00) PORT_SENSITIVITY(30) PORT_KEYDELTA(30) PORT_PLAYER(1)
+
+	PORT_START
+		PORT_DIPNAME( 0x8000, 0x8000, "DIPSW1 #8" )
+		PORT_DIPSETTING( 0x8000, DEF_STR( Off ) )
+		PORT_DIPSETTING( 0x0000, DEF_STR( On ) )
+		PORT_DIPNAME( 0x4000, 0x4000, "DIPSW1 #7" )
+		PORT_DIPSETTING( 0x4000, DEF_STR( Off ) )
+		PORT_DIPSETTING( 0x0000, DEF_STR( On ) )
+		PORT_DIPNAME( 0x2000, 0x2000, "DIPSW1 #6" )
+		PORT_DIPSETTING( 0x2000, DEF_STR( Off ) )
+		PORT_DIPSETTING( 0x0000, DEF_STR( On ) )
+		PORT_DIPNAME( 0x1000, 0x1000, "DIPSW1 #5" )
+		PORT_DIPSETTING( 0x1000, DEF_STR( Off ) )
+		PORT_DIPSETTING( 0x0000, DEF_STR( On ) )
+		PORT_DIPNAME( 0x0800, 0x0800, "DIPSW1 #4" )
+		PORT_DIPSETTING( 0x0800, DEF_STR( Off ) )
+		PORT_DIPSETTING( 0x0000, DEF_STR( On ) )
+		PORT_DIPNAME( 0x0400, 0x0400, "DIPSW1 #3" )
+		PORT_DIPSETTING( 0x0400, DEF_STR( Off ) )
+		PORT_DIPSETTING( 0x0000, DEF_STR( On ) )
+		PORT_DIPNAME( 0x0200, 0x0200, "DIPSW1 #2" )
+		PORT_DIPSETTING( 0x0200, DEF_STR( Off ) )
+		PORT_DIPSETTING( 0x0000, DEF_STR( On ) )
+		PORT_DIPNAME( 0x0100, 0x0100, "DIPSW1 #1" )
+		PORT_DIPSETTING( 0x0100, DEF_STR( Off ) )
+		PORT_DIPSETTING( 0x0000, DEF_STR( On ) )
+		PORT_DIPNAME( 0x0080, 0x0080, "Test Mode" )
+		PORT_DIPSETTING( 0x0080, DEF_STR( Off ) )
+		PORT_DIPSETTING( 0x0000, DEF_STR( On ) )
+		PORT_DIPNAME( 0x0040, 0x0040, "DIPSW2 #7" )
+		PORT_DIPSETTING( 0x0040, DEF_STR( Off ) )
+		PORT_DIPSETTING( 0x0000, DEF_STR( On ) )
+		PORT_DIPNAME( 0x0020, 0x0020, "DIPSW2 #6" )
+		PORT_DIPSETTING( 0x0020, DEF_STR( Off ) )
+		PORT_DIPSETTING( 0x0000, DEF_STR( On ) )
+		PORT_DIPNAME( 0x0010, 0x0010, "DIPSW2 #5" )
+		PORT_DIPSETTING( 0x0010, DEF_STR( Off ) )
+		PORT_DIPSETTING( 0x0000, DEF_STR( On ) )
+		PORT_DIPNAME( 0x0008, 0x0008, "DIPSW2 #4" )
+		PORT_DIPSETTING( 0x0008, DEF_STR( Off ) )
+		PORT_DIPSETTING( 0x0000, DEF_STR( On ) )
+		PORT_DIPNAME( 0x0004, 0x0004, "DIPSW2 #3" )
+		PORT_DIPSETTING( 0x0004, DEF_STR( Off ) )
+		PORT_DIPSETTING( 0x0000, DEF_STR( On ) )
+		PORT_DIPNAME( 0x0002, 0x0002, "DIPSW2 #2" )
+		PORT_DIPSETTING( 0x0002, DEF_STR( Off ) )
+		PORT_DIPSETTING( 0x0000, DEF_STR( On ) )
+		PORT_DIPNAME( 0x0001, 0x0001, "DIPSW2 #1" )
+		PORT_DIPSETTING( 0x0001, DEF_STR( Off ) )
+		PORT_DIPSETTING( 0x0000, DEF_STR( On ) )
+
+	PORT_START
+		PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
+		PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+		PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_7)
+		PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_COIN2 )
+		PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_COIN1 )
 INPUT_PORTS_END
 
 /* ?? */
 static struct mips3_config config =
 {
 	16384,				/* code cache size */
-	16384				/* data cache size */
+	8192,				/* data cache size */
+	62500000			/* system clock */
 };
 
-MACHINE_INIT( aleck64 )
+static INTERRUPT_GEN( n64_vblank )
 {
-	int i;
-	UINT32 *pif_rom	= (UINT32*)memory_region(REGION_USER1);
+	signal_rcp_interrupt(VI_INTERRUPT);
+}
 
-	/* The PIF Boot ROM is not dumped, the following code simulates it */
-
-	/* clear all registers */
-	for (i=1; i < 32; i++)
-	{
-		*pif_rom++ = 0x00000000 | 0 << 21 | 0 << 16 | i << 11 | 0x20;		/* ADD ri, r0, r0 */
-	}
-
-	/* R20 <- 0x00000001 */
-	*pif_rom++ = 0x34000000 | 20 << 16 | 0x0001;					/* ORI r20, r0, 0x0001 */
-
-	/* R22 <- 0x0000003F */
-	*pif_rom++ = 0x34000000 | 22 << 16 | 0x003f;					/* ORI r22, r0, 0x003f */
-
-	/* R29 <- 0xA4001FF0 */
-	*pif_rom++ = 0x3c000000 | 29 << 16 | 0xa400;					/* LUI r29, 0xa400 */
-	*pif_rom++ = 0x34000000 | 29 << 21 | 29 << 16 | 0x1ff0;			/* ORI r29, r29, 0x1ff0 */
-
-	/* clear CP0 registers */
-	for (i=0; i < 32; i++)
-	{
-		*pif_rom++ = 0x40000000 | 4 << 21 | 0 << 16 | i << 11;		/* MTC2 cp0ri, r0 */
-	}
-
-	/* Random <- 0x0000001F */
-	*pif_rom++ = 0x34000000 | 1 << 16 | 0x001f;
-	*pif_rom++ = 0x40000000 | 4 << 21 | 1 << 16 | 1 << 11;			/* MTC2 Random, r1 */
-
-	/* Status <- 0x70400004 */
-	*pif_rom++ = 0x3c000000 | 1 << 16 | 0x7040;						/* LUI r1, 0x7040 */
-	*pif_rom++ = 0x34000000 | 1 << 21 | 1 << 16 | 0x0004;			/* ORI r1, r1, 0x0004 */
-	*pif_rom++ = 0x40000000 | 4 << 21 | 1 << 16 | 12 << 11;			/* MTC2 Status, r1 */
-
-	/* PRId <- 0x00000B00 */
-	*pif_rom++ = 0x34000000 | 1 << 16 | 0x0b00;						/* ORI r1, r0, 0x0b00 */
-	*pif_rom++ = 0x40000000 | 4 << 21 | 1 << 16 | 15 << 11;			/* MTC2 PRId, r1 */
-
-	/* Config <- 0x0006E463 */
-	*pif_rom++ = 0x3c000000 | 1 << 16 | 0x0006;						/* LUI r1, 0x0006 */
-	*pif_rom++ = 0x34000000 | 1 << 21 | 1 << 16 | 0xe463;			/* ORI r1, r1, 0xe463 */
-	*pif_rom++ = 0x40000000 | 4 << 21 | 1 << 16 | 16 << 11;			/* MTC2 Config, r1 */
-
-	/* (0xa4300004) <- 0x01010101 */
-	*pif_rom++ = 0x3c000000 | 1 << 16 | 0x0101;						/* LUI r1, 0x0101 */
-	*pif_rom++ = 0x34000000 | 1 << 21 | 1 << 16 | 0x0101;			/* ORI r1, r1, 0x0101 */
-	*pif_rom++ = 0x3c000000 | 3 << 16 | 0xa430;						/* LUI r3, 0xa430 */
-	*pif_rom++ = 0xac000000 | 3 << 21 | 1 << 16 | 0x0004;			/* SW r1, 0x0004(r3) */
-
-	/* Copy 0xb0000000...1fff -> 0xa4000000...1fff */
-	*pif_rom++ = 0x34000000 | 3 << 16 | 0x0400;						/* ORI r3, r0, 0x0400 */
-	*pif_rom++ = 0x3c000000 | 4 << 16 | 0xb000;						/* LUI r4, 0xb000 */
-	*pif_rom++ = 0x3c000000 | 5 << 16 | 0xa400;						/* LUI r5, 0xa400 */
-	*pif_rom++ = 0x8c000000 | 4 << 21 | 1 << 16;					/* LW r1, 0x0000(r4) */
-	*pif_rom++ = 0xac000000 | 5 << 21 | 1 << 16;					/* SW r1, 0x0000(r5) */
-	*pif_rom++ = 0x20000000 | 4 << 21 | 4 << 16 | 0x0004;			/* ADDI r4, r4, 0x0004 */
-	*pif_rom++ = 0x20000000 | 5 << 21 | 5 << 16 | 0x0004;			/* ADDI r5, r5, 0x0004 */
-	*pif_rom++ = 0x20000000 | 3 << 21 | 3 << 16 | 0xffff;			/* ADDI r3, r3, -1 */
-	*pif_rom++ = 0x14000000 | 3 << 21 | 0 << 16 | 0xfffa;			/* BNE r3, r0, -6 */
-	*pif_rom++ = 0x00000000;
-
-	*pif_rom++ = 0x34000000 | 3 << 16 | 0x0000;						/* ORI r3, r0, 0x0000 */
-	*pif_rom++ = 0x34000000 | 4 << 16 | 0x0000;						/* ORI r4, r0, 0x0000 */
-	*pif_rom++ = 0x34000000 | 5 << 16 | 0x0000;						/* ORI r5, r0, 0x0000 */
-
-	*pif_rom++ = 0x3c000000 | 1 << 16 | 0xa400;						/* LUI r1, 0xa400 */
-	*pif_rom++ = 0x34000000 | 1 << 21 | 1 << 16 | 0x0040;			/* ORI r1, r1, 0x0040 */
-	*pif_rom++ = 0x00000000 | 1 << 21 | 0x8;						/* JR r1 */
+MACHINE_RESET( aleck64 )
+{
+	n64_machine_reset();
 }
 
 MACHINE_DRIVER_START( aleck64 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(R4600BE, 14318180*4)  /* actually VR4300 ?? speed */
+	MDRV_CPU_ADD(R4600BE, 93750000)
 	MDRV_CPU_CONFIG(config)
-	MDRV_CPU_PROGRAM_MAP(aleck64_map, 0)
+	MDRV_CPU_PROGRAM_MAP(n64_map, 0)
+	MDRV_CPU_VBLANK_INT( n64_vblank, 1 )
 
-	MDRV_MACHINE_INIT( aleck64 )
+	MDRV_CPU_ADD(RSP, 62500000)
+	MDRV_CPU_PROGRAM_MAP(rsp_map, 0)
+
+	MDRV_MACHINE_RESET( aleck64 )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(1024, 1024)
-	MDRV_VISIBLE_AREA(0, 511, 0, 511)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_RGB_DIRECT | VIDEO_NEEDS_6BITS_PER_GUN)
+	MDRV_SCREEN_SIZE(640, 525)
+	MDRV_VISIBLE_AREA(0, 639, 0, 479)
 	MDRV_PALETTE_LENGTH(0x1000)
 
-	MDRV_VIDEO_START(aleck64)
-	MDRV_VIDEO_UPDATE(aleck64)
+	MDRV_VIDEO_START(n64)
+	MDRV_VIDEO_UPDATE(n64)
+
+	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+
+	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_CONFIG(n64_sound_interface)
+	MDRV_SOUND_ROUTE(0, "left", 1.00)
+	MDRV_SOUND_ROUTE(0, "right", 1.00)
 MACHINE_DRIVER_END
 
 DRIVER_INIT( aleck64 )
 {
+	UINT8 *rom = memory_region(REGION_USER2);
+
+	rom[0x67c] = 0;
+	rom[0x67d] = 0;
+	rom[0x67e] = 0;
+	rom[0x67f] = 0;
 }
 
 ROM_START( 11beat )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )		/* dummy region for R4300 */
-
-	ROM_REGION32_BE( 0x800, REGION_USER1, 0 )
+	ROM_REGION32_BE( 0x800, REGION_USER1, ROMREGION_ERASE00 )
 		/* PIF Boot ROM - not dumped */
 
-	ROM_REGION32_BE( 0x1000000, REGION_USER2, 0 )
+	ROM_REGION32_BE( 0x4000000, REGION_USER2, 0 )
 	ROM_LOAD16_WORD_SWAP( "nus-zhaj.u3", 0x000000, 0x0800000,  CRC(95258ba2) SHA1(0299b8fb9a8b1b24428d0f340f6bf1cfaf99c672) )
 ROM_END
 
 ROM_START( mtetrisc )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )		/* dummy region for R4300 */
-
-	ROM_REGION32_BE( 0x800, REGION_USER1, 0 )
+	ROM_REGION32_BE( 0x800, REGION_USER1, ROMREGION_ERASE00 )
 		/* PIF Boot ROM - not dumped */
 
-	ROM_REGION32_BE( 0x1000000, REGION_USER2, 0 )
+	ROM_REGION32_BE( 0x4000000, REGION_USER2, 0 )
 	ROM_LOAD16_WORD_SWAP( "nus-zcaj.u4", 0x000000, 0x1000000,  CRC(ec4563fc) SHA1(4d5a30873a5850cf4cd1c0bdbe24e1934f163cd0) )
 
 	ROM_REGION32_BE( 0x100000, REGION_USER3, 0 )
@@ -459,6 +374,5 @@ ROM_START( mtetrisc )
 	ROM_LOAD ( "at24c01.u34", 0x000000, 0x80,  CRC(ba7e503f) SHA1(454aa4fdde7d8694d1affaf25cd750fa678686bb) )
 ROM_END
 
-
 GAME( 1998, 11beat,   0,  aleck64, aleck64, aleck64, ROT0, "Hudson", "Eleven Beat", GAME_NOT_WORKING|GAME_NO_SOUND )
-GAME( 1998, mtetrisc,   0,  aleck64, aleck64, aleck64, ROT0, "Capcom", "Magical Tetris Challenge (981009 Japan)", GAME_NOT_WORKING|GAME_NO_SOUND )
+GAME( 1998, mtetrisc, 0,  aleck64, aleck64, aleck64, ROT0, "Capcom", "Magical Tetris Challenge (981009 Japan)", GAME_NOT_WORKING|GAME_NO_SOUND )

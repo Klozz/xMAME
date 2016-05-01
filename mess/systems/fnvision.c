@@ -258,17 +258,21 @@ static WRITE8_HANDLER( pia0_porta_w )
 	logerror("%u",data);
 }
 
-static struct pia6821_interface pia0_intf =
+static const pia6821_interface pia0_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ 0, pia0_portb_r, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ pia0_porta_w, SN76496_0_w, 0, 0,
 	/*irqs   : A/B             */ 0, 0,
 };
 
-static MACHINE_INIT( fnvision )
+static MACHINE_START( fnvision )
 {
-	pia_unconfig();
 	pia_config(0, PIA_STANDARD_ORDERING, &pia0_intf);
+	return 0;
+}
+
+static MACHINE_RESET( fnvision )
+{
 	pia_reset();
 }
 
@@ -280,7 +284,8 @@ static MACHINE_DRIVER_START( fnvision )
 	MDRV_FRAMES_PER_SECOND(50)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT( fnvision )
+	MDRV_MACHINE_START( fnvision )
+	MDRV_MACHINE_RESET( fnvision )
 
     /* video hardware */
 	MDRV_TMS9928A(&tms9928a_interface)
@@ -296,7 +301,7 @@ ROM_START( fnvision )
     ROM_LOAD( "funboot.rom", 0xc000, 0x0800, CRC(05602697) SHA1(c280b20c8074ba9abb4be4338b538361dfae517f) )
 ROM_END
 
-DEVICE_LOAD( fnvision_cart )
+int device_load_fnvision_cart(mess_image *image, mame_file *file)
 {
 	/*
 
@@ -350,14 +355,23 @@ DEVICE_LOAD( fnvision_cart )
 	return 0;
 }
 
-static void fnvision_cartslot_getinfo(struct IODevice *dev)
+static void fnvision_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 1;
-	dev->file_extensions = "rom\0";
-	dev->must_be_loaded = 1;
-	dev->load = device_load_fnvision_cart;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_fnvision_cart; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START( fnvision )

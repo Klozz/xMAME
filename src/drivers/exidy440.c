@@ -16,7 +16,6 @@
         * Who Dunit
         * Showdown
 
-
 ****************************************************************************
 
     Memory map
@@ -215,7 +214,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "exidy440.h"
 
 
@@ -292,7 +290,7 @@ static INTERRUPT_GEN( main_interrupt )
 }
 
 
-MACHINE_INIT( exidy440 )
+MACHINE_RESET( exidy440 )
 {
 	exidy440_bank = 0;
 	memory_set_bankptr(1, &memory_region(REGION_CPU1)[0x10000]);
@@ -1059,7 +1057,6 @@ INPUT_PORTS_START( showdown )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_START				/* start button */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 ) PORT_NAME("Action")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_NAME("Bet-All")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_NAME("Gold")
@@ -1118,7 +1115,7 @@ static MACHINE_DRIVER_START( exidy440 )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(exidy440)
+	MDRV_MACHINE_RESET(exidy440)
 	MDRV_NVRAM_HANDLER(exidy440)
 
 	/* video hardware */

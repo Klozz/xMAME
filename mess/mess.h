@@ -32,26 +32,14 @@
 
 /**************************************************************************/
 
-extern int devices_inited;
-
 /* MESS_DEBUG is a debug switch (for developers only) for
    debug code, which should not be found in distributions, like testdrivers,...
    contrary to MAME_DEBUG, NDEBUG it should not be found in the makefiles of distributions
    use it in your private root makefile */
 /* #define MESS_DEBUG */
 
-#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
-	#include <stdbool.h>
-#elif (! defined(__bool_true_false_are_defined)) && (! defined(__cplusplus))
-	#ifndef bool
-		#define bool int
-	#endif
-	#ifndef true
-		#define true 1
-	#endif
-	#ifndef false
-		#define false 0
-	#endif
+#ifndef bool
+#define bool int
 #endif
 
 /* Win32 defines this for vararg functions */
@@ -86,12 +74,8 @@ int mess_validitychecks(void);
 
 /* these are called from mame.c*/
 int devices_init(const game_driver *gamedrv);
-int devices_initialload(const game_driver *gamedrv, int ispreload);
-void devices_exit(void);
 
-char *auto_strlistdup(char *strlist);
-
-int register_device(iodevice_t type, const char *arg);
+void mess_config_init(void);
 
 enum
 {
@@ -138,7 +122,5 @@ UINT8 *memory_install_ram8_handler(int cpunum, int spacenum, offs_t start, offs_
 
 /* gets the path to the MESS executable */
 extern const char *mess_path;
-
-void machine_hard_reset(void);
 
 #endif

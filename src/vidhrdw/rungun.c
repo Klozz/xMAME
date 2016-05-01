@@ -8,8 +8,6 @@
 */
 
 #include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 
 static int ttl_gfx_index;
@@ -109,7 +107,8 @@ VIDEO_START(rng)
 		return(1);
 
 	/* decode the ttl layer's gfx */
-	Machine->gfx[ttl_gfx_index] = decodegfx(memory_region(REGION_GFX3), &charlayout);
+	Machine->gfx[ttl_gfx_index] = allocgfx(&charlayout);
+	decodegfx(Machine->gfx[ttl_gfx_index], memory_region(REGION_GFX3), 0, Machine->gfx[ttl_gfx_index]->total_elements);
 
 	if (Machine->drv->color_table_len)
 	{
@@ -127,7 +126,7 @@ VIDEO_START(rng)
 
 	tilemap_set_transparent_pen(ttl_tilemap, 0);
 
-	state_save_register_UINT16("RnGTTL", 0, "VRAM", ttl_vram, 0x1000);
+	state_save_register_global_array(ttl_vram);
 
 	sprite_colorbase = 0x20;
 

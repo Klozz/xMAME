@@ -57,7 +57,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "osd_cpu.h"
 #include "driver.h"
 #include "vidhrdw/generic.h"
 #include "mscommon.h"
@@ -253,7 +252,7 @@ void vic6567_init (int chip_vic2e, int pal,
 	vic2.interrupt = irq;
 	vic2.vic2e = chip_vic2e;
 	vic2.pal = pal;
-	vic2.on = true;
+	vic2.on = TRUE;
 }
 
 void vic2_set_rastering(int onoff)
@@ -658,15 +657,11 @@ VIDEO_START( vic2 )
 	if (vic2.vic3) {
 		vic2.screen[0] = (UINT8*)auto_malloc (sizeof (UINT8) * 216 * 656 / 8);
 
-		if (!vic2.screen[0])
-			return 1;
 		for (i = 1; i < 216; i++)
 			vic2.screen[i] = vic2.screen[i - 1] + 656 / 8;
 	} else {
 		vic2.screen[0] = (UINT8*)auto_malloc (sizeof (UINT8) * 216 * 336 / 8);
 
-		if (!vic2.screen[0])
-			return 1;
 		for (i = 1; i < 216; i++)
 			vic2.screen[i] = vic2.screen[i - 1] + 336 / 8;
 	}
@@ -1126,7 +1121,7 @@ static void vic2_drawlines (int first, int last)
 	if (first == last)
 		return;
 	vic2.lastline = last;
-	if (osd_skip_this_frame ())
+	if (skip_this_frame ())
 		return;
 
 

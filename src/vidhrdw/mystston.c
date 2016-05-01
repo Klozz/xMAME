@@ -13,7 +13,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 
 UINT8 *mystston_videoram2;
@@ -80,7 +79,7 @@ WRITE8_HANDLER( mystston_videoram_w )
 
 WRITE8_HANDLER( mystston_videoram2_w )
 {
-	if (videoram[offset] != data)
+	if (mystston_videoram2[offset] != data)
 	{
 		mystston_videoram2[offset] = data;
 		tilemap_mark_tile_dirty(bg_tilemap, offset & 0x1ff);

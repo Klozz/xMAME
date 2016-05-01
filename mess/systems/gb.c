@@ -41,8 +41,7 @@ Priority:  Todo:                                                  Done:
 #include "includes/gb.h"
 #include "devices/cartslot.h"
 
-/* Initial value of the cpu registers */
-static UINT16 dmg_cpu_reset[6] = { 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000 };	/* GameBoy                          */
+/* Initial value of the cpu registers (hacks until we get bios dumps) */
 static UINT16 sgb_cpu_reset[6] = { 0x01B0, 0x0013, 0x00D8, 0x014D, 0xFFFE, 0x0100 };    /* Super GameBoy                    */
 static UINT16 gbp_cpu_reset[6] = { 0xFFB0, 0x0013, 0x00D8, 0x014D, 0xFFFE, 0x0100 };	/* GameBoy Pocket / Super GameBoy 2 */
 static UINT16 gbc_cpu_reset[6] = { 0x11B0, 0x0013, 0x00D8, 0x014D, 0xFFFE, 0x0100 };	/* GameBoy Color  / Gameboy Advance */
@@ -232,14 +231,12 @@ static MACHINE_DRIVER_START( gameboy )
 	MDRV_CPU_ADD_TAG("main", Z80GB, 4194304)			/* 4.194304 Mhz */
 	MDRV_CPU_PROGRAM_MAP(gb_map, 0)
 	MDRV_CPU_VBLANK_INT(gb_scanline_interrupt, 154 * 3)	/* 1 int each scanline ! */
-	MDRV_CPU_CONFIG(dmg_cpu_reset)
 
 	MDRV_FRAMES_PER_SECOND(DMG_FRAMES_PER_SECOND)
 	MDRV_VBLANK_DURATION(0)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( gb )
-	MDRV_MACHINE_STOP( gb )
+	MDRV_MACHINE_RESET( gb )
 
 	MDRV_VIDEO_START( generic_bitmapped )
 	MDRV_VIDEO_UPDATE( generic_bitmapped )
@@ -268,7 +265,7 @@ static MACHINE_DRIVER_START( supergb )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_CONFIG(sgb_cpu_reset)
 
-	MDRV_MACHINE_INIT( sgb )
+	MDRV_MACHINE_RESET( sgb )
 
 	MDRV_SCREEN_SIZE(32*8, 28*8)
 	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 28*8-1)
@@ -281,7 +278,7 @@ static MACHINE_DRIVER_START( gbpocket )
 	MDRV_IMPORT_FROM(gameboy)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_CONFIG(gbp_cpu_reset)
-	MDRV_MACHINE_INIT( gbpocket )
+	MDRV_MACHINE_RESET( gbpocket )
 	MDRV_PALETTE_INIT(gbp)
 MACHINE_DRIVER_END
 
@@ -291,28 +288,42 @@ static MACHINE_DRIVER_START( gbcolor )
 	MDRV_CPU_PROGRAM_MAP( gbc_map, 0 )
 	MDRV_CPU_CONFIG(gbc_cpu_reset)
 
-	MDRV_MACHINE_INIT(gbc)
+	MDRV_MACHINE_RESET(gbc)
 
 	MDRV_PALETTE_LENGTH(32768)
 	MDRV_COLORTABLE_LENGTH(16*4)	/* 16 palettes of 4 colours */
 	MDRV_PALETTE_INIT(gbc)
 MACHINE_DRIVER_END
 
-static void gameboy_cartslot_getinfo(struct IODevice *dev)
+static void gameboy_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 1;
-	dev->file_extensions = "gb\0gmb\0cgb\0gbc\0sgb\0";
-	dev->must_be_loaded = 1;
-	dev->init = device_init_gb_cart;
-	dev->load = device_load_gb_cart;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_INIT:							info->init = device_init_gb_cart; break;
+		case DEVINFO_PTR_LOAD:							info->load = device_load_gb_cart; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "gb,gmb,cgb,gbc,sgb"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void gameboy_cartslot_getinfo_gb(struct IODevice *dev)
+static void gameboy_cartslot_getinfo_gb(const device_class *devclass, UINT32 state, union devinfo *info)
 {
-	gameboy_cartslot_getinfo(dev);
-	dev->must_be_loaded = 0;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 0; break;
+
+		default:										gameboy_cartslot_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(gameboy)
@@ -334,8 +345,7 @@ static MACHINE_DRIVER_START( megaduck )
 	MDRV_VBLANK_DURATION(0)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( megaduck )
-	MDRV_MACHINE_STOP( gb )
+	MDRV_MACHINE_RESET( megaduck )
 
 	MDRV_VIDEO_START( generic_bitmapped )
 	MDRV_VIDEO_UPDATE( generic_bitmapped )
@@ -355,14 +365,23 @@ static MACHINE_DRIVER_START( megaduck )
 	MDRV_SOUND_ROUTE(1, "right", 0.50)
 MACHINE_DRIVER_END
 
-static void megaduck_cartslot_getinfo(struct IODevice *dev)
+static void megaduck_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 1;
-	dev->file_extensions = "bin\0";
-	dev->must_be_loaded = 1;
-	dev->load = device_load_megaduck_cart;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_megaduck_cart; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "bin"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(megaduck)
@@ -376,26 +395,28 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 ROM_START( gameboy )
-	ROM_REGION( 0x10100, REGION_CPU1, 0 )
-	ROM_LOAD( "dmg_boot.bin", 0x10000, 0x0100, CRC(59c8598e) SHA1(4ed31ec6b0b175bb109c0eb5fd3d193da823339f) )
+	ROM_REGION( 0x0100, REGION_CPU1, 0 )
+	ROM_LOAD( "dmg_boot.bin", 0x0000, 0x0100, CRC(59c8598e) SHA1(4ed31ec6b0b175bb109c0eb5fd3d193da823339f) )
 ROM_END
 
 ROM_START( supergb )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
-	ROM_REGION( 0x2000,  REGION_GFX1, 0 )	/* SGB border */
+	ROM_REGION( 0x10000, REGION_CPU1, ROMREGION_ERASEFF )
+/*	ROM_LOAD( "sgb_boot.bin", 0x0000, 0x0100, NO_DUMP ) */
 ROM_END
 
 ROM_START( gbpocket )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, REGION_CPU1, ROMREGION_ERASEFF )
+/*	ROM_LOAD( "gbp_boot.bin", 0x0000, 0x0100, NO_DUMP ) */
 ROM_END
 
 ROM_START( gbcolor )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, REGION_CPU1, ROMREGION_ERASEFF )
+/*	ROM_LOAD( "gbc_boot.bin", 0x0000, 0x0100, NO_DUMP ) */
 ROM_END
 
 
 ROM_START( megaduck )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, REGION_CPU1, ROMREGION_ERASEFF )
 ROM_END
 
 /*    YEAR  NAME      PARENT   COMPAT	MACHINE   INPUT    INIT  CONFIG   COMPANY     FULLNAME */

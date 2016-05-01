@@ -1,55 +1,60 @@
-/*###################################################################################################
-**
-**
-**      debugvw.c
-**      Debugger view engine.
-**      Written by Aaron Giles
-**
-**
-**#################################################################################################*/
+/*********************************************************************
+
+    debugvw.c
+
+    Debugger view engine.
+
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
+*********************************************************************/
 
 #include "driver.h"
 #include "debugvw.h"
 #include "debugcmd.h"
+#include "debugcmt.h"
 #include "debugcpu.h"
 #include "debugcon.h"
 #include "express.h"
+#include "textbuf.h"
 #include <ctype.h>
 
 
 
-/*###################################################################################################
-**  CONSTANTS
-**#################################################################################################*/
+/***************************************************************************
+    CONSTANTS
+***************************************************************************/
 
-#define DASM_LINES			(1000)
-#define DASM_WIDTH			(50)
+#define DEFAULT_DASM_LINES	(1000)
+#define DEFAULT_DASM_WIDTH	(50)
 #define DASM_MAX_BYTES		(16)
-#define DASM_MAX_CHARS		(8 + 2 + DASM_WIDTH + 2 + 3*DASM_MAX_BYTES)
+#define MEM_MAX_LINE_WIDTH	(1024)
 
 
-
-/*###################################################################################################
-**  TYPE DEFINITIONS
-**#################################################################################################*/
+/***************************************************************************
+    TYPE DEFINITIONS
+***************************************************************************/
 
 /* debug_view_callbacks contains calbacks specific to a given view */
-struct debug_view_callbacks
+typedef struct _debug_view_callbacks debug_view_callbacks;
+struct _debug_view_callbacks
 {
-	int				(*alloc)(struct debug_view *);	/* allocate memory */
-	void			(*free)(struct debug_view *);	/* free memory */
-	void			(*update)(struct debug_view *);	/* update contents */
-	void			(*getprop)(struct debug_view *, UINT32, void *); /* get property */
-	void			(*setprop)(struct debug_view *, UINT32, const void *); /* set property */
+	int				(*alloc)(debug_view *);		/* allocate memory */
+	void			(*free)(debug_view *);		/* free memory */
+	void			(*update)(debug_view *);	/* update contents */
+	void			(*getprop)(debug_view *, UINT32, debug_property_info *value); /* get property */
+	void			(*setprop)(debug_view *, UINT32, debug_property_info value); /* set property */
 };
 
+
 /* debug_view describes a single text-based view */
-struct debug_view
+/* typedef struct _debug_view debug_view -- defined in debugvw.h */
+struct _debug_view
 {
-	struct debug_view *next;					/* link to the next view */
+	debug_view *	next;						/* link to the next view */
 	UINT8			type;						/* type of view */
 	void *			extra_data;					/* extra view-specific data */
-	struct debug_view_callbacks cb;				/* callback for this view */
+	debug_view_callbacks cb;					/* callback for this view */
 	void *			osd_private_data;			/* OSD-managed private data */
 
 	/* visibility info */
@@ -67,16 +72,15 @@ struct debug_view
 	/* update info */
 	UINT8			update_level;				/* update level; updates when this hits 0 */
 	UINT8			update_pending;				/* true if there is a pending update */
-	void			(*update_func)(struct debug_view *);/* callback for the update */
-	struct debug_view_char *viewdata;			/* current array of view data */
+	void			(*update_func)(debug_view *);/* callback for the update */
+	debug_view_char *viewdata;					/* current array of view data */
 	int				viewdata_size;				/* number of elements of the viewdata array */
-
-	/* common info */
-	UINT8			cpunum;						/* target CPU number */
 };
 
+
 /* debug_view_registers contains data specific to a register view */
-struct debug_view_register
+typedef struct _debug_view_register debug_view_register;
+struct _debug_view_register
 {
 	UINT64			lastval;					/* last value */
 	UINT64			currval;					/* current value */
@@ -87,99 +91,137 @@ struct debug_view_register
 	UINT8			vallen;						/* number of value chars */
 };
 
-struct debug_view_registers
+
+typedef struct _debug_view_registers debug_view_registers;
+struct _debug_view_registers
 {
+	UINT8			recompute;					/* do we need to recompute the layout the next change? */
 	UINT8			cpunum;						/* target CPU number */
 	int				divider;					/* dividing column */
 	UINT32			last_update;				/* execution counter at last update */
-	struct debug_view_register reg[MAX_REGS];	/* register data */
+	debug_view_register reg[MAX_REGS];			/* register data */
 };
+
 
 /* debug_view_disasm contains data specific to a disassembly view */
-struct debug_view_disasm
+typedef struct _debug_view_disasm debug_view_disasm;
+struct _debug_view_disasm
 {
+	UINT8			recompute;					/* do we need to recompute the layout the next change? */
 	UINT8			cpunum;						/* target CPU number */
+	UINT8			right_column;				/* right column? */
+	UINT32			backwards_steps;			/* number of backwards steps */
+	UINT32			dasm_width;					/* width of the disassembly area */
 	UINT8 *			last_opcode_base;			/* last opcode base */
 	UINT8 *			last_opcode_arg_base;		/* last opcode arg base */
+	UINT32			last_change_count;			/* last comment change count */
 	int				divider1, divider2;			/* left and right divider columns */
+	int				divider3;					/* comment divider column */
 	UINT8			live_tracking;				/* track the value of the live expression? */
 	UINT64			last_result;				/* last result from the expression */
-	struct parsed_expression *expression;		/* expression to compute */
+	parsed_expression *expression;				/* expression to compute */
 	char *			expression_string;			/* copy of the expression string */
 	UINT8			expression_dirty;			/* true if the expression needs to be re-evaluated */
-	offs_t			address[DASM_LINES];		/* addresses of the instructions */
-	char			dasm[DASM_LINES][DASM_MAX_CHARS];/* disassembled instructions */
+	UINT32			allocated_rows;				/* allocated rows */
+	UINT32			allocated_cols;				/* allocated columns */
+	offs_t *		address;					/* addresses of the instructions */
+	char *			dasm;						/* disassembled instructions */
 };
 
+
 /* debug_view_memory contains data specific to a memory view */
-struct debug_view_memory
+typedef struct _debug_view_memory debug_view_memory;
+struct _debug_view_memory
 {
+	UINT8			recompute;					/* do we need to recompute the layout the next change? */
 	UINT8			cpunum;						/* target CPU number */
 	int				divider1, divider2;			/* left and right divider columns */
 	UINT8			spacenum;					/* target address space */
 	UINT8			bytes_per_chunk;			/* bytes per unit */
+	UINT16			chunks_displayed;			/* number of chunks displayed per line */
 	UINT8			reverse_view;				/* reverse-endian view? */
 	UINT8			ascii_view;					/* display ASCII characters? */
 	UINT8			live_tracking;				/* track the value of the live expression? */
 	UINT8			byte_offset;				/* byte offset within each row */
 	UINT64			last_result;				/* last result from the expression */
-	struct parsed_expression *expression;		/* expression to compute */
+	parsed_expression *expression;				/* expression to compute */
 	char *			expression_string;			/* copy of the expression string */
 	UINT8			expression_dirty;			/* true if the expression needs to be re-evaluated */
+	void *			raw_base;					/* base of raw memory view (overrides CPU/space) */
+	UINT32			raw_length;					/* length of raw memory view */
+	UINT8			raw_offset_xor;				/* xor to apply to offsets */
+	UINT8			raw_little_endian;			/* little endian data? */
+};
+
+
+/* debug_view_textbuf contains data specific to a textbuffer view */
+typedef struct _debug_view_textbuf debug_view_textbuf;
+struct _debug_view_textbuf
+{
+	text_buffer *	textbuf;					/* pointer to the text buffer */
+	UINT8			at_bottom;					/* are we tracking new stuff being added? */
+	UINT32			topseq;						/* sequence number of the top line */
 };
 
 
 
-/*###################################################################################################
-**  LOCAL VARIABLES
-**#################################################################################################*/
+/***************************************************************************
+    LOCAL VARIABLES
+***************************************************************************/
 
-static struct debug_view *first_view;
-
-
-
-/*###################################################################################################
-**  MACROS
-**#################################################################################################*/
+static debug_view *first_view;
 
 
 
-/*###################################################################################################
-**  PROTOTYPES
-**#################################################################################################*/
+/***************************************************************************
+    PROTOTYPES
+***************************************************************************/
 
-static void console_update(struct debug_view *view);
+static int console_alloc(debug_view *view);
 
-static int registers_alloc(struct debug_view *view);
-static void registers_free(struct debug_view *view);
-static void registers_update(struct debug_view *view);
+static int log_alloc(debug_view *view);
 
-static int disasm_alloc(struct debug_view *view);
-static void disasm_free(struct debug_view *view);
-static void disasm_update(struct debug_view *view);
-static void	disasm_getprop(struct debug_view *view, UINT32 property, void *value);
-static void	disasm_setprop(struct debug_view *view, UINT32 property, const void *value);
+static int registers_alloc(debug_view *view);
+static void registers_free(debug_view *view);
+static void registers_update(debug_view *view);
+static void	registers_getprop(debug_view *view, UINT32 property, debug_property_info *value);
+static void	registers_setprop(debug_view *view, UINT32 property, debug_property_info value);
 
-static int memory_alloc(struct debug_view *view);
-static void memory_free(struct debug_view *view);
-static void memory_update(struct debug_view *view);
-static void	memory_getprop(struct debug_view *view, UINT32 property, void *value);
-static void	memory_setprop(struct debug_view *view, UINT32 property, const void *value);
+static int disasm_alloc(debug_view *view);
+static void disasm_free(debug_view *view);
+static void disasm_update(debug_view *view);
+static void	disasm_getprop(debug_view *view, UINT32 property, debug_property_info *value);
+static void	disasm_setprop(debug_view *view, UINT32 property, debug_property_info value);
 
-static struct debug_view_callbacks callback_table[] =
+static int memory_alloc(debug_view *view);
+static void memory_free(debug_view *view);
+static void memory_update(debug_view *view);
+static void	memory_getprop(debug_view *view, UINT32 property, debug_property_info *value);
+static void	memory_setprop(debug_view *view, UINT32 property, debug_property_info value);
+
+static int textbuf_alloc(debug_view *view, text_buffer *textbuf);
+static void textbuf_free(debug_view *view);
+static void textbuf_update(debug_view *view);
+static void	textbuf_getprop(debug_view *view, UINT32 property, debug_property_info *value);
+static void	textbuf_setprop(debug_view *view, UINT32 property, debug_property_info value);
+
+static const debug_view_callbacks callback_table[] =
 {
 	{	NULL,				NULL,				NULL,				NULL,				NULL },
-	{	NULL,				NULL,				console_update,		NULL,				NULL },
-	{	registers_alloc,	registers_free,		registers_update,	NULL,				NULL },
+	{	console_alloc,		textbuf_free,		textbuf_update,		textbuf_getprop,	textbuf_setprop },
+	{	registers_alloc,	registers_free,		registers_update,	registers_getprop,	registers_setprop },
 	{	disasm_alloc,		disasm_free,		disasm_update,		disasm_getprop,		disasm_setprop },
-	{	memory_alloc,		memory_free,		memory_update,		memory_getprop,		memory_setprop }
+	{	memory_alloc,		memory_free,		memory_update,		memory_getprop,		memory_setprop },
+	{	log_alloc,			textbuf_free,		textbuf_update,		textbuf_getprop,	textbuf_setprop }
 };
 
 
 
-/*###################################################################################################
-**  INITIALIZATION
-**#################################################################################################*/
+/***************************************************************************
+
+    Initialization and shutdown
+
+***************************************************************************/
 
 /*-------------------------------------------------
     debug_view_init - initializes the view system
@@ -189,6 +231,7 @@ void debug_view_init(void)
 {
 	/* reset the initial list */
 	first_view = NULL;
+	add_exit_callback(debug_view_exit);
 }
 
 
@@ -205,18 +248,20 @@ void debug_view_exit(void)
 
 
 
-/*###################################################################################################
-**  VIEW CREATION/DELETION
-**#################################################################################################*/
+/***************************************************************************
+
+    View creation/deletion
+
+***************************************************************************/
 
 /*-------------------------------------------------
     debug_view_alloc - allocate a new debug
     view
 -------------------------------------------------*/
 
-struct debug_view *debug_view_alloc(int type)
+debug_view *debug_view_alloc(int type)
 {
-	struct debug_view *view;
+	debug_view *view;
 
 	/* allocate memory for the view */
 	view = malloc(sizeof(*view));
@@ -263,9 +308,9 @@ struct debug_view *debug_view_alloc(int type)
     debug_view_free - free a debug view
 -------------------------------------------------*/
 
-void debug_view_free(struct debug_view *view)
+void debug_view_free(debug_view *view)
 {
-	struct debug_view *curview, *prevview;
+	debug_view *curview, *prevview;
 
 	/* find the view */
 	for (prevview = NULL, curview = first_view; curview != NULL; prevview = curview, curview = curview->next)
@@ -289,80 +334,78 @@ void debug_view_free(struct debug_view *view)
 
 
 
-/*###################################################################################################
-**  PROPERTY MANAGEMENT
-**#################################################################################################*/
+/***************************************************************************
+
+    Property management
+
+***************************************************************************/
 
 /*-------------------------------------------------
     debug_view_get_property - return the value
     of a given property
 -------------------------------------------------*/
 
-void debug_view_get_property(struct debug_view *view, int property, void *value)
+void debug_view_get_property(debug_view *view, int property, debug_property_info *value)
 {
 	switch (property)
 	{
 		case DVP_VISIBLE_ROWS:
-			*(UINT32 *)value = view->visible_rows;
+			value->i = view->visible_rows;
 			break;
 
 		case DVP_VISIBLE_COLS:
-			*(UINT32 *)value = view->visible_cols;
+			value->i = view->visible_cols;
 			break;
 
 		case DVP_TOTAL_ROWS:
-			*(UINT32 *)value = view->total_rows;
+			value->i = view->total_rows;
 			break;
 
 		case DVP_TOTAL_COLS:
-			*(UINT32 *)value = view->total_cols;
+			value->i = view->total_cols;
 			break;
 
 		case DVP_TOP_ROW:
-			*(UINT32 *)value = view->top_row;
+			value->i = view->top_row;
 			break;
 
 		case DVP_LEFT_COL:
-			*(UINT32 *)value = view->left_col;
+			value->i = view->left_col;
 			break;
 
 		case DVP_UPDATE_CALLBACK:
-			*(genf **)value = (genf *) view->update_func;
+			value->f = (genf *) view->update_func;
 			break;
 
 		case DVP_VIEW_DATA:
-			*(struct debug_view_char **)value = view->viewdata;
-			break;
-
-		case DVP_CPUNUM:
-			*(UINT32 *)value = view->cpunum;
+			value->p = (void *) view->viewdata;
 			break;
 
 		case DVP_SUPPORTS_CURSOR:
-			*(UINT32 *)value = view->supports_cursor;
+			value->i = view->supports_cursor;
 			break;
 
 		case DVP_CURSOR_VISIBLE:
-			*(UINT32 *)value = view->cursor_visible;
+			value->i = view->cursor_visible;
 			break;
 
 		case DVP_CURSOR_ROW:
-			*(UINT32 *)value = view->cursor_row;
+			value->i = view->cursor_row;
 			break;
 
 		case DVP_CURSOR_COL:
-			*(UINT32 *)value = view->cursor_col;
+			value->i = view->cursor_col;
 			break;
 
 		case DVP_OSD_PRIVATE:
-			*(void **)value = view->osd_private_data;
+			value->p = view->osd_private_data;
 			break;
 
 		default:
 			if (view->cb.getprop)
 				(*view->cb.getprop)(view, property, value);
 			else
-				osd_die("Attempt to get invalid property %d on debug view type %d\n", property, view->type);
+				fatalerror("Attempt to get invalid property %d on debug view type %d", property, view->type);
 			break;
 	}
 }
@@ -373,74 +416,74 @@ void debug_view_get_property(struct debug_view *view, int property, void *value)
     of a given property
 -------------------------------------------------*/
 
-void debug_view_set_property(struct debug_view *view, int property, const void *value)
+void debug_view_set_property(debug_view *view, int property, debug_property_info value)
 {
 	switch (property)
 	{
 		case DVP_VISIBLE_ROWS:
-			if (*(const UINT32 *)value != view->visible_rows)
+			if (value.i != view->visible_rows)
 			{
 				debug_view_begin_update(view);
-				view->visible_rows = *(const UINT32 *)value;
-				view->update_pending = 1;
+				view->visible_rows = value.i;
+				view->update_pending = TRUE;
 				debug_view_end_update(view);
 			}
 			break;
 
 		case DVP_VISIBLE_COLS:
-			if (*(const UINT32 *)value != view->visible_cols)
+			if (value.i != view->visible_cols)
 			{
 				debug_view_begin_update(view);
-				view->visible_cols = *(const UINT32 *)value;
-				view->update_pending = 1;
+				view->visible_cols = value.i;
+				view->update_pending = TRUE;
 				debug_view_end_update(view);
 			}
 			break;
 
 		case DVP_TOTAL_ROWS:
-			if (*(const UINT32 *)value != view->total_rows)
+			if (value.i != view->total_rows)
 			{
 				debug_view_begin_update(view);
-				view->total_rows = *(const UINT32 *)value;
-				view->update_pending = 1;
+				view->total_rows = value.i;
+				view->update_pending = TRUE;
 				debug_view_end_update(view);
 			}
 			break;
 
 		case DVP_TOTAL_COLS:
-			if (*(const UINT32 *)value != view->total_cols)
+			if (value.i != view->total_cols)
 			{
 				debug_view_begin_update(view);
-				view->total_cols = *(const UINT32 *)value;
-				view->update_pending = 1;
+				view->total_cols = value.i;
+				view->update_pending = TRUE;
 				debug_view_end_update(view);
 			}
 			break;
 
 		case DVP_TOP_ROW:
-			if (*(const UINT32 *)value != view->top_row)
+			if (value.i != view->top_row)
 			{
 				debug_view_begin_update(view);
-				view->top_row = *(const UINT32 *)value;
-				view->update_pending = 1;
+				view->top_row = value.i;
+				view->update_pending = TRUE;
 				debug_view_end_update(view);
 			}
 			break;
 
 		case DVP_LEFT_COL:
-			if (*(const UINT32 *)value != view->left_col)
+			if (value.i != view->left_col)
 			{
 				debug_view_begin_update(view);
-				view->left_col = *(const UINT32 *)value;
-				view->update_pending = 1;
+				view->left_col = value.i;
+				view->update_pending = TRUE;
 				debug_view_end_update(view);
 			}
 			break;
 
 		case DVP_UPDATE_CALLBACK:
 			debug_view_begin_update(view);
-			memcpy(&view->update_func, &value, sizeof(view->update_func));
-			view->update_pending = 1;
+			view->update_func = (void (*)(debug_view *)) value.f;
+			view->update_pending = TRUE;
 			debug_view_end_update(view);
 			break;
 
@@ -448,75 +491,67 @@ void debug_view_set_property(struct debug_view *view, int property, const void *
 			/* read-only */
 			break;
 
-		case DVP_CPUNUM:
-			if (*(const UINT32 *)value != view->cpunum)
-			{
-				debug_view_begin_update(view);
-				view->cpunum = *(const UINT32 *)value;
-				view->update_pending = 1;
-				debug_view_end_update(view);
-			}
-			break;
-
 		case DVP_SUPPORTS_CURSOR:
 			/* read-only */
 			break;
 
 		case DVP_CURSOR_VISIBLE:
-			if (*(const UINT32 *)value != view->cursor_visible)
+			if (value.i != view->cursor_visible)
 			{
 				debug_view_begin_update(view);
-				view->cursor_visible = *(const UINT32 *)value;
-				view->update_pending = 1;
+				view->cursor_visible = value.i;
+				view->update_pending = TRUE;
 				debug_view_end_update(view);
 			}
 			break;
 
 		case DVP_CURSOR_ROW:
-			if (*(const UINT32 *)value != view->cursor_row)
+			if (value.i != view->cursor_row)
 			{
 				debug_view_begin_update(view);
-				view->cursor_row = *(const UINT32 *)value;
-				view->update_pending = 1;
+				view->cursor_row = value.i;
+				view->update_pending = TRUE;
 				debug_view_end_update(view);
 			}
 			break;
 
 		case DVP_CURSOR_COL:
-			if (*(const UINT32 *)value != view->cursor_col)
+			if (value.i != view->cursor_col)
 			{
 				debug_view_begin_update(view);
-				view->cursor_col = *(const UINT32 *)value;
-				view->update_pending = 1;
+				view->cursor_col = value.i;
+				view->update_pending = TRUE;
 				debug_view_end_update(view);
 			}
 			break;
 
 		case DVP_OSD_PRIVATE:
-			view->osd_private_data = *(void **)value;
+			view->osd_private_data = value.p;
 			break;
 
 		default:
 			if (view->cb.setprop)
 				(*view->cb.setprop)(view, property, value);
 			else
-				osd_die("Attempt to set invalid property %d on debug view type %d\n", property, view->type);
+				fatalerror("Attempt to set invalid property %d on debug view type %d", property, view->type);
 			break;
 	}
 }
 
 
 
-/*###################################################################################################
-**  UPDATE MANAGEMENT
-**#################################################################################################*/
+/***************************************************************************
+
+    Update management
+
+***************************************************************************/
 
 /*-------------------------------------------------
     debug_view_begin_update - bracket a sequence
     of changes so that only one update occurs
 -------------------------------------------------*/
 
-void debug_view_begin_update(struct debug_view *view)
+void debug_view_begin_update(debug_view *view)
 {
 	/* bump the level */
 	view->update_level++;
@@ -528,7 +563,7 @@ void debug_view_begin_update(struct debug_view *view)
     of changes so that only one update occurs
 -------------------------------------------------*/
 
-void debug_view_end_update(struct debug_view *view)
+void debug_view_end_update(debug_view *view)
 {
 	/* if we hit zero, call the update function */
 	if (view->update_level == 1)
@@ -570,13 +605,13 @@ void debug_view_end_update(struct debug_view *view)
 
 void debug_view_update_all(void)
 {
-	struct debug_view *view;
+	debug_view *view;
 
 	/* loop over each view and force an update */
 	for (view = first_view; view != NULL; view = view->next)
 	{
 		debug_view_begin_update(view);
-		view->update_pending = 1;
+		view->update_pending = TRUE;
 		debug_view_end_update(view);
 	}
 }
@@ -589,56 +624,149 @@ void debug_view_update_all(void)
 
 void debug_view_update_type(int type)
 {
-	struct debug_view *view;
+	debug_view *view;
 
 	/* loop over each view and force an update */
 	for (view = first_view; view != NULL; view = view->next)
 		if (view->type == type)
 		{
 			debug_view_begin_update(view);
-			view->update_pending = 1;
+			view->update_pending = TRUE;
 			debug_view_end_update(view);
 		}
 }
 
 
 
-/*###################################################################################################
-**  CONSOLE VIEW
-**#################################################################################################*/
+/***************************************************************************
+
+    Console view
+
+***************************************************************************/
 
 /*-------------------------------------------------
-    console_update - update the console view
+    console_alloc - allocate memory for the log view
 -------------------------------------------------*/
 
-static void console_update(struct debug_view *view)
+static int console_alloc(debug_view *view)
 {
-	struct debug_view_char *dest = view->viewdata;
-	int total_rows, total_cols;
-	UINT32 row;
+	return textbuf_alloc(view, debug_console_get_textbuf());
+}
+
+
+
+/***************************************************************************
+
+    Log view
+
+***************************************************************************/
+
+/*-------------------------------------------------
+    log_alloc - allocate memory for the log view
+-------------------------------------------------*/
+
+static int log_alloc(debug_view *view)
+{
+	return textbuf_alloc(view, debug_errorlog_get_textbuf());
+}
+
+
+
+/***************************************************************************
+
+    Generic text buffer view
+
+***************************************************************************/
+
+/*-------------------------------------------------
+    textbuf_alloc - allocate memory for a text
+    buffer view
+-------------------------------------------------*/
+
+static int textbuf_alloc(debug_view *view, text_buffer *textbuf)
+{
+	debug_view_textbuf *textdata;
+
+	/* allocate memory */
+	textdata = malloc(sizeof(*textdata));
+	if (!textdata)
+		return 0;
+	memset(textdata, 0, sizeof(*textdata));
+
+	/* by default we track live */
+	textdata->textbuf = textbuf;
+	textdata->at_bottom = TRUE;
+
+	/* stash the extra data pointer */
+	view->extra_data = textdata;
+	return 1;
+}
+
+
+/*-------------------------------------------------
+    textbuf_free - free memory for the log view
+-------------------------------------------------*/
+
+static void textbuf_free(debug_view *view)
+{
+	debug_view_textbuf *textdata = view->extra_data;
+
+	/* free any memory we callocated */
+	if (textdata)
+		free(textdata);
+	view->extra_data = NULL;
+}
+
+
+/*-------------------------------------------------
+    textbuf_update - update the log view
+-------------------------------------------------*/
+
+static void textbuf_update(debug_view *view)
+{
+	debug_view_textbuf *textdata = view->extra_data;
+	debug_view_char *dest = view->viewdata;
+	UINT32 curseq = 0, row;
 
 	/* update the console info */
-	debug_console_get_size(&total_rows, &total_cols);
-	view->total_rows = total_rows;
-	view->total_cols = total_cols;
+	view->total_rows = text_buffer_num_lines(textdata->textbuf);
+	view->total_cols = text_buffer_max_width(textdata->textbuf);
+	if (view->total_cols < 80)
+		view->total_cols = 80;
+
+	/* determine the starting sequence number */
+	if (!textdata->at_bottom)
+	{
+		curseq = textdata->topseq;
+		if (!text_buffer_get_seqnum_line(textdata->textbuf, curseq))
+			textdata->at_bottom = TRUE;
+	}
+	if (textdata->at_bottom)
+	{
+		curseq = text_buffer_line_index_to_seqnum(textdata->textbuf, view->total_rows - 1);
+		if (view->total_rows < view->visible_rows)
+			curseq -= view->total_rows - 1;
+		else
+			curseq -= view->visible_rows - 1;
+	}
+	view->top_row = curseq - text_buffer_line_index_to_seqnum(textdata->textbuf, 0);
 
 	/* loop over visible rows */
 	for (row = 0; row < view->visible_rows; row++)
 	{
-		UINT32 effrow = view->top_row + row;
+		const char *line = text_buffer_get_seqnum_line(textdata->textbuf, curseq++);
 		UINT32 col = 0;
 
 		/* if this visible row is valid, add it to the buffer */
-		if (effrow < view->total_rows)
+		if (line != NULL)
 		{
-			const char *data = debug_console_get_line(effrow);
-			UINT32 len = strlen(data);
+			UINT32 len = strlen(line);
 			UINT32 effcol = view->left_col;
 
 			/* copy data */
 			while (col < view->visible_cols && effcol < len)
 			{
-				dest->byte = data[effcol++];
+				dest->byte = line[effcol++];
 				dest->attrib = DCA_NORMAL;
 				dest++;
 				col++;
@@ -657,19 +785,86 @@ static void console_update(struct debug_view *view)
 }
 
 
+/*-------------------------------------------------
+    textbuf_getprop - return the value
+    of a given property
+-------------------------------------------------*/
 
-/*###################################################################################################
-**  REGISTERS VIEW
-**#################################################################################################*/
+static void	textbuf_getprop(debug_view *view, UINT32 property, debug_property_info *value)
+{
+	debug_view_textbuf *textdata = view->extra_data;
+
+	switch (property)
+	{
+		case DVP_TEXTBUF_LINE_LOCK:
+			value->i = textdata->at_bottom ? (UINT32)-1 : textdata->topseq - text_buffer_line_index_to_seqnum(textdata->textbuf, 0);
+			break;
+
+		default:
+			fatalerror("Attempt to get invalid property %d on debug view type %d", property, view->type);
+			break;
+	}
+}
+
+
+/*-------------------------------------------------
+    textbuf_setprop - set the value
+    of a given property
+-------------------------------------------------*/
+
+static void	textbuf_setprop(debug_view *view, UINT32 property, debug_property_info value)
+{
+	debug_view_textbuf *textdata = view->extra_data;
+
+	switch (property)
+	{
+		case DVP_TEXTBUF_LINE_LOCK:
+			if (value.i == (UINT32)-1)
+			{
+				if (!textdata->at_bottom)
+				{
+					debug_view_begin_update(view);
+					textdata->at_bottom = TRUE;
+					view->update_pending = TRUE;
+					debug_view_end_update(view);
+				}
+			}
+			else
+			{
+				UINT32 seq = text_buffer_line_index_to_seqnum(textdata->textbuf, value.i);
+				if (seq != textdata->topseq || textdata->at_bottom)
+				{
+					debug_view_begin_update(view);
+					textdata->topseq = seq;
+					textdata->at_bottom = FALSE;
+					view->update_pending = TRUE;
+					debug_view_end_update(view);
+				}
+			}
+			break;
+
+		default:
+			fatalerror("Attempt to set invalid property %d on debug view type %d", property, view->type);
+			break;
+	}
+}
+
+
+
+/***************************************************************************
+
+    Registers view
+
+***************************************************************************/
 
 /*-------------------------------------------------
     registers_alloc - allocate memory for the
     registers view
 -------------------------------------------------*/
 
-static int registers_alloc(struct debug_view *view)
+static int registers_alloc(debug_view *view)
 {
-	struct debug_view_registers *regdata;
+	debug_view_registers *regdata;
 
 	/* allocate memory */
 	regdata = malloc(sizeof(*regdata));
@@ -678,7 +873,7 @@ static int registers_alloc(struct debug_view *view)
 	memset(regdata, 0, sizeof(*regdata));
 
 	/* initialize */
-	regdata->cpunum = -1;
+	regdata->recompute = TRUE;
 
 	/* stash the extra data pointer */
 	view->extra_data = regdata;
@@ -691,9 +886,9 @@ static int registers_alloc(struct debug_view *view)
     registers view
 -------------------------------------------------*/
 
-static void registers_free(struct debug_view *view)
+static void registers_free(debug_view *view)
 {
-	struct debug_view_registers *regdata = view->extra_data;
+	debug_view_registers *regdata = view->extra_data;
 
 	/* free any memory we callocated */
 	if (regdata)
@@ -703,15 +898,72 @@ static void registers_free(struct debug_view *view)
 
 
 /*-------------------------------------------------
+    add_register - adds a register to the
+    registers view
+-------------------------------------------------*/
+
+static void add_register(debug_view *view, int regnum, const char *str)
+{
+	debug_view_registers *regdata = view->extra_data;
+	int tagstart, taglen, valstart, vallen;
+	const char *colon;
+
+	colon = strchr(str, ':');
+
+	/* if no colon, mark everything as tag */
+	if (!colon)
+	{
+		tagstart = 0;
+		taglen = strlen(str);
+		valstart = 0;
+		vallen = 0;
+	}
+
+	/* otherwise, break the string at the colon */
+	else
+	{
+		tagstart = 0;
+		taglen = colon - str;
+		valstart = (colon + 1) - str;
+		vallen = strlen(colon + 1);
+	}
+
+	/* now trim spaces */
+	while (isspace(str[tagstart]) && taglen > 0)
+		tagstart++, taglen--;
+	while (isspace(str[tagstart + taglen - 1]) && taglen > 0)
+		taglen--;
+	while (isspace(str[valstart]) && vallen > 0)
+		valstart++, vallen--;
+	while (isspace(str[valstart + vallen - 1]) && vallen > 0)
+		vallen--;
+
+	/* note the register number and info */
+	regdata->reg[view->total_rows].lastval  =
+	regdata->reg[view->total_rows].currval  = cpunum_get_reg(regdata->cpunum, regnum);
+	regdata->reg[view->total_rows].regnum   = regnum;
+	regdata->reg[view->total_rows].tagstart = tagstart;
+	regdata->reg[view->total_rows].taglen   = taglen;
+	regdata->reg[view->total_rows].valstart = valstart;
+	regdata->reg[view->total_rows].vallen   = vallen;
+	view->total_rows++;
+
+	/* adjust the divider and total cols, if necessary */
+	regdata->divider = MAX(regdata->divider, 1 + taglen + 1);
+	view->total_cols = MAX(view->total_cols, 1 + taglen + 2 + vallen + 1);
+}
+
+
+/*-------------------------------------------------
     registers_recompute - recompute all info
     for the registers view
 -------------------------------------------------*/
 
-static void registers_recompute(struct debug_view *view)
+static void registers_recompute(debug_view *view)
 {
-	const int *list = cpunum_debug_register_list(view->cpunum);
-	struct debug_view_registers *regdata = view->extra_data;
-	int regnum, maxtaglen = 0, maxvallen = 0;
+	debug_view_registers *regdata = view->extra_data;
+	const int *list = cpunum_debug_register_list(regdata->cpunum);
+	int regnum, maxtaglen, maxvallen;
 
 	/* reset the view parameters */
 	view->top_row = 0;
@@ -740,10 +992,8 @@ static void registers_recompute(struct debug_view *view)
 	regdata->reg[view->total_rows].taglen   = 5;
 	regdata->reg[view->total_rows].valstart = 6;
 	regdata->reg[view->total_rows].vallen   = 3;
-	if (regdata->reg[view->total_rows].taglen > maxtaglen)
-		maxtaglen = regdata->reg[view->total_rows].taglen;
-	if (regdata->reg[view->total_rows].vallen > maxvallen)
-		maxvallen = regdata->reg[view->total_rows].vallen;
+	maxtaglen = MAX(maxtaglen, regdata->reg[view->total_rows].taglen);
+	maxvallen = MAX(maxvallen, regdata->reg[view->total_rows].vallen);
 	view->total_rows++;
 
 	/* add a beam entry: beamy:456 */
@@ -754,10 +1004,8 @@ static void registers_recompute(struct debug_view *view)
 	regdata->reg[view->total_rows].taglen   = 5;
 	regdata->reg[view->total_rows].valstart = 6;
 	regdata->reg[view->total_rows].vallen   = 3;
-	if (regdata->reg[view->total_rows].taglen > maxtaglen)
-		maxtaglen = regdata->reg[view->total_rows].taglen;
-	if (regdata->reg[view->total_rows].vallen > maxvallen)
-		maxvallen = regdata->reg[view->total_rows].vallen;
+	maxtaglen = MAX(maxtaglen, regdata->reg[view->total_rows].taglen);
+	maxvallen = MAX(maxvallen, regdata->reg[view->total_rows].vallen);
 	view->total_rows++;
 
 	/* add a flags entry: flags:xxxxxxxx */
@@ -767,11 +1015,9 @@ static void registers_recompute(struct debug_view *view)
 	regdata->reg[view->total_rows].tagstart = 0;
 	regdata->reg[view->total_rows].taglen   = 5;
 	regdata->reg[view->total_rows].valstart = 6;
-	regdata->reg[view->total_rows].vallen   = strlen(cpunum_flags(view->cpunum));
-	if (regdata->reg[view->total_rows].taglen > maxtaglen)
-		maxtaglen = regdata->reg[view->total_rows].taglen;
-	if (regdata->reg[view->total_rows].vallen > maxvallen)
-		maxvallen = regdata->reg[view->total_rows].vallen;
+	regdata->reg[view->total_rows].vallen   = strlen(cpunum_flags(regdata->cpunum));
+	maxtaglen = MAX(maxtaglen, regdata->reg[view->total_rows].taglen);
+	maxvallen = MAX(maxvallen, regdata->reg[view->total_rows].vallen);
 	view->total_rows++;
 
 	/* add a divider entry */
@@ -780,77 +1026,31 @@ static void registers_recompute(struct debug_view *view)
 	regdata->reg[view->total_rows].regnum   = MAX_REGS;
 	view->total_rows++;
 
+	/* set the current divider and total cols */
+	regdata->divider = 1 + maxtaglen + 1;
+	view->total_cols = 1 + maxtaglen + 2 + maxvallen + 1;
+
 	/* add all registers into it */
 	for (regnum = 0; regnum < MAX_REGS; regnum++)
 	{
 		const char *str = NULL;
+		int regid;
 
-		/* get the string */
-		if (!list)
-			str = cpunum_reg_string(view->cpunum, regnum);
-		else if (list[regnum] >= 0 && list[regnum] < MAX_REGS)
-			str = cpunum_reg_string(view->cpunum, list[regnum]);
-		else
+		/* identify the register id */
+		regid = list ? list[regnum] : regnum;
+		if (regid < 0)
 			break;
 
-		/* if we got a string, add one to the total rows */
-		if (str != NULL)
-		{
-			int tagstart, taglen, valstart, vallen;
-			const char *colon = strchr(str, ':');
+		/* retrieve the string for this register */
+		str = cpunum_reg_string(regdata->cpunum, regnum);
 
-			/* if no colon, mark everything as tag */
-			if (!colon)
-			{
-				tagstart = 0;
-				taglen = strlen(str);
-				valstart = 0;
-				vallen = 0;
-			}
-
-			/* otherwise, break the string at the colon */
-			else
-			{
-				tagstart = 0;
-				taglen = colon - str;
-				valstart = (colon + 1) - str;
-				vallen = strlen(colon + 1);
-			}
-
-			/* now trim spaces */
-			while (isspace(str[tagstart]) && taglen > 0)
-				tagstart++, taglen--;
-			while (isspace(str[tagstart + taglen - 1]) && taglen > 0)
-				taglen--;
-			while (isspace(str[valstart]) && vallen > 0)
-				valstart++, vallen--;
-			while (isspace(str[valstart + vallen - 1]) && vallen > 0)
-				vallen--;
-
-			/* note the register number and info */
-			regdata->reg[view->total_rows].lastval  =
-			regdata->reg[view->total_rows].currval  = cpunum_get_reg(view->cpunum, regnum);
-			regdata->reg[view->total_rows].regnum   = regnum;
-			regdata->reg[view->total_rows].tagstart = tagstart;
-			regdata->reg[view->total_rows].taglen   = taglen;
-			regdata->reg[view->total_rows].valstart = valstart;
-			regdata->reg[view->total_rows].vallen   = vallen;
-			view->total_rows++;
-
-			/* see if this is the longest tag */
-			if (taglen > maxtaglen)
-				maxtaglen = taglen;
-			if (vallen > maxvallen)
-				maxvallen = vallen;
-		}
+		/* did we get a string? */
+		if (str && str[0] != '~')
+			add_register(view, regnum, str);
 	}
 
-	/* set the final numbers */
-	regdata->divider = 1 + maxtaglen + 1;
-	view->total_cols = 1 + maxtaglen + 2 + maxvallen + 1;
-
-	/* update our concept of a CPU number */
-	regdata->cpunum = view->cpunum;
+	/* no longer need to recompute */
+	regdata->recompute = FALSE;
 }
 
 
@@ -859,15 +1059,19 @@ static void registers_recompute(struct debug_view *view)
     the register view
 -------------------------------------------------*/
 
-static void registers_update(struct debug_view *view)
+static void registers_update(debug_view *view)
 {
 	UINT32 execution_counter = debug_get_execution_counter();
-	struct debug_view_registers *regdata = view->extra_data;
-	struct debug_view_char *dest = view->viewdata;
+	debug_view_registers *regdata = view->extra_data;
+	debug_view_char *dest = view->viewdata;
 	UINT32 row, i;
 
+	/* cannot update if no active CPU */
+	if (cpu_getactivecpu() < 0)
+		return;
+
 	/* if our assumptions changed, revisit them */
-	if (view->cpunum != regdata->cpunum)
+	if (regdata->recompute)
 		registers_recompute(view);
 
 	/* loop over visible rows */
@@ -879,7 +1083,7 @@ static void registers_update(struct debug_view *view)
 		/* if this visible row is valid, add it to the buffer */
 		if (effrow < view->total_rows)
 		{
-			struct debug_view_register *reg = &regdata->reg[effrow];
+			debug_view_register *reg = &regdata->reg[effrow];
 			UINT32 effcol = view->left_col;
 			char temp[256], dummy[100];
 			UINT8 attrib = DCA_NORMAL;
@@ -921,10 +1125,10 @@ static void registers_update(struct debug_view *view)
 			}
 			else
 			{
-				data = (char *)cpunum_reg_string(view->cpunum, reg->regnum);
+				data = (char *)cpunum_reg_string(regdata->cpunum, reg->regnum);
 				if (regdata->last_update != execution_counter)
 					reg->lastval = reg->currval;
-				reg->currval = cpunum_get_reg(view->cpunum, reg->regnum);
+				reg->currval = cpunum_get_reg(regdata->cpunum, reg->regnum);
 			}
 
 			/* see if we changed */
@@ -975,19 +1179,74 @@ static void registers_update(struct debug_view *view)
 }
 
 
+/*-------------------------------------------------
+    registers_getprop - return the value
+    of a given property
+-------------------------------------------------*/
 
-/*###################################################################################################
-**  DISASSEMBLY VIEW
-**#################################################################################################*/
+static void	registers_getprop(debug_view *view, UINT32 property, debug_property_info *value)
+{
+	debug_view_registers *regdata = view->extra_data;
+
+	switch (property)
+	{
+		case DVP_REGS_CPUNUM:
+			value->i = regdata->cpunum;
+			break;
+
+		default:
+			fatalerror("Attempt to get invalid property %d on debug view type %d", property, view->type);
+			break;
+	}
+}
+
+
+/*-------------------------------------------------
+    registers_getprop - set the value
+    of a given property
+-------------------------------------------------*/
+
+static void	registers_setprop(debug_view *view, UINT32 property, debug_property_info value)
+{
+	debug_view_registers *regdata = view->extra_data;
+
+	switch (property)
+	{
+		case DVP_REGS_CPUNUM:
+			if (value.i != regdata->cpunum)
+			{
+				debug_view_begin_update(view);
+				regdata->cpunum = value.i;
+				regdata->recompute = TRUE;
+				view->update_pending = TRUE;
+				debug_view_end_update(view);
+			}
+			break;
+
+		default:
+			fatalerror("Attempt to set invalid property %d on debug view type %d", property, view->type);
+			break;
+	}
+}
+
+
+
+/***************************************************************************
+
+    Disassembly view
+
+***************************************************************************/
 
 /*-------------------------------------------------
     disasm_alloc - allocate disasm for the
     disassembly view
 -------------------------------------------------*/
 
-static int disasm_alloc(struct debug_view *view)
+static int disasm_alloc(debug_view *view)
 {
-	struct debug_view_disasm *dasmdata;
+	debug_view_disasm *dasmdata;
+	int total_comments = 0;
+	int i;
 
 	/* allocate disasm */
 	dasmdata = malloc(sizeof(*dasmdata));
@@ -995,10 +1254,18 @@ static int disasm_alloc(struct debug_view *view)
 		return 0;
 	memset(dasmdata, 0, sizeof(*dasmdata));
 
+	/* count the number of comments */
+	for (i = 0; i < cpu_gettotalcpu(); i++)
+		total_comments += debug_comment_get_count(i);
+
 	/* initialize */
-	dasmdata->cpunum = -1;
+	dasmdata->recompute = TRUE;
+	dasmdata->right_column = (total_comments > 0) ? DVP_DASM_RIGHTCOL_COMMENTS : DVP_DASM_RIGHTCOL_RAW;
+	dasmdata->backwards_steps = 3;
+	dasmdata->dasm_width = DEFAULT_DASM_WIDTH;
 
 	/* stash the extra data pointer */
+	view->total_rows = DEFAULT_DASM_LINES;
 	view->extra_data = dasmdata;
 	return 1;
 }
@@ -1009,9 +1276,9 @@ static int disasm_alloc(struct debug_view *view)
     disassembly view
 -------------------------------------------------*/
 
-static void disasm_free(struct debug_view *view)
+static void disasm_free(debug_view *view)
 {
-	struct debug_view_disasm *dasmdata = view->extra_data;
+	debug_view_disasm *dasmdata = view->extra_data;
 
 	/* free any disasm we callocated */
 	if (dasmdata)
@@ -1020,6 +1287,10 @@ static void disasm_free(struct debug_view *view)
 			expression_free(dasmdata->expression);
 		if (dasmdata->expression_string)
 			free(dasmdata->expression_string);
+		if (dasmdata->address)
+			free(dasmdata->address);
+		if (dasmdata->dasm)
+			free(dasmdata->dasm);
 		free(dasmdata);
 	}
 	view->extra_data = NULL;
@@ -1031,12 +1302,12 @@ static void disasm_free(struct debug_view *view)
     of instructions from the given PC
 -------------------------------------------------*/
 
-static offs_t disasm_back_up(int cpunum, const struct debug_cpu_info *cpuinfo, offs_t startpc, int numinstrs)
+static offs_t disasm_back_up(int cpunum, const debug_cpu_info *cpuinfo, offs_t startpc, int numinstrs)
 {
 	int minlen = BYTE2ADDR(activecpu_min_instruction_bytes(), cpuinfo, ADDRESS_SPACE_PROGRAM);
 	int maxlen = BYTE2ADDR(activecpu_max_instruction_bytes(), cpuinfo, ADDRESS_SPACE_PROGRAM);
 	int use_new_dasm = (activecpu_get_info_fct(CPUINFO_PTR_DISASSEMBLE_NEW) != NULL);
-	UINT32 addrmask = BYTE2ADDR(0xffffffff, cpuinfo, ADDRESS_SPACE_PROGRAM);
+	UINT32 addrmask = cpuinfo->space[ADDRESS_SPACE_PROGRAM].logaddrmask;
 	offs_t curpc, lastgoodpc = startpc, temppc;
 	UINT8 opbuf[1024], argbuf[1024];
 	char dasmbuffer[100];
@@ -1067,7 +1338,7 @@ static offs_t disasm_back_up(int cpunum, const struct debug_cpu_info *cpuinfo, o
 		for (testpc = curpc; testpc < startpc; testpc += instlen)
 		{
 			/* convert PC to a byte offset */
-			offs_t pcbyte = ADDR2BYTE(testpc, cpuinfo, ADDRESS_SPACE_PROGRAM);
+			offs_t pcbyte = ADDR2BYTE_MASKED(testpc, cpuinfo, ADDRESS_SPACE_PROGRAM);
 
 			/* get the disassembly, but only if mapped */
 			instlen = 1;
@@ -1123,7 +1394,7 @@ static offs_t disasm_back_up(int cpunum, const struct debug_cpu_info *cpuinfo, o
     byte values
 -------------------------------------------------*/
 
-static void disasm_generate_bytes(offs_t pcbyte, int numbytes, const struct debug_cpu_info *cpuinfo, int minbytes, char *string, int maxchars)
+static void disasm_generate_bytes(offs_t pcbyte, int numbytes, const debug_cpu_info *cpuinfo, int minbytes, char *string, int maxchars, int encrypted)
 {
 	int byte, offset = 0;
 	UINT64 val;
@@ -1134,21 +1405,21 @@ static void disasm_generate_bytes(offs_t pcbyte, int numbytes, const struct debu
 			if (maxchars >= 2)
 				offset = sprintf(string, "%02X", (UINT32)debug_read_opcode(pcbyte, 1, FALSE));
 			for (byte = 1; byte < numbytes && offset + 3 < maxchars; byte++)
-				offset += sprintf(&string[offset], " %02X", (UINT32)debug_read_opcode(pcbyte + byte, 1, FALSE));
+				offset += sprintf(&string[offset], " %02X", (UINT32)debug_read_opcode(pcbyte + byte, 1, encrypted));
 			break;
 
 		case 2:
 			if (maxchars >= 4)
 				offset = sprintf(string, "%04X", (UINT32)debug_read_opcode(pcbyte, 2, FALSE));
 			for (byte = 2; byte < numbytes && offset + 5 < maxchars; byte += 2)
-				offset += sprintf(&string[offset], " %04X", (UINT32)debug_read_opcode(pcbyte + byte, 2, FALSE));
+				offset += sprintf(&string[offset], " %04X", (UINT32)debug_read_opcode(pcbyte + byte, 2, encrypted));
 			break;
 
 		case 4:
 			if (maxchars >= 8)
 				offset = sprintf(string, "%08X", (UINT32)debug_read_opcode(pcbyte, 4, FALSE));
 			for (byte = 4; byte < numbytes && offset + 9 < maxchars; byte += 4)
-				offset += sprintf(&string[offset], " %08X", (UINT32)debug_read_opcode(pcbyte + byte, 4, FALSE));
+				offset += sprintf(&string[offset], " %08X", (UINT32)debug_read_opcode(pcbyte + byte, 4, encrypted));
 			break;
 
 		case 8:
@@ -1157,13 +1428,13 @@ static void disasm_generate_bytes(offs_t pcbyte, int numbytes, const struct debu
 				offset = sprintf(string, "%08X%08X", (UINT32)(val >> 32), (UINT32)val);
 			for (byte = 8; byte < numbytes && offset + 17 < maxchars; byte += 8)
 			{
-				val = debug_read_opcode(pcbyte + byte, 8, FALSE);
+				val = debug_read_opcode(pcbyte + byte, 8, encrypted);
 				offset += sprintf(&string[offset], " %08X%08X", (UINT32)(val >> 32), (UINT32)val);
 			}
 			break;
 
 		default:
-			osd_die("disasm_generate_bytes: unknown size = %d\n", minbytes);
+			fatalerror("disasm_generate_bytes: unknown size = %d", minbytes);
 			break;
 	}
 
@@ -1179,50 +1450,77 @@ static void disasm_generate_bytes(offs_t pcbyte, int numbytes, const struct debu
     for the disassembly view
 -------------------------------------------------*/
 
-static void disasm_recompute(struct debug_view *view, offs_t pc, int startline, int lines)
+static void disasm_recompute(debug_view *view, offs_t pc, int startline, int lines, int original_cpunum)
 {
-	const struct debug_cpu_info *cpuinfo = debug_get_cpu_info(view->cpunum);
-	struct debug_view_disasm *dasmdata = view->extra_data;
+	debug_view_disasm *dasmdata = view->extra_data;
+	const debug_cpu_info *cpuinfo = debug_get_cpu_info(dasmdata->cpunum);
 	int chunksize, minbytes, maxbytes, maxbytes_clamped;
 	int use_new_dasm;
 	UINT32 addrmask;
 	int line;
 
 	/* switch to the context of the CPU in question */
-	cpuintrf_push_context(view->cpunum);
-	addrmask = BYTE2ADDR(0xffffffff, cpuinfo, ADDRESS_SPACE_PROGRAM);
+	addrmask = cpuinfo->space[ADDRESS_SPACE_PROGRAM].logaddrmask;
 	use_new_dasm = (activecpu_get_info_fct(CPUINFO_PTR_DISASSEMBLE_NEW) != NULL);
 
 	/* determine how many characters we need for an address and set the divider */
-	dasmdata->divider1 = 1 + cpuinfo->space[ADDRESS_SPACE_PROGRAM].addrchars + 1;
+	dasmdata->divider1 = 1 + cpuinfo->space[ADDRESS_SPACE_PROGRAM].logchars + 1;
 
-	/* assume a fixed 40 characters for the disassembly */
-	dasmdata->divider2 = dasmdata->divider1 + 1 + DASM_WIDTH + 1;
+	/* assume a fixed number of characters for the disassembly */
+	dasmdata->divider2 = dasmdata->divider1 + 1 + dasmdata->dasm_width + 1;
 
 	/* determine how many bytes we might need to display */
-	chunksize = activecpu_databus_width(ADDRESS_SPACE_PROGRAM) / 8;
 	minbytes = activecpu_min_instruction_bytes();
 	maxbytes = activecpu_max_instruction_bytes();
-	maxbytes_clamped = maxbytes;
-	if (maxbytes_clamped > DASM_MAX_BYTES)
-		maxbytes_clamped = DASM_MAX_BYTES;
-	view->total_cols = dasmdata->divider2 + 1 + 2 * maxbytes_clamped + (maxbytes_clamped / minbytes - 1) + 1;
-	view->total_rows = DASM_LINES;
 
+	/* set the width of the third column according to display mode */
+	if (dasmdata->right_column == DVP_DASM_RIGHTCOL_RAW || dasmdata->right_column == DVP_DASM_RIGHTCOL_ENCRYPTED)
+	{
+		chunksize = activecpu_databus_width(ADDRESS_SPACE_PROGRAM) / 8;
+		maxbytes_clamped = maxbytes;
+		if (maxbytes_clamped > DASM_MAX_BYTES)
+			maxbytes_clamped = DASM_MAX_BYTES;
+		view->total_cols = dasmdata->divider2 + 1 + 2 * maxbytes_clamped + (maxbytes_clamped / minbytes - 1) + 1;
+	}
+	else if (dasmdata->right_column == DVP_DASM_RIGHTCOL_COMMENTS)
+		view->total_cols = dasmdata->divider2 + 1 + 50;		/* DEBUG_COMMENT_MAX_LINE_LENGTH */
+	else
+		view->total_cols = dasmdata->divider2 + 1;
+
+	/* reallocate memory if we don't have enough */
+	if (dasmdata->allocated_rows < view->total_rows || dasmdata->allocated_cols < view->total_cols)
+	{
+		/* update our values */
+		dasmdata->allocated_rows = view->total_rows;
+		dasmdata->allocated_cols = view->total_cols;
+
+		/* allocate address array */
+		if (dasmdata->address)
+			free(dasmdata->address);
+		dasmdata->address = malloc(sizeof(dasmdata->address[0]) * dasmdata->allocated_rows);
+
+		/* allocate disassembly buffer */
+		if (dasmdata->dasm)
+			free(dasmdata->dasm);
+		dasmdata->dasm = malloc(sizeof(dasmdata->dasm[0]) * dasmdata->allocated_rows * dasmdata->allocated_cols);
+	}
+
+	/* iterate over lines */
 	for (line = 0; line < lines; line++)
 	{
 		offs_t pcbyte, tempaddr;
 		UINT64 dummyreadop;
 		char buffer[100];
-		int numbytes;
+		int numbytes = 0;
 		int instr = startline + line;
+		char *destbuf = &dasmdata->dasm[instr * dasmdata->allocated_cols];
 
 		/* convert PC to a byte offset */
-		pcbyte = ADDR2BYTE(pc, cpuinfo, ADDRESS_SPACE_PROGRAM);
+		pcbyte = ADDR2BYTE_MASKED(pc, cpuinfo, ADDRESS_SPACE_PROGRAM);
 
 		/* convert back and set the address of this instruction */
 		dasmdata->address[instr] = pcbyte;
-		sprintf(&dasmdata->dasm[instr][0], " %0*X  ", cpuinfo->space[ADDRESS_SPACE_PROGRAM].addrchars, BYTE2ADDR(pcbyte, cpuinfo, ADDRESS_SPACE_PROGRAM));
+		sprintf(&destbuf[0], " %0*X  ", cpuinfo->space[ADDRESS_SPACE_PROGRAM].logchars, BYTE2ADDR(pcbyte, cpuinfo, ADDRESS_SPACE_PROGRAM));
 
 		/* make sure we can translate the address */
 		tempaddr = pcbyte;
@@ -1248,7 +1546,7 @@ static void disasm_recompute(struct debug_view *view, offs_t pc, int startline, 
 			else
 			{
 				/* get the disassembly, but only if mapped */
-				if (memory_get_op_ptr(view->cpunum, pcbyte) != NULL || (cpuinfo->readop && (*cpuinfo->readop)(pcbyte, 1, &dummyreadop)))
+				if (memory_get_op_ptr(dasmdata->cpunum, pcbyte, 0) != NULL || (cpuinfo->readop && (*cpuinfo->readop)(pcbyte, 1, &dummyreadop)))
 				{
 					memory_set_opbase(pcbyte);
 					pc += numbytes = activecpu_dasm(buffer, pc & addrmask) & DASMFLAG_LENGTHMASK;
@@ -1256,30 +1554,58 @@ static void disasm_recompute(struct debug_view *view, offs_t pc, int startline, 
 				else
 				{
 					sprintf(buffer, "<unmapped>");
-					pc += numbytes = 1;
+					numbytes = minbytes;
+					pc += BYTE2ADDR(minbytes, cpuinfo, ADDRESS_SPACE_PROGRAM);
 				}
 			}
 		}
 		else
 			sprintf(buffer, "<unmapped>");
-		sprintf(&dasmdata->dasm[instr][dasmdata->divider1 + 1], "%-*s  ", DASM_WIDTH, buffer);
+		sprintf(&destbuf[dasmdata->divider1 + 1], "%-*s  ", dasmdata->dasm_width, buffer);
 
-		/* get the bytes */
-		numbytes = ADDR2BYTE(numbytes, cpuinfo, ADDRESS_SPACE_PROGRAM);
-		disasm_generate_bytes(pcbyte, numbytes, cpuinfo, minbytes, &dasmdata->dasm[instr][dasmdata->divider2], DASM_MAX_CHARS - dasmdata->divider2);
+		if (dasmdata->right_column == DVP_DASM_RIGHTCOL_RAW || dasmdata->right_column == DVP_DASM_RIGHTCOL_ENCRYPTED)
+		{
+			/* get the bytes */
+			numbytes = ADDR2BYTE(numbytes, cpuinfo, ADDRESS_SPACE_PROGRAM);
+			disasm_generate_bytes(pcbyte, numbytes, cpuinfo, minbytes, &destbuf[dasmdata->divider2], dasmdata->allocated_cols - dasmdata->divider2, dasmdata->right_column == DVP_DASM_RIGHTCOL_ENCRYPTED);
+		}
+		else if (dasmdata->right_column == DVP_DASM_RIGHTCOL_COMMENTS)
+		{
+			offs_t comment_address = BYTE2ADDR(dasmdata->address[instr], cpuinfo, ADDRESS_SPACE_PROGRAM) ;
+
+			/* get and add the comment */
+			if (debug_comment_get_text(cpu_getactivecpu(), comment_address, debug_comment_get_opcode_crc32(comment_address)) != 0x00)
+			{
+				int i ;
+				char bob[DEBUG_COMMENT_MAX_LINE_LENGTH] ;
+				char pre[8] ;
+
+				/* Stick in the 'comment' symbol */
+				sprintf(pre, "// ") ;
+				for (i = 0; i < strlen(pre); i++)
+					destbuf[dasmdata->divider2+i] = pre[i] ;
+
+				/* Stick in the comment itself */
+				strcpy(bob, debug_comment_get_text(cpu_getactivecpu(), comment_address, debug_comment_get_opcode_crc32(comment_address))) ;
+				for (i = 0; i < (dasmdata->allocated_cols - dasmdata->divider2 - strlen(pre) - 1); i++)
+					destbuf[dasmdata->divider2+i+strlen(pre)] = bob[i] ;
+			}
+			else
+				sprintf(&destbuf[dasmdata->divider2], " ");
+		}
 	}
 
-	/* update our CPU number and opcode base */
-	dasmdata->cpunum = view->cpunum;
+	/* reset the opcode base */
+	if (dasmdata->cpunum == original_cpunum)
+		memory_set_opbase(activecpu_get_physical_pc_byte());
+
+	/* update opcode base information */
 	dasmdata->last_opcode_base = opcode_base;
 	dasmdata->last_opcode_arg_base = opcode_arg_base;
+	dasmdata->last_change_count = debug_comment_get_change_count(dasmdata->cpunum);
 
-	/* restore the context */
-	cpuintrf_pop_context();
-
-	/* reset the opcode base */
-	if (view->cpunum == cpu_getactivecpu())
-		memory_set_opbase(activecpu_get_physical_pc_byte());
+	/* now longer need to recompute */
+	dasmdata->recompute = FALSE;
 }
 
 
@@ -1288,24 +1614,27 @@ static void disasm_recompute(struct debug_view *view, offs_t pc, int startline, 
     the disassembly view
 -------------------------------------------------*/
 
-static void disasm_update(struct debug_view *view)
+static void disasm_update(debug_view *view)
 {
-	const struct debug_cpu_info *cpuinfo = debug_get_cpu_info(view->cpunum);
-	offs_t pc = cpunum_get_reg(view->cpunum, REG_PC);
-	offs_t pcbyte = ADDR2BYTE(pc, cpuinfo, ADDRESS_SPACE_PROGRAM);
-	struct debug_view_disasm *dasmdata = view->extra_data;
-	struct debug_view_char *dest = view->viewdata;
-	UINT8 need_to_recompute = 0;
+	debug_view_disasm *dasmdata = view->extra_data;
+	const debug_cpu_info *cpuinfo = debug_get_cpu_info(dasmdata->cpunum);
+	offs_t pc = cpunum_get_reg(dasmdata->cpunum, REG_PC);
+	offs_t pcbyte = ADDR2BYTE_MASKED(pc, cpuinfo, ADDRESS_SPACE_PROGRAM);
+	debug_view_char *dest = view->viewdata;
+	int original_cpunum = cpu_getactivecpu();
 	EXPRERR exprerr;
 	UINT32 row;
 
+	/* switch to the CPU's context */
+	cpuintrf_push_context(dasmdata->cpunum);
+
 	/* if our expression is dirty, fix it */
-	if ((dasmdata->expression_dirty || view->cpunum != dasmdata->cpunum) && dasmdata->expression_string)
+	if (dasmdata->expression_dirty && dasmdata->expression_string)
 	{
-		struct parsed_expression *expr;
+		parsed_expression *expr;
 
 		/* parse the new expression */
-		exprerr = expression_parse(dasmdata->expression_string, debug_get_cpu_info(view->cpunum)->symtable, &expr);
+		exprerr = expression_parse(dasmdata->expression_string, debug_get_cpu_info(dasmdata->cpunum)->symtable, &expr);
 
 		/* if it worked, update the expression */
 		if (exprerr == EXPRERR_NONE)
@@ -1325,19 +1654,19 @@ static void disasm_update(struct debug_view *view)
 		exprerr = expression_execute(dasmdata->expression, &result);
 		if (exprerr == EXPRERR_NONE && result != dasmdata->last_result)
 		{
-			offs_t resultbyte = ADDR2BYTE(result, cpuinfo, ADDRESS_SPACE_PROGRAM);
+			offs_t resultbyte = ADDR2BYTE_MASKED(result, cpuinfo, ADDRESS_SPACE_PROGRAM);
 
 			/* update the result */
 			dasmdata->last_result = result;
 
 			/* see if the new result is an address we already have */
-			for (row = 0; row < DASM_LINES; row++)
+			for (row = 0; row < dasmdata->allocated_rows; row++)
 				if (dasmdata->address[row] == resultbyte)
 					break;
 
 			/* if we didn't find it, or if it's really close to the bottom, recompute */
-			if (row == DASM_LINES || row >= view->total_rows - view->visible_rows)
-				need_to_recompute = 1;
+			if (row == dasmdata->allocated_rows || row >= view->total_rows - view->visible_rows)
+				dasmdata->recompute = TRUE;
 
 			/* otherwise, if it's not visible, adjust the view so it is */
 			else if (row < view->top_row || row >= view->top_row + view->visible_rows - 2)
@@ -1345,28 +1674,29 @@ static void disasm_update(struct debug_view *view)
 		}
 
 		/* no longer dirty */
-		dasmdata->expression_dirty = 0;
+		dasmdata->expression_dirty = FALSE;
 	}
-
-	/* if our CPU assumptions changed, revisit them */
-	if (view->cpunum != dasmdata->cpunum)
-		need_to_recompute = 1;
 
 	/* if the opcode base has changed, rework things */
 	if (opcode_base != dasmdata->last_opcode_base || opcode_arg_base != dasmdata->last_opcode_arg_base)
-		need_to_recompute = 1;
+		dasmdata->recompute = TRUE;
+
+	/* if the comments have changed, redo it */
+	if (dasmdata->last_change_count != debug_comment_get_change_count(dasmdata->cpunum))
+		dasmdata->recompute = TRUE;
 
 	/* if we need to recompute, do it */
-	if (need_to_recompute)
+	if (dasmdata->recompute)
 	{
 		/* determine the addresses of what we will display */
-		pc = (UINT32)dasmdata->last_result;
-		pc = disasm_back_up(view->cpunum, cpuinfo, pc, 3);
+		offs_t backpc = disasm_back_up(dasmdata->cpunum, cpuinfo, (UINT32)dasmdata->last_result, dasmdata->backwards_steps);
 
+		/* put ourselves back in the top left */
 		view->top_row = 0;
 		view->left_col = 0;
 
-		disasm_recompute(view, pc, 0, DASM_LINES);
+		/* recompute the view */
+		disasm_recompute(view, backpc, 0, view->total_rows, original_cpunum);
 	}
 
 	/* loop over visible rows */
@@ -1374,30 +1704,30 @@ static void disasm_update(struct debug_view *view)
 	{
 		UINT32 effrow = view->top_row + row;
 		UINT8 attrib = DCA_NORMAL;
-		struct breakpoint *bp;
+		debug_cpu_breakpoint *bp;
 		UINT32 col = 0;
 
-		/* if we're on the line with the PC, hilight it */
-		if (effrow < view->total_rows)
+		/* if this visible row is valid, add it to the buffer */
+		if (effrow < dasmdata->allocated_rows)
 		{
+			const char *data = &dasmdata->dasm[effrow * dasmdata->allocated_cols];
+			UINT32 effcol = view->left_col;
+			UINT32 len = 0;
+
+			/* if we're on the line with the PC, recompute and hilight it */
 			if (pcbyte == dasmdata->address[effrow])
 			{
 				attrib = DCA_CURRENT;
-				if (!need_to_recompute)
-					disasm_recompute(view, pc, effrow, 1);
+				disasm_recompute(view, pc, effrow, 1, original_cpunum);
 			}
-			else
-				for (bp = cpuinfo->first_bp; bp; bp = bp->next)
-					if (dasmdata->address[effrow] == ADDR2BYTE(bp->address, cpuinfo, ADDRESS_SPACE_PROGRAM))
-						attrib = DCA_CHANGED;
-		}
 
-		/* if this visible row is valid, add it to the buffer */
-		if (effrow < view->total_rows)
-		{
-			const char *data = &dasmdata->dasm[effrow][0];
-			UINT32 effcol = view->left_col;
-			UINT32 len = 0;
+			/* if we're on a line with a breakpoint, tag it changed */
+			else
+			{
+				for (bp = cpuinfo->first_bp; bp; bp = bp->next)
+					if (dasmdata->address[effrow] == ADDR2BYTE_MASKED(bp->address, cpuinfo, ADDRESS_SPACE_PROGRAM))
+						attrib = DCA_CHANGED;
+			}
 
 			/* get the effective string */
 			len = strlen(data);
@@ -1407,6 +1737,10 @@ static void disasm_update(struct debug_view *view)
 			{
 				dest->byte = data[effcol++];
 				dest->attrib = (effcol <= dasmdata->divider1 || effcol >= dasmdata->divider2) ? (attrib | DCA_ANCILLARY) : attrib;
+
+				/* comments are just green for now - maybe they shouldn't even be this? */
+				if (effcol >= dasmdata->divider2 && dasmdata->right_column == DVP_DASM_RIGHTCOL_COMMENTS) attrib |= DCA_COMMENT;
+
 				dest++;
 				col++;
 			}
@@ -1421,6 +1755,9 @@ static void disasm_update(struct debug_view *view)
 			col++;
 		}
 	}
+
+	/* restore the original CPU context */
+	cpuintrf_pop_context();
 }
 
 
@@ -1429,22 +1766,38 @@ static void disasm_update(struct debug_view *view)
     of a given property
 -------------------------------------------------*/
 
-static void	disasm_getprop(struct debug_view *view, UINT32 property, void *value)
+static void	disasm_getprop(debug_view *view, UINT32 property, debug_property_info *value)
 {
-	struct debug_view_disasm *dasmdata = view->extra_data;
+	debug_view_disasm *dasmdata = view->extra_data;
 
 	switch (property)
 	{
-		case DVP_EXPRESSION:
-			*(char **)value = dasmdata->expression_string;
+		case DVP_DASM_CPUNUM:
+			value->i = dasmdata->cpunum;
 			break;
 
-		case DVP_TRACK_LIVE:
-			*(UINT32 *)value = dasmdata->live_tracking;
+		case DVP_DASM_EXPRESSION:
+			value->s = dasmdata->expression_string;
+			break;
+
+		case DVP_DASM_TRACK_LIVE:
+			value->i = dasmdata->live_tracking;
+			break;
+
+		case DVP_DASM_RIGHT_COLUMN:
+			value->i = dasmdata->right_column;
+			break;
+
+		case DVP_DASM_BACKWARD_STEPS:
+			value->i = dasmdata->backwards_steps;
+			break;
+
+		case DVP_DASM_WIDTH:
+			value->i = dasmdata->dasm_width;
 			break;
 
 		default:
-			osd_die("Attempt to get invalid property %d on debug view type %d\n", property, view->type);
+			fatalerror("Attempt to get invalid property %d on debug view type %d", property, view->type);
 			break;
 	}
 }
@@ -1455,45 +1808,99 @@ static void	disasm_getprop(struct debug_view *view, UINT32 property, void *value
     of a given property
 -------------------------------------------------*/
 
-static void	disasm_setprop(struct debug_view *view, UINT32 property, const void *value)
+static void	disasm_setprop(debug_view *view, UINT32 property, debug_property_info value)
 {
-	struct debug_view_disasm *dasmdata = view->extra_data;
+	debug_view_disasm *dasmdata = view->extra_data;
 
 	switch (property)
 	{
-		case DVP_EXPRESSION:
+		case DVP_DASM_CPUNUM:
+			if (value.i != dasmdata->cpunum)
+			{
+				debug_view_begin_update(view);
+				dasmdata->cpunum = value.i;
+
+				/* we need to recompute the expression in the context of the new CPU */
+				dasmdata->expression_dirty = TRUE;
+				dasmdata->recompute = TRUE;
+				view->update_pending = TRUE;
+				debug_view_end_update(view);
+			}
+			break;
+
+		case DVP_DASM_EXPRESSION:
 			debug_view_begin_update(view);
+
+			/* free the old expression string and allocate a new one */
 			if (dasmdata->expression_string)
 				free(dasmdata->expression_string);
-			dasmdata->expression_string = malloc(strlen((const char *)value) + 1);
+			dasmdata->expression_string = malloc(strlen(value.s) + 1);
 			if (dasmdata->expression_string)
-				strcpy(dasmdata->expression_string, (const char *)value);
-			dasmdata->expression_dirty = 1;
-			view->update_pending = 1;
+				strcpy(dasmdata->expression_string, value.s);
+
+			/* update everything as a result */
+			dasmdata->expression_dirty = TRUE;
+			dasmdata->recompute = TRUE;
+			view->update_pending = TRUE;
 			debug_view_end_update(view);
 			break;
 
-		case DVP_TRACK_LIVE:
-			if (*(const UINT32 *)value != dasmdata->live_tracking)
+		case DVP_DASM_TRACK_LIVE:
+			if (value.i != dasmdata->live_tracking)
 			{
 				debug_view_begin_update(view);
-				dasmdata->live_tracking = *(const UINT32 *)value;
-				view->update_pending = 1;
+				dasmdata->live_tracking = value.i;
+				view->update_pending = TRUE;
+				debug_view_end_update(view);
+			}
+			break;
+
+		case DVP_DASM_RIGHT_COLUMN:
+			if (value.i != dasmdata->right_column && value.i >= DVP_DASM_RIGHTCOL_NONE && value.i <= DVP_DASM_RIGHTCOL_COMMENTS)
+			{
+				debug_view_begin_update(view);
+				dasmdata->right_column = value.i;
+				dasmdata->recompute = TRUE;
+				view->update_pending = TRUE;
+				debug_view_end_update(view);
+			}
+			break;
+
+		case DVP_DASM_BACKWARD_STEPS:
+			if (value.i != dasmdata->backwards_steps)
+			{
+				debug_view_begin_update(view);
+				dasmdata->backwards_steps = value.i;
+				dasmdata->recompute = TRUE;
+				view->update_pending = TRUE;
+				debug_view_end_update(view);
+			}
+			break;
+
+		case DVP_DASM_WIDTH:
+			if (value.i != dasmdata->dasm_width)
+			{
+				debug_view_begin_update(view);
+				dasmdata->dasm_width = value.i;
+				dasmdata->recompute = TRUE;
+				view->update_pending = TRUE;
 				debug_view_end_update(view);
 			}
 			break;
 
 		default:
-			osd_die("Attempt to set invalid property %d on debug view type %d\n", property, view->type);
+			fatalerror("Attempt to set invalid property %d on debug view type %d", property, view->type);
 			break;
 	}
 }
 
 
 
-/*###################################################################################################
-**  MEMORY VIEW
-**#################################################################################################*/
+/***************************************************************************
+
+    Memory view
+
+***************************************************************************/
 
 /*
 00000000  00 11 22 33 44 55 66 77-88 99 aa bb cc dd ee ff  0123456789abcdef
@@ -1506,9 +1913,9 @@ static void	disasm_setprop(struct debug_view *view, UINT32 property, const void 
     memory view
 -------------------------------------------------*/
 
-static int memory_alloc(struct debug_view *view)
+static int memory_alloc(debug_view *view)
 {
-	struct debug_view_memory *memdata;
+	debug_view_memory *memdata;
 
 	/* allocate memory */
 	memdata = malloc(sizeof(*memdata));
@@ -1517,13 +1924,18 @@ static int memory_alloc(struct debug_view *view)
 	memset(memdata, 0, sizeof(*memdata));
 
 	/* by default we track live */
-	memdata->live_tracking = 1;
+	memdata->live_tracking = TRUE;
+	memdata->ascii_view = TRUE;
 
 	/* stash the extra data pointer */
 	view->extra_data = memdata;
 
 	/* we support cursors */
-	view->supports_cursor = 1;
+	view->supports_cursor = TRUE;
+
+	/* start out with 16 bytes in a single column */
+	memdata->chunks_displayed = 16;
+
 	return 1;
 }
 
@@ -1533,9 +1945,9 @@ static int memory_alloc(struct debug_view *view)
     memory view
 -------------------------------------------------*/
 
-static void memory_free(struct debug_view *view)
+static void memory_free(debug_view *view)
 {
-	struct debug_view_memory *memdata = view->extra_data;
+	debug_view_memory *memdata = view->extra_data;
 
 	/* free any memory we callocated */
 	if (memdata)
@@ -1555,10 +1967,11 @@ static void memory_free(struct debug_view *view)
     position as an address and a shift value
 -------------------------------------------------*/
 
-static int memory_get_cursor_pos(struct debug_view *view, offs_t *address, UINT8 *shift)
+static int memory_get_cursor_pos(debug_view *view, offs_t *address, UINT8 *shift)
 {
-	struct debug_view_memory *memdata = view->extra_data;
+	debug_view_memory *memdata = view->extra_data;
 	int curx = view->cursor_col, cury = view->cursor_row;
+	UINT32 bytes_per_row;
 	int modval;
 
 	/* if not in the middle section, punt */
@@ -1569,7 +1982,8 @@ static int memory_get_cursor_pos(struct debug_view *view, offs_t *address, UINT8
 	curx -= memdata->divider1;
 
 	/* compute the base address */
-	*address = 0x10 * cury + memdata->byte_offset;
+	bytes_per_row = memdata->chunks_displayed * memdata->bytes_per_chunk;
+	*address = bytes_per_row * cury + memdata->byte_offset;
 
 	/* the rest depends on the current format */
 
@@ -1646,16 +2060,18 @@ static int memory_get_cursor_pos(struct debug_view *view, offs_t *address, UINT8
     shift value
 -------------------------------------------------*/
 
-static void memory_set_cursor_pos(struct debug_view *view, offs_t address, UINT8 shift)
+static void memory_set_cursor_pos(debug_view *view, offs_t address, UINT8 shift)
 {
-	struct debug_view_memory *memdata = view->extra_data;
+	debug_view_memory *memdata = view->extra_data;
+	UINT32 bytes_per_row;
 	int curx, cury;
 
 	/* offset the address by the byte offset */
 	address -= memdata->byte_offset;
 
 	/* compute the y coordinate */
-	cury = address / 0x10;
+	bytes_per_row = memdata->chunks_displayed * memdata->bytes_per_chunk;
+	cury = address / bytes_per_row;
 
 	/* the rest depends on the current format */
 
@@ -1666,15 +2082,15 @@ static void memory_set_cursor_pos(struct debug_view *view, offs_t address, UINT8
 		{
 			default:
 			case 1:
-				curx = memdata->divider1 + 1 + 3 * (address % 0x10) + (1 - (shift / 4));
+				curx = memdata->divider1 + 1 + 3 * (address % bytes_per_row) + (1 - (shift / 4));
 				break;
 
 			case 2:
-				curx = memdata->divider1 + 2 + 6 * ((address % 0x10) / 2) + (3 - (shift / 4));
+				curx = memdata->divider1 + 2 + 6 * ((address % bytes_per_row) / 2) + (3 - (shift / 4));
 				break;
 
 			case 4:
-				curx = memdata->divider1 + 3 + 12 * ((address % 0x10) / 4) + (7 - (shift / 4));
+				curx = memdata->divider1 + 3 + 12 * ((address % bytes_per_row) / 4) + (7 - (shift / 4));
 				break;
 		}
 	}
@@ -1684,15 +2100,15 @@ static void memory_set_cursor_pos(struct debug_view *view, offs_t address, UINT8
 		{
 			default:
 			case 1:
-				curx = memdata->divider1 + 1 + 3 * (15 - address % 0x10) + (1 - (shift / 4));
+				curx = memdata->divider1 + 1 + 3 * (15 - address % bytes_per_row) + (1 - (shift / 4));
 				break;
 
 			case 2:
-				curx = memdata->divider1 + 2 + 6 * (7 - (address % 0x10) / 2) + (3 - (shift / 4));
+				curx = memdata->divider1 + 2 + 6 * (7 - (address % bytes_per_row) / 2) + (3 - (shift / 4));
 				break;
 
 			case 4:
-				curx = memdata->divider1 + 3 + 12 * (3 - (address % 0x10) / 4) + (7 - (shift / 4));
+				curx = memdata->divider1 + 3 + 12 * (3 - (address % bytes_per_row) / 4) + (7 - (shift / 4));
 				break;
 		}
 	}
@@ -1710,39 +2126,220 @@ static void memory_set_cursor_pos(struct debug_view *view, offs_t address, UINT8
 
 
 /*-------------------------------------------------
+    memory_read_byte - generic byte reader
+-------------------------------------------------*/
+
+static UINT8 memory_read_byte(debug_view_memory *memdata, offs_t offs)
+{
+	/* if no raw data, just use the standard debug routines */
+	if (!memdata->raw_base)
+		return debug_read_byte(memdata->spacenum, offs);
+
+	/* all 0xff if out of bounds */
+	offs ^= memdata->raw_offset_xor;
+	if (offs >= memdata->raw_length)
+		return 0xff;
+	return *((UINT8 *)memdata->raw_base + offs);
+}
+
+
+/*-------------------------------------------------
+    memory_read_word - generic word reader
+-------------------------------------------------*/
+
+static UINT16 memory_read_word(debug_view_memory *memdata, offs_t offs)
+{
+	/* if no raw data, just use the standard debug routines */
+	if (!memdata->raw_base)
+		return debug_read_word(memdata->spacenum, offs);
+
+	/* otherwise, decompose into bytes */
+	if (memdata->raw_little_endian)
+		return memory_read_byte(memdata, offs + 0) | (memory_read_byte(memdata, offs + 1) << 8);
+	else
+		return memory_read_byte(memdata, offs + 1) | (memory_read_byte(memdata, offs + 0) << 8);
+}
+
+
+/*-------------------------------------------------
+    memory_read_dword - generic dword reader
+-------------------------------------------------*/
+
+static UINT32 memory_read_dword(debug_view_memory *memdata, offs_t offs)
+{
+	/* if no raw data, just use the standard debug routines */
+	if (!memdata->raw_base)
+		return debug_read_dword(memdata->spacenum, offs);
+
+	/* otherwise, decompose into words */
+	if (memdata->raw_little_endian)
+		return memory_read_word(memdata, offs + 0) | (memory_read_word(memdata, offs + 2) << 16);
+	else
+		return memory_read_word(memdata, offs + 2) | (memory_read_word(memdata, offs + 0) << 16);
+}
+
+
+/*-------------------------------------------------
+    memory_read_qword - generic qword reader
+-------------------------------------------------*/
+
+static UINT64 memory_read_qword(debug_view_memory *memdata, offs_t offs)
+{
+	/* if no raw data, just use the standard debug routines */
+	if (!memdata->raw_base)
+		return debug_read_qword(memdata->spacenum, offs);
+
+	/* otherwise, decompose into dwords */
+	if (memdata->raw_little_endian)
+		return memory_read_word(memdata, offs + 0) | ((UINT64)memory_read_word(memdata, offs + 4) << 32);
+	else
+		return memory_read_word(memdata, offs + 4) | ((UINT64)memory_read_word(memdata, offs + 0) << 32);
+}
+
+
+/*-------------------------------------------------
+    memory_write_byte - generic byte writer
+-------------------------------------------------*/
+
+static void memory_write_byte(debug_view_memory *memdata, offs_t offs, UINT8 data)
+{
+	/* if no raw data, just use the standard debug routines */
+	if (!memdata->raw_base)
+	{
+		debug_write_byte(memdata->spacenum, offs, data);
+		return;
+	}
+
+	/* ignore if out of bounds */
+	offs ^= memdata->raw_offset_xor;
+	if (offs >= memdata->raw_length)
+		return;
+	*((UINT8 *)memdata->raw_base + offs) = data;
+}
+
+
+/*-------------------------------------------------
+    memory_write_word - generic word writer
+-------------------------------------------------*/
+
+static void memory_write_word(debug_view_memory *memdata, offs_t offs, UINT16 data)
+{
+	/* if no raw data, just use the standard debug routines */
+	if (!memdata->raw_base)
+	{
+		debug_write_word(memdata->spacenum, offs, data);
+		return;
+	}
+
+	/* otherwise, decompose into bytes */
+	if (memdata->raw_little_endian)
+	{
+		memory_write_byte(memdata, offs + 0, data);
+		memory_write_byte(memdata, offs + 1, data >> 8);
+	}
+	else
+	{
+		memory_write_byte(memdata, offs + 1, data);
+		memory_write_byte(memdata, offs + 0, data >> 8);
+	}
+}
+
+
+/*-------------------------------------------------
+    memory_write_dword - generic dword writer
+-------------------------------------------------*/
+
+static void memory_write_dword(debug_view_memory *memdata, offs_t offs, UINT32 data)
+{
+	/* if no raw data, just use the standard debug routines */
+	if (!memdata->raw_base)
+	{
+		debug_write_dword(memdata->spacenum, offs, data);
+		return;
+	}
+
+	/* otherwise, decompose into words */
+	if (memdata->raw_little_endian)
+	{
+		memory_write_word(memdata, offs + 0, data);
+		memory_write_word(memdata, offs + 2, data >> 16);
+	}
+	else
+	{
+		memory_write_word(memdata, offs + 2, data);
+		memory_write_word(memdata, offs + 0, data >> 16);
+	}
+}
+
+
+/*-------------------------------------------------
+    memory_write_qword - generic qword writer
+-------------------------------------------------*/
+
+static void memory_write_qword(debug_view_memory *memdata, offs_t offs, UINT64 data)
+{
+	/* if no raw data, just use the standard debug routines */
+	if (!memdata->raw_base)
+	{
+		debug_write_qword(memdata->spacenum, offs, data);
+		return;
+	}
+
+	/* otherwise, decompose into dwords */
+	if (memdata->raw_little_endian)
+	{
+		memory_write_dword(memdata, offs + 0, data);
+		memory_write_dword(memdata, offs + 4, data >> 32);
+	}
+	else
+	{
+		memory_write_dword(memdata, offs + 4, data);
+		memory_write_dword(memdata, offs + 0, data >> 32);
+	}
+}
+
+
+/*-------------------------------------------------
     memory_handle_char - handle a character typed
     within the current view
 -------------------------------------------------*/
 
-static void memory_handle_char(struct debug_view *view, char chval)
+static void memory_handle_char(debug_view *view, char chval)
 {
-	struct debug_view_memory *memdata = view->extra_data;
-	static const char *hexvals = "0123456789abcdef";
+	debug_view_memory *memdata = view->extra_data;
+	const debug_cpu_info *cpuinfo = debug_get_cpu_info(memdata->cpunum);
+	static const char hexvals[] = "0123456789abcdef";
 	char *hexchar = strchr(hexvals, tolower(chval));
+	UINT32 bytes_per_row;
+	offs_t maxaddr;
 	offs_t address;
 	UINT8 shift;
+
+	/* determine the max address */
+	maxaddr = memdata->raw_base ? (memdata->raw_length - 1) : cpuinfo->space[memdata->spacenum].logbytemask;
 
 	/* get the position */
 	if (!memory_get_cursor_pos(view, &address, &shift))
 		return;
 
 	/* up/down work the same regardless */
+	bytes_per_row = memdata->chunks_displayed * memdata->bytes_per_chunk;
 	if (chval == DCH_UP && view->cursor_row > 0)
-		address -= 0x10;
+		address -= bytes_per_row;
 	if (chval == DCH_DOWN && view->cursor_row < view->total_rows - 1)
-		address += 0x10;
+		address += bytes_per_row;
 
 	/* switch off of the current chunk size */
-	cpuintrf_push_context(view->cpunum);
+	cpuintrf_push_context(memdata->cpunum);
 	switch (memdata->bytes_per_chunk)
 	{
 		default:
 		case 1:
 			if (hexchar)
-				debug_write_byte(memdata->spacenum, address, (debug_read_byte(memdata->spacenum, address) & ~(0xf << shift)) | ((hexchar - hexvals) << shift));
+				memory_write_byte(memdata, address, (memory_read_byte(memdata, address) & ~(0xf << shift)) | ((hexchar - hexvals) << shift));
 			if (hexchar || chval == DCH_RIGHT)
 			{
-				if (shift == 0) { shift = 4; address++; }
+				if (shift == 0) { shift = 4; if (address != maxaddr) address++; }
 				else shift -= 4;
 			}
 			else if (chval == DCH_LEFT)
@@ -1754,10 +2351,10 @@ static void memory_handle_char(struct debug_view *view, char chval)
 
 		case 2:
 			if (hexchar)
-				debug_write_word(memdata->spacenum, address, (debug_read_word(memdata->spacenum, address) & ~(0xf << shift)) | ((hexchar - hexvals) << shift));
+				memory_write_word(memdata, address, (memory_read_word(memdata, address) & ~(0xf << shift)) | ((hexchar - hexvals) << shift));
 			if (hexchar || chval == DCH_RIGHT)
 			{
-				if (shift == 0) { shift = 12; address += 2; }
+				if (shift == 0) { shift = 12; if (address != maxaddr) address += 2; }
 				else shift -= 4;
 			}
 			else if (chval == DCH_LEFT)
@@ -1769,10 +2366,10 @@ static void memory_handle_char(struct debug_view *view, char chval)
 
 		case 4:
 			if (hexchar)
-				debug_write_dword(memdata->spacenum, address, (debug_read_dword(memdata->spacenum, address) & ~(0xf << shift)) | ((hexchar - hexvals) << shift));
+				memory_write_dword(memdata, address, (memory_read_dword(memdata, address) & ~(0xf << shift)) | ((hexchar - hexvals) << shift));
 			if (hexchar || chval == DCH_RIGHT)
 			{
-				if (shift == 0) { shift = 28; address += 4; }
+				if (shift == 0) { shift = 28; if (address != maxaddr) address += 4; }
 				else shift -= 4;
 			}
 			else if (chval == DCH_LEFT)
@@ -1794,28 +2391,62 @@ static void memory_handle_char(struct debug_view *view, char chval)
     the register view
 -------------------------------------------------*/
 
-static void memory_update(struct debug_view *view)
+static void memory_update(debug_view *view)
 {
-	const struct debug_cpu_info *cpuinfo = debug_get_cpu_info(view->cpunum);
-	struct debug_view_memory *memdata = view->extra_data;
-	struct debug_view_char *dest = view->viewdata;
+	debug_view_memory *memdata = view->extra_data;
+	const debug_cpu_info *cpuinfo = debug_get_cpu_info(memdata->cpunum);
+	debug_view_char *dest = view->viewdata;
 	char addrformat[16];
 	EXPRERR exprerr;
+	UINT8 addrchars;
+	UINT32 maxaddr;
+	offs_t addrmask;
 	UINT32 row;
+	UINT32 memory_display_width;
+	UINT32 bytes_per_line;
 
 	/* switch to the CPU's context */
-	cpuintrf_push_context(view->cpunum);
+	if (memdata->raw_base == NULL)
+		cpuintrf_push_context(memdata->cpunum);
+
+	/* determine maximum address and number of characters for that */
+	if (memdata->raw_base != NULL)
+	{
+		maxaddr = memdata->raw_length - 1;
+		sprintf(addrformat, "%X", maxaddr);
+		addrchars = strlen(addrformat);
+		addrmask = maxaddr;
+		for (row = 0; row < 32; row++)
+			addrmask |= addrmask >> row;
+	}
+	else
+	{
+		maxaddr = cpuinfo->space[memdata->spacenum].logbytemask;
+		addrchars = cpuinfo->space[memdata->spacenum].logchars;
+		addrmask = cpuinfo->space[memdata->spacenum].logbytemask;
+
+		/* clamp the bytes per chunk */
+		if (memdata->bytes_per_chunk < (1 << cpuinfo->space[memdata->spacenum].addr2byte_lshift))
+			memdata->bytes_per_chunk = (1 << cpuinfo->space[memdata->spacenum].addr2byte_lshift);
+	}
 
 	/* determine how many characters we need for an address and set the divider */
-	sprintf(addrformat, " %*s%%0%dX ", 8 - cpuinfo->space[memdata->spacenum].addrchars, "", cpuinfo->space[memdata->spacenum].addrchars);
+	sprintf(addrformat, " %*s%%0%dX ", 8 - addrchars, "", addrchars);
 
-	/* compute total rows and columns */
-	view->total_rows = (ADDR2BYTE(~0, cpuinfo, memdata->spacenum) / 0x10) + 1;
-	view->total_cols = 77;
+
+	/* determine how wide the memory display area is */
+	bytes_per_line = memdata->chunks_displayed * memdata->bytes_per_chunk;
+	memory_display_width = 1 + (bytes_per_line * 3) + 1;		/* characters + spaces */
+
+
+	/* compute total displayed rows and columns */
+	view->total_rows =  (maxaddr / bytes_per_line) + 1;
+	view->total_cols =  (1 + 8 + 1) + memory_display_width;
+	view->total_cols += memdata->ascii_view ? 1 + bytes_per_line : 0 ; /* +1 ??? */ /* 77 : 59; */
 
 	/* set up the dividers */
 	memdata->divider1 = 1 + 8 + 1;
-	memdata->divider2 = memdata->divider1 + 1 + 16*3 + 1;
+	memdata->divider2 = memdata->divider1 + memory_display_width;
 	if (memdata->reverse_view)
 	{
 		int temp = view->total_cols + 1 - memdata->divider2;
@@ -1823,17 +2454,13 @@ static void memory_update(struct debug_view *view)
 		memdata->divider1 = temp;
 	}
 
-	/* clamp the bytes per chunk */
-	if (memdata->bytes_per_chunk < (1 << cpuinfo->space[memdata->spacenum].addr2byte_lshift))
-		memdata->bytes_per_chunk = (1 << cpuinfo->space[memdata->spacenum].addr2byte_lshift);
-
 	/* if our expression is dirty, fix it */
-	if ((memdata->expression_dirty || view->cpunum != memdata->cpunum) && memdata->expression_string)
+	if (memdata->expression_dirty && memdata->expression_string)
 	{
-		struct parsed_expression *expr;
+		parsed_expression *expr;
 
 		/* parse the new expression */
-		exprerr = expression_parse(memdata->expression_string, debug_get_cpu_info(view->cpunum)->symtable, &expr);
+		exprerr = expression_parse(memdata->expression_string, debug_get_cpu_info(memdata->cpunum)->symtable, &expr);
 
 		/* if it worked, update the expression */
 		if (exprerr == EXPRERR_NONE)
@@ -1841,12 +2468,13 @@ static void memory_update(struct debug_view *view)
 			if (memdata->expression)
 				expression_free(memdata->expression);
 			memdata->expression = expr;
-			memdata->expression_dirty = 1;
+			memdata->expression_dirty = FALSE;
+			memdata->recompute = TRUE;
 		}
 	}
 
 	/* if we're tracking a value, make sure it is visible */
-	if (memdata->expression && (memdata->live_tracking || memdata->expression_dirty || view->cpunum != memdata->cpunum))
+	if (memdata->expression && (memdata->live_tracking || memdata->recompute))
 	{
 		UINT64 result;
 
@@ -1854,26 +2482,23 @@ static void memory_update(struct debug_view *view)
 		exprerr = expression_execute(memdata->expression, &result);
 
 		/* reset the row number */
-		if (result != memdata->last_result || memdata->expression_dirty || view->cpunum != memdata->cpunum)
+		if (result != memdata->last_result || memdata->expression_dirty || memdata->cpunum != memdata->cpunum)
 		{
 			memdata->last_result = result;
-			view->top_row = ADDR2BYTE(memdata->last_result, cpuinfo, memdata->spacenum) / 0x10;
-			memdata->byte_offset = ADDR2BYTE(memdata->last_result, cpuinfo, memdata->spacenum) % 0x10;
+			if (memdata->raw_base == NULL)
+				result = ADDR2BYTE_MASKED(memdata->last_result, cpuinfo, memdata->spacenum);
+			view->top_row = result / bytes_per_line;
+			memdata->byte_offset = result % bytes_per_line;
 			view->cursor_row = view->top_row;
 		}
-
-		/* no longer dirty */
-		memdata->expression_dirty = 0;
+		memdata->recompute = FALSE;
 	}
-
-	/* update our CPU number */
-	memdata->cpunum = view->cpunum;
 
 	/* loop over visible rows */
 	for (row = 0; row < view->visible_rows; row++)
 	{
 		UINT32 effrow = view->top_row + row;
-		offs_t addrbyte = effrow * 0x10 + memdata->byte_offset;
+		offs_t addrbyte = effrow * bytes_per_line + memdata->byte_offset;
 		UINT8 attrib = DCA_NORMAL;
 		UINT32 col = 0;
 
@@ -1882,104 +2507,133 @@ static void memory_update(struct debug_view *view)
 		{
 			UINT32 effcol = view->left_col;
 			UINT32 len = 0;
-			char data[100];
+			char data[MEM_MAX_LINE_WIDTH];
 			int i;
 
 			/* generate the string */
 			if (!memdata->reverse_view)
 			{
-				len = sprintf(&data[len], addrformat, BYTE2ADDR(addrbyte, cpuinfo, memdata->spacenum));
+				len = sprintf(&data[len], addrformat, BYTE2ADDR(addrbyte & addrmask, cpuinfo, memdata->spacenum));
 				len += sprintf(&data[len], " ");
 				switch (memdata->bytes_per_chunk)
 				{
 					default:
 					case 1:
-						for (i = 0; i < 16; i++)
+						for (i = 0; i < memdata->chunks_displayed; i++)
 						{
 							offs_t curaddr = addrbyte + i;
-							if (!cpuinfo->translate || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
-								len += sprintf(&data[len], "%02X ", debug_read_byte(memdata->spacenum, addrbyte + i));
+							if (curaddr > maxaddr)
+								len += sprintf(&data[len], "   ");
+							else if (memdata->raw_base == NULL || !cpuinfo->translate || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
+								len += sprintf(&data[len], "%02X ", memory_read_byte(memdata, addrbyte + i));
 							else
 								len += sprintf(&data[len], "** ");
 						}
 						break;
 
 					case 2:
-						for (i = 0; i < 8; i++)
+						for (i = 0; i < memdata->chunks_displayed; i++)
 						{
 							offs_t curaddr = addrbyte + 2 * i;
-							if (!cpuinfo->translate || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
-								len += sprintf(&data[len], " %04X ", debug_read_word(memdata->spacenum, addrbyte + 2 * i));
+							if (curaddr > maxaddr)
+								len += sprintf(&data[len], "      ");
+							else if (memdata->raw_base == NULL || !cpuinfo->translate || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
+								len += sprintf(&data[len], " %04X ", memory_read_word(memdata, addrbyte + 2 * i));
 							else
 								len += sprintf(&data[len], " **** ");
 						}
 						break;
 
 					case 4:
-						for (i = 0; i < 4; i++)
+						for (i = 0; i < memdata->chunks_displayed; i++)
 						{
 							offs_t curaddr = addrbyte + 4 * i;
-							if (!cpuinfo->translate || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
-								len += sprintf(&data[len], "  %08X  ", debug_read_dword(memdata->spacenum, addrbyte + 4 * i));
+							if (curaddr > maxaddr)
+								len += sprintf(&data[len], "            ");
+							else if (memdata->raw_base == NULL || !cpuinfo->translate || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
+								len += sprintf(&data[len], "  %08X  ", memory_read_dword(memdata, addrbyte + 4 * i));
 							else
 								len += sprintf(&data[len], "  ********  ");
 						}
 						break;
 				}
 				len += sprintf(&data[len], " ");
-				for (i = 0; i < 16; i++)
+				if (memdata->ascii_view)
 				{
-					char c = debug_read_byte(memdata->spacenum, addrbyte + i);
-					len += sprintf(&data[len], "%c", isprint(c) ? c : '.');
+					for (i = 0; i < bytes_per_line; i++)
+					{
+						if (addrbyte + i <= maxaddr)
+						{
+							char c = memory_read_byte(memdata, addrbyte + i);
+							len += sprintf(&data[len], "%c", isprint(c) ? c : '.');
+						}
+						else
+							len += sprintf(&data[len], " ");
+					}
+					len += sprintf(&data[len], " ");
 				}
-				len += sprintf(&data[len], " ");
 			}
 			else
 			{
 				len = sprintf(&data[len], " ");
-				for (i = 0; i < 16; i++)
+				if (memdata->ascii_view)
 				{
-					char c = debug_read_byte(memdata->spacenum, addrbyte + i);
-					len += sprintf(&data[len], "%c", isprint(c) ? c : '.');
+					for (i = 0; i < bytes_per_line; i++)
+					{
+						if (addrbyte + i <= maxaddr)
+						{
+							char c = memory_read_byte(memdata, addrbyte + i);
+							len += sprintf(&data[len], "%c", isprint(c) ? c : '.');
+						}
+						else
+							len += sprintf(&data[len], " ");
+					}
+					len += sprintf(&data[len], " ");
 				}
-				len += sprintf(&data[len], "  ");
+				len += sprintf(&data[len], " ");
 				switch (memdata->bytes_per_chunk)
 				{
 					default:
 					case 1:
-						for (i = 15; i >= 0; i--)
+						for (i = memdata->chunks_displayed - 1; i >= 0; i--)
 						{
 							offs_t curaddr = addrbyte + i;
-							if (!cpuinfo->translate || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
-								len += sprintf(&data[len], "%02X ", debug_read_byte(memdata->spacenum, addrbyte + i));
+							if (curaddr > maxaddr)
+								len += sprintf(&data[len], "   ");
+							else if (memdata->raw_base == NULL || !cpuinfo->translate || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
+								len += sprintf(&data[len], "%02X ", memory_read_byte(memdata, addrbyte + i));
 							else
 								len += sprintf(&data[len], "** ");
 						}
 						break;
 
 					case 2:
-						for (i = 7; i >= 0; i--)
+						for (i = memdata->chunks_displayed - 1; i >= 0; i--)
 						{
 							offs_t curaddr = addrbyte + 2 * i;
-							if (!cpuinfo->translate || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
-								len += sprintf(&data[len], " %04X ", debug_read_word(memdata->spacenum, addrbyte + 2 * i));
+							if (curaddr > maxaddr)
+								len += sprintf(&data[len], "      ");
+							else if (memdata->raw_base == NULL || !cpuinfo->translate || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
+								len += sprintf(&data[len], " %04X ", memory_read_word(memdata, addrbyte + 2 * i));
 							else
 								len += sprintf(&data[len], " **** ");
 						}
 						break;
 
 					case 4:
-						for (i = 3; i >= 0; i--)
+						for (i = memdata->chunks_displayed - 1; i >= 0; i--)
 						{
 							offs_t curaddr = addrbyte + 4 * i;
-							if (!cpuinfo->translate || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
-								len += sprintf(&data[len], "  %08X  ", debug_read_dword(memdata->spacenum, addrbyte + 4 * i));
+							if (curaddr > maxaddr)
+								len += sprintf(&data[len], "            ");
+							else if (memdata->raw_base == NULL || !cpuinfo->translate || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
+								len += sprintf(&data[len], "  %08X  ", memory_read_dword(memdata, addrbyte + 4 * i));
 							else
 								len += sprintf(&data[len], "  ********  ");
 						}
 						break;
 				}
-				len += sprintf(&data[len], addrformat, BYTE2ADDR(addrbyte, cpuinfo, memdata->spacenum));
+				len += sprintf(&data[len], addrformat, BYTE2ADDR(addrbyte & addrmask, cpuinfo, memdata->spacenum));
 			}
 
 			/* copy data */
@@ -2008,7 +2662,8 @@ static void memory_update(struct debug_view *view)
 	}
 
 	/* restore the context */
-	cpuintrf_pop_context();
+	if (memdata->raw_base == NULL)
+		cpuintrf_pop_context();
 }
 
 
@@ -2017,127 +2672,225 @@ static void memory_update(struct debug_view *view)
     of a given property
 -------------------------------------------------*/
 
-static void	memory_getprop(struct debug_view *view, UINT32 property, void *value)
+static void	memory_getprop(debug_view *view, UINT32 property, debug_property_info *value)
 {
-	struct debug_view_memory *memdata = view->extra_data;
+	debug_view_memory *memdata = view->extra_data;
 
 	switch (property)
 	{
-		case DVP_EXPRESSION:
-			*(char **)value = memdata->expression_string;
+		case DVP_MEM_EXPRESSION:
+			value->s = memdata->expression_string;
 			break;
 
-		case DVP_TRACK_LIVE:
-			*(UINT32 *)value = memdata->live_tracking;
+		case DVP_MEM_TRACK_LIVE:
+			value->i = memdata->live_tracking;
 			break;
 
-		case DVP_SPACENUM:
-			*(UINT32 *)value = memdata->spacenum;
+		case DVP_MEM_CPUNUM:
+			value->i = memdata->cpunum;
 			break;
 
-		case DVP_BYTES_PER_CHUNK:
-			*(UINT32 *)value = memdata->bytes_per_chunk;
+		case DVP_MEM_SPACENUM:
+			value->i = memdata->spacenum;
 			break;
 
-		case DVP_REVERSE_VIEW:
-			*(UINT32 *)value = memdata->reverse_view;
+		case DVP_MEM_BYTES_PER_CHUNK:
+			value->i = memdata->bytes_per_chunk;
 			break;
 
-		case DVP_ASCII_VIEW:
-			*(UINT32 *)value = memdata->ascii_view;
+		case DVP_MEM_REVERSE_VIEW:
+			value->i = memdata->reverse_view;
+			break;
+
+		case DVP_MEM_ASCII_VIEW:
+			value->i = memdata->ascii_view;
+			break;
+
+		case DVP_MEM_RAW_BASE:
+			value->p = memdata->raw_base;
+			break;
+
+		case DVP_MEM_RAW_LENGTH:
+			value->i = memdata->raw_length;
+			break;
+
+		case DVP_MEM_RAW_OFFSET_XOR:
+			value->i = memdata->raw_offset_xor;
+			break;
+
+		case DVP_MEM_RAW_LITTLE_ENDIAN:
+			value->i = memdata->raw_little_endian;
+			break;
+
+		case DVP_MEM_WIDTH:
+			value->i = memdata->chunks_displayed;
 			break;
 
 		default:
-			osd_die("Attempt to get invalid property %d on debug view type %d\n", property, view->type);
+			fatalerror("Attempt to get invalid property %d on debug view type %d", property, view->type);
 			break;
 	}
 }
 
 
 /*-------------------------------------------------
-    memory_getprop - set the value
+    memory_setprop - set the value
     of a given property
 -------------------------------------------------*/
 
-static void	memory_setprop(struct debug_view *view, UINT32 property, const void *value)
+static void	memory_setprop(debug_view *view, UINT32 property, debug_property_info value)
 {
-	struct debug_view_memory *memdata = view->extra_data;
+	debug_view_memory *memdata = view->extra_data;
 
 	switch (property)
 	{
-		case DVP_EXPRESSION:
+		case DVP_MEM_EXPRESSION:
 			debug_view_begin_update(view);
+
+			/* free the old expression and allocate a new copy */
 			if (memdata->expression_string)
 				free(memdata->expression_string);
-			memdata->expression_string = malloc(strlen((const char *)value) + 1);
+			memdata->expression_string = malloc(strlen(value.s) + 1);
 			if (memdata->expression_string)
-				strcpy(memdata->expression_string, (const char *)value);
-			memdata->expression_dirty = 1;
-			view->update_pending = 1;
+				strcpy(memdata->expression_string, value.s);
+
+			memdata->expression_dirty = TRUE;
+			view->update_pending = TRUE;
 			debug_view_end_update(view);
 			break;
 
-		case DVP_TRACK_LIVE:
-			if (*(const UINT32 *)value != memdata->live_tracking)
+		case DVP_MEM_TRACK_LIVE:
+			if (value.i != memdata->live_tracking)
 			{
 				debug_view_begin_update(view);
-				memdata->live_tracking = *(const UINT32 *)value;
-				view->update_pending = 1;
+				memdata->live_tracking = value.i;
+				view->update_pending = TRUE;
 				debug_view_end_update(view);
 			}
 			break;
 
-		case DVP_SPACENUM:
-			if (*(const UINT32 *)value != memdata->spacenum)
+		case DVP_MEM_CPUNUM:
+			if (value.i != memdata->cpunum)
 			{
 				debug_view_begin_update(view);
-				memdata->spacenum = *(const UINT32 *)value;
-				view->update_pending = 1;
+				memdata->cpunum = value.i;
+				view->update_pending = TRUE;
+				memdata->expression_dirty = TRUE;
 				debug_view_end_update(view);
 			}
 			break;
 
-		case DVP_BYTES_PER_CHUNK:
-			if (*(const UINT32 *)value != memdata->bytes_per_chunk)
+		case DVP_MEM_SPACENUM:
+			if (value.i != memdata->spacenum)
 			{
 				debug_view_begin_update(view);
-				memdata->bytes_per_chunk = *(const UINT32 *)value;
-				view->update_pending = 1;
+				memdata->spacenum = value.i;
+				view->update_pending = TRUE;
 				debug_view_end_update(view);
 			}
 			break;
 
-		case DVP_REVERSE_VIEW:
-			if (*(const UINT32 *)value != memdata->reverse_view)
+		case DVP_MEM_BYTES_PER_CHUNK:
+			if (value.i != memdata->bytes_per_chunk)
 			{
 				debug_view_begin_update(view);
-				memdata->reverse_view = *(const UINT32 *)value;
-				view->update_pending = 1;
+
+				/* Change chunks_displayed based on the new bytes_per_chunk */
+				memdata->chunks_displayed = memdata->chunks_displayed *
+													   memdata->bytes_per_chunk  / value.i;
+
+				if (memdata->chunks_displayed <= 0) memdata->chunks_displayed = 1;
+
+				memdata->bytes_per_chunk = value.i;
+				view->update_pending = TRUE;
 				debug_view_end_update(view);
 			}
 			break;
 
-		case DVP_ASCII_VIEW:
-			if (*(const UINT32 *)value != memdata->ascii_view)
+		case DVP_MEM_REVERSE_VIEW:
+			if (value.i != memdata->reverse_view)
 			{
 				debug_view_begin_update(view);
-				memdata->ascii_view = *(const UINT32 *)value;
-				view->update_pending = 1;
+				memdata->reverse_view = value.i;
+				view->update_pending = TRUE;
+				debug_view_end_update(view);
+			}
+			break;
+
+		case DVP_MEM_ASCII_VIEW:
+			if (value.i != memdata->ascii_view)
+			{
+				debug_view_begin_update(view);
+				memdata->ascii_view = value.i;
+				view->update_pending = TRUE;
+				debug_view_end_update(view);
+			}
+			break;
+
+		case DVP_MEM_RAW_BASE:
+			if (value.p != memdata->raw_base)
+			{
+				debug_view_begin_update(view);
+				memdata->raw_base = value.p;
+				memdata->expression_dirty = TRUE;
+				view->update_pending = TRUE;
+				debug_view_end_update(view);
+			}
+			break;
+
+		case DVP_MEM_RAW_LENGTH:
+			if (value.i != memdata->raw_length)
+			{
+				debug_view_begin_update(view);
+				memdata->raw_length = value.i;
+				view->update_pending = TRUE;
+				debug_view_end_update(view);
+			}
+			break;
+
+		case DVP_MEM_RAW_OFFSET_XOR:
+			if (value.i != memdata->raw_offset_xor)
+			{
+				debug_view_begin_update(view);
+				memdata->raw_offset_xor = value.i;
+				view->update_pending = TRUE;
+				debug_view_end_update(view);
+			}
+			break;
+
+		case DVP_MEM_RAW_LITTLE_ENDIAN:
+			if (value.i != memdata->raw_little_endian)
+			{
+				debug_view_begin_update(view);
+				memdata->raw_little_endian = value.i;
+				view->update_pending = TRUE;
 				debug_view_end_update(view);
 			}
 			break;
 
 		case DVP_CHARACTER:
 			debug_view_begin_update(view);
-			memory_handle_char(view, *(const UINT32 *)value);
-			view->update_pending = 1;
+			memory_handle_char(view, value.i);
+			view->update_pending = TRUE;
 			debug_view_end_update(view);
 			break;
 
+		case DVP_MEM_WIDTH:
+			if (value.i != memdata->chunks_displayed)
+			{
+				/* lower bounds check - maybe upper bounds check someday? */
+				if (value.i < 1) break;
+
+				debug_view_begin_update(view);
+				memdata->chunks_displayed = value.i;
+				view->update_pending = TRUE;
+				debug_view_end_update(view);
+			}
+			break;
+
+
 		default:
-			osd_die("Attempt to set invalid property %d on debug view type %d\n", property, view->type);
+			fatalerror("Attempt to set invalid property %d on debug view type %d", property, view->type);
 			break;
 	}
 }
-
-

@@ -69,7 +69,6 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "includes/dynax.h"
 #include "sound/ay8910.h"
 #include "sound/2203intf.h"
@@ -429,7 +428,7 @@ static WRITE8_HANDLER( adpcm_reset_w )
 	MSM5205_reset_w(0,~data & 1);
 }
 
-static MACHINE_INIT( adpcm )
+static MACHINE_RESET( adpcm )
 {
 	/* start with the MSM5205 reset */
 	resetkludge = 0;
@@ -2510,7 +2509,7 @@ static MACHINE_DRIVER_START( hanamai )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(adpcm)
+	MDRV_MACHINE_RESET(adpcm)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
@@ -2563,7 +2562,7 @@ static MACHINE_DRIVER_START( hnoridur )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(adpcm)
+	MDRV_MACHINE_RESET(adpcm)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
@@ -2793,12 +2792,12 @@ static MACHINE_DRIVER_START( jantouki )
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_MACHINE_INIT(adpcm)
+	MDRV_MACHINE_RESET(adpcm)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_DUAL_MONITOR)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_ASPECT_RATIO(4,6)
 	MDRV_SCREEN_SIZE(512, 512)
 	MDRV_VISIBLE_AREA(0, 512-1, 16, 16+240+240-1)
@@ -3139,13 +3138,10 @@ ROM_START( maya )
 	ROM_LOAD( "1.17e", 0x00000, 0x10000, CRC(5aaa015e) SHA1(b84d02b1b6c07636176f226fef09a034d00445f0) )
 	ROM_LOAD( "2.15e", 0x28000, 0x10000, CRC(7ea5b49a) SHA1(aaae848669d9f88c0660f46cc801e4eb0f5e3b89) )
 
-	ROM_REGION( 0xc0000, REGION_USER1, ROMREGION_DISPOSE )	/* blitter data */
+	ROM_REGION( 0xc0000, REGION_GFX1, 0 )
 	ROM_LOAD( "3.18g", 0x00000, 0x40000, CRC(8534af04) SHA1(b9bc94541776b5c0c6bf0ecc63ffef914756376e) )
 	ROM_LOAD( "4.17g", 0x40000, 0x40000, CRC(ab85ce5e) SHA1(845b846e0fb8c9fcd1540960cda006fdac364fea) )
 	ROM_LOAD( "5.15g", 0x80000, 0x40000, CRC(c4316dec) SHA1(2e727a491a71eb1f4d9f338cc6ec76e03f7b46fd) )
-
-	ROM_REGION( 0xc0000, REGION_GFX1, 0 )
-	/* blitter data will be decrypted here*/
 
 	ROM_REGION( 0x400, REGION_PROMS, ROMREGION_DISPOSE )	/* Color PROMs */
 	ROM_LOAD( "prom2.5b",  0x000, 0x200, CRC(d276bf61) SHA1(987058b37182a54a360a80a2f073b000606a11c9) )	/* FIXED BITS (0xxxxxxx) */
@@ -3157,13 +3153,10 @@ ROM_START( inca )
 	ROM_LOAD( "am27c512.1", 0x00000, 0x10000, CRC(b0d513f7) SHA1(65ef4702302bbfc7c7a77f7353120ee3f5c94b31) )
 	ROM_LOAD( "2.15e", 0x28000, 0x10000, CRC(7ea5b49a) SHA1(aaae848669d9f88c0660f46cc801e4eb0f5e3b89) )
 
-	ROM_REGION( 0xc0000, REGION_USER1, ROMREGION_DISPOSE )	/* blitter data */
+	ROM_REGION( 0xc0000, REGION_GFX1, 0 )
 	ROM_LOAD( "m27c2001.3", 0x00000, 0x40000, CRC(3a3c54ea) SHA1(2743c6a66d3eff60080c9183fa2bf9081207ac6b) )
 	ROM_LOAD( "am27c020.4", 0x40000, 0x40000, CRC(d3571d63) SHA1(5f0abb0da19af34bbd3eb93270311e824839deb4) )
 	ROM_LOAD( "m27c2001.5", 0x80000, 0x40000, CRC(bde60c29) SHA1(3ff7fbd5978bec27ff2ecf5977f640c66058e45d) )
-
-	ROM_REGION( 0xc0000, REGION_GFX1, 0 )
-	/* blitter data will be decrypted here*/
 
 	ROM_REGION( 0x400, REGION_PROMS, ROMREGION_DISPOSE )	/* Color PROMs */
 	ROM_LOAD( "n82s147n.2",  0x000, 0x200, CRC(268bd9d3) SHA1(1f77d9dc58ab29f013ee21d7ec521b90be72610d) )	/* FIXED BITS (0xxxxxxx) */
@@ -3189,10 +3182,11 @@ static DRIVER_INIT( maya )
 	}
 
 	/* Address lines scrambling on the blitter data roms */
-	rom = memory_region(REGION_USER1);
-
+	rom = malloc(0xc0000);
+	memcpy(rom, gfx, 0xc0000);
 	for (i = 0; i < 0xc0000; i++)
 		gfx[i] = rom[BITSWAP24(i,23,22,21,20,19,18,14,15, 16,17,13,12,11,10,9,8, 7,6,5,4,3,2,1,0)];
+	free(rom);
 }
 
 
@@ -3653,10 +3647,8 @@ ROM_START( mjelctrn )
 
 	ROM_REGION( 0x180000, REGION_GFX1, 0 )	/* blitter data */
 	ROM_LOAD( "eb-01.rom", 0x000000, 0x100000, CRC(e5c41448) SHA1(b8322e32b0cb3d771316c9c4f7be91de6e422a24) )
-	/* eb-02 1st half = 2nd half with byte 0 replaced by 0 (wrong). Just use the 2nd half. */
-	ROM_LOAD( "eb-02.rom", 0x100000, 0x040000, NO_DUMP )
-	ROM_CONTINUE(          0x100000, 0x040000 )
-	ROM_LOAD( "mj-1c020", 0x140000, 0x040000, CRC(f8e8d91b) SHA1(409e276157b328e7bbba5dda6a4c7adc020d519a) )
+	ROM_LOAD( "eb-02.rom", 0x100000, 0x080000, CRC(e1f1b431) SHA1(04a612aff4c30cb8ea741f228bfa7e4289acfee8) )
+	ROM_LOAD( "mj-1c020",  0x140000, 0x040000, CRC(f8e8d91b) SHA1(409e276157b328e7bbba5dda6a4c7adc020d519a) )
 ROM_END
 
 ROM_START( mjelct3 )
@@ -3667,11 +3659,9 @@ ROM_START( mjelct3 )
 	ROM_CONTINUE(        0x20000, 0x08000 )
 	ROM_CONTINUE(        0x18000, 0x08000 )
 
-	ROM_REGION( 0x140000, REGION_GFX1, 0 )	/* blitter data */
+	ROM_REGION( 0x180000, REGION_GFX1, 0 )	/* blitter data */
 	ROM_LOAD( "eb-01.rom", 0x000000, 0x100000, CRC(e5c41448) SHA1(b8322e32b0cb3d771316c9c4f7be91de6e422a24) )
-	/* eb-02 1st half = 2nd half with byte 0 replaced by 0 (wrong). Just use the 2nd half. */
-	ROM_LOAD( "eb-02.rom", 0x100000, 0x040000, CRC(f5b354d1) SHA1(d3f35d090de9af3f50aae9ff11de731950256212) )
-	ROM_CONTINUE(          0x100000, 0x040000 )
+	ROM_LOAD( "eb-02.rom", 0x100000, 0x080000, CRC(e1f1b431) SHA1(04a612aff4c30cb8ea741f228bfa7e4289acfee8) )
 ROM_END
 
 ROM_START( mjelct3a )
@@ -3682,12 +3672,59 @@ ROM_START( mjelct3a )
 	ROM_CONTINUE(          0x20000, 0x08000 )
 	ROM_CONTINUE(          0x18000, 0x08000 )
 
-	ROM_REGION( 0x140000, REGION_GFX1, 0 )	/* blitter data */
+	ROM_REGION( 0x180000, REGION_GFX1, 0 )	/* blitter data */
 	ROM_LOAD( "eb-01.rom", 0x000000, 0x100000, CRC(e5c41448) SHA1(b8322e32b0cb3d771316c9c4f7be91de6e422a24) )
-	/* eb-02 1st half = 2nd half with byte 0 replaced by 0 (wrong). Just use the 2nd half. */
-	ROM_LOAD( "eb-02.rom", 0x100000, 0x040000, CRC(f5b354d1) SHA1(d3f35d090de9af3f50aae9ff11de731950256212) )
-	ROM_CONTINUE(          0x100000, 0x040000 )
+	ROM_LOAD( "eb-02.rom", 0x100000, 0x080000, CRC(e1f1b431) SHA1(04a612aff4c30cb8ea741f228bfa7e4289acfee8) )
 ROM_END
+
+/*
+
+Sea Hunter Penguin
+
+CPU
+1x Z8400A (main)
+1x YM2203C (sound)
+1x blank DIP40 with GND on pin 1,22 and +5 on pin 20
+1x oscillator 22.1184MHz
+ROMs
+
+2x 27512 (u43,u45)
+6x 27C010
+
+ROM u43.8d contains
+
+MODEL:SEA HUNTER(EXT)
+PROGRAM BY:WSAC SYSTEMS,.
+
+DATE:1995/02/20
+
+VER:1.30
+
+*/
+
+ROM_START( shpeng )
+	ROM_REGION( 0x90000, REGION_CPU1, 0 )	/* Z80 Code */
+	ROM_LOAD( "u43.8d", 0x00000, 0x10000, CRC(6b993f68) SHA1(4d3ad750e23be93342c61c454498d432e40587bb) )
+	ROM_LOAD( "u45.9d", 0x28000, 0x10000, CRC(6e79a1d1) SHA1(a72706425bcbd0faee4cf0220942fdcf510d4e89) )
+
+	ROM_REGION( 0xc0000, REGION_GFX1, 0 )	/* blitter data */
+	ROM_LOAD( "u110.1j", 0x00000, 0x20000, CRC(31abac75) SHA1(20e91496ccb379d9449925b5aaca3532caaf9522) ) /* ok! - main sprites etc. */
+	ROM_LOAD( "u111.0j", 0x20000, 0x20000, CRC(0672bfc9) SHA1(ea35af45cdfa72ae1e7dc13a09ed1db09c0062ec) ) /* ok? */
+	ROM_LOAD( "u84.1h",  0x40000, 0x20000, CRC(7b476fac) SHA1(6b61b675fbfcc17a77b9757ea330f8d3e8751633) )
+	ROM_LOAD( "u804.0h", 0x60000, 0x20000, CRC(abb2f1c3) SHA1(9faccbba26c0540d9edbd76ca8bf67069db0bb53) )
+	ROM_LOAD( "u74.1g",  0x80000, 0x20000, CRC(2ac46b6e) SHA1(0046ee7ede1acff45e64c85a9fca8fc8efa31026) )
+	ROM_LOAD( "u704.0g", 0xa0000, 0x20000, CRC(b062c928) SHA1(8c43689a1b8c444f91acbc7371eda744874eb538) )
+
+	ROM_REGION( 0x400, REGION_PROMS, ROMREGION_DISPOSE )	/* Color PROMs */
+	ROM_LOAD( "n82s147n.u13", 0x000, 0x200, CRC(29b6415b) SHA1(8085ff3265cda2d564da3dff609eb05ff02fae49) ) /* FIXED BITS (0xxxxxxx)  (Ok) */
+	ROM_LOAD( "n82s147n.u12", 0x200, 0x200, BAD_DUMP CRC(7b940daa) SHA1(3903ebef644b2519aebbbb6d16872441b283c780) ) /* BADADDR xxx-xxxxx  (Bad Read, Prom has a broken leg!) */
+
+	/* this rom doesn't belong here, it is from Dragon Punch, but shpeng hardware and game code is a hack
+       of dragon punch.  This rom is better than the bad dump above for the sprite colours, although the
+       colours on the intro/cutscenes are wrong */
+	ROM_LOAD_OPTIONAL( "1.17g", 0x200, 0x200, CRC(324fa9cf) SHA1(a03e23d9a9687dec4c23a8e41254a3f4b70c7e25) )
+ROM_END
+
 
 /* Decrypted by yong */
 static DRIVER_INIT( mjelct3 )
@@ -3845,9 +3882,11 @@ GAME( 1991, yarunara, 0,        yarunara, yarunara, 0,        ROT180, "Dynax",  
 GAME( 1991, mjangels, 0,        yarunara, yarunara, 0,        ROT180, "Dynax",                   "Mahjong Angels - Comic Theater Vol.2 (Japan)"         , 0 )
 GAME( 1992, quiztvqq, 0,        yarunara, quiztvqq, 0,        ROT180, "Dynax",                   "Quiz TV Gassyuukoku Q&Q (Japan)"                      , 0 )
 GAME( 1994, maya,     0,        sprtmtch, sprtmtch, maya,     ROT0,   "Promat",                  "Maya"                                                 , 0 )
-GAME( 199?, inca,     maya,     sprtmtch, sprtmtch, maya,     ROT0,   "<unknown>",                 "Inca"                                                 , 0 )
+GAME( 199?, inca,     maya,     sprtmtch, sprtmtch, maya,     ROT0,   "<unknown>",               "Inca"                                                 , 0 )
 GAME( 1990, jantouki, 0,        jantouki, jantouki, 0,        ROT0,   "Dynax",                   "Jong Tou Ki (Japan)"                                  , 0 )
-GAME( 1993, mjelctrn, 0,        mjelctrn, mjelctrn, mjelct3,  ROT180, "Dynax",                   "Mahjong Electron Base (parts 2 & 4, Japan)",           GAME_IMPERFECT_GRAPHICS )	/* part 4 title in the no_dump rom */
+GAME( 1993, mjelctrn, 0,        mjelctrn, mjelctrn, mjelct3,  ROT180, "Dynax",                   "Mahjong Electron Base (parts 2 & 4, Japan)"           , 0 )
 GAME( 1990, mjelct3,  mjelctrn, mjelctrn, mjelct3,  mjelct3,  ROT180, "Dynax",                   "Mahjong Electron Base (parts 2 & 3, Japan)"           , 0 )
 GAME( 1990, mjelct3a, mjelctrn, mjelctrn, mjelct3,  mjelct3a, ROT180, "Dynax",                   "Mahjong Electron Base (parts 2 & 3, alt., Japan)"     , 0 )
 GAME( 1990, neruton,  0,        neruton,  neruton,  mjelct3,  ROT180, "Dynax / Yukiyoshi Tokoro","Mahjong Neruton Haikujirada (Japan)",                         GAME_IMPERFECT_GRAPHICS )	/* e.g. dynax logo */
+/* not a dynax board */
+GAME( 1995, shpeng,   0,        sprtmtch, sprtmtch, 0,        ROT0,   "WSAC Systems?",                   "Sea Hunter Penguin"                                 , GAME_WRONG_COLORS ) /* proms? */

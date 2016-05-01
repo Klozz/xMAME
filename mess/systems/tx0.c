@@ -230,7 +230,7 @@ static gfx_decode gfxdecodeinfo[] =
 	black.  Grey levels follow an exponential law, so that decrementing the
 	color index periodically will simulate the remanence of a cathode ray tube.
 */
-static unsigned char palette[] =
+static const unsigned char palette[] =
 {
 	0xFF,0xFF,0xFF,	/* white */
 	0x00,0xFF,0x00,	/* green */
@@ -239,7 +239,7 @@ static unsigned char palette[] =
 	0x80,0x80,0x80	/* light gray */
 };
 
-static unsigned short colortable[] =
+static const unsigned short tx0_colortable[] =
 {
 	pen_panel_bg, pen_panel_caption,
 	pen_typewriter_bg, pen_black,
@@ -247,7 +247,7 @@ static unsigned short colortable[] =
 };
 
 /* Initialise the palette */
-static void palette_init_tx0(unsigned short *sys_colortable, const unsigned char *dummy)
+static PALETTE_INIT( tx0 )
 {
 	/* rgb components for the two color emissions */
 	const double r1 = .1, g1 = .1, b1 = .924, r2 = .7, g2 = .7, b2 = .076;
@@ -305,7 +305,7 @@ static void palette_init_tx0(unsigned short *sys_colortable, const unsigned char
 	/* load static palette */
 	palette_set_colors(pen_crt_num_levels, palette, sizeof(palette) / sizeof(palette[0]) / 3);
 
-	memcpy(sys_colortable, colortable, sizeof(colortable));
+	memcpy(colortable, tx0_colortable, sizeof(tx0_colortable));
 }
 
 
@@ -343,9 +343,7 @@ static MACHINE_DRIVER_START(tx0_64kw)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	/*MDRV_INTERLEAVE(interleave)*/
 
-	MDRV_MACHINE_INIT( tx0 )
-	MDRV_MACHINE_STOP( tx0 )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
+	MDRV_MACHINE_START( tx0 )
 
 	/* video hardware (includes the control panel and typewriter output) */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -355,7 +353,7 @@ static MACHINE_DRIVER_START(tx0_64kw)
 
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(pen_crt_num_levels + (sizeof(palette) / sizeof(palette[0]) / 3))
-	MDRV_COLORTABLE_LENGTH(sizeof(colortable) / sizeof(colortable[0]))
+	MDRV_COLORTABLE_LENGTH(sizeof(tx0_colortable) / sizeof(tx0_colortable[0]))
 
 	MDRV_PALETTE_INIT(tx0)
 	MDRV_VIDEO_START(tx0)
@@ -383,9 +381,7 @@ static MACHINE_DRIVER_START(tx0_8kw)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	/*MDRV_INTERLEAVE(interleave)*/
 
-	MDRV_MACHINE_INIT( tx0 )
-	MDRV_MACHINE_STOP( tx0 )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
+	MDRV_MACHINE_START( tx0 )
 
 	/* video hardware (includes the control panel and typewriter output) */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -395,7 +391,7 @@ static MACHINE_DRIVER_START(tx0_8kw)
 
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(pen_crt_num_levels + (sizeof(palette) / sizeof(palette[0]) / 3))
-	MDRV_COLORTABLE_LENGTH(sizeof(colortable) / sizeof(colortable[0]))
+	MDRV_COLORTABLE_LENGTH(sizeof(tx0_colortable) / sizeof(tx0_colortable[0]))
 
 	MDRV_PALETTE_INIT(tx0)
 	MDRV_VIDEO_START(tx0)
@@ -424,43 +420,67 @@ ROM_START(tx0_8kw)
 		/* space filled with our font */
 ROM_END
 
-static void tx0_punchtape_getinfo(struct IODevice *dev)
+static void tx0_punchtape_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* punchtape */
-	dev->type = IO_PUNCHTAPE;
-	dev->count = 2;
-	dev->file_extensions = "tap\0rim\0";
-	dev->getdispositions = tx0_tape_get_open_mode;
-	dev->init = device_init_tx0_tape;
-	dev->load = device_load_tx0_tape;
-	dev->unload = device_unload_tx0_tape;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_PUNCHTAPE; break;
+		case DEVINFO_INT_COUNT:							info->i = 2; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_INIT:							info->init = device_init_tx0_tape; break;
+		case DEVINFO_PTR_LOAD:							info->load = device_load_tx0_tape; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_tx0_tape; break;
+		case DEVINFO_PTR_GET_DISPOSITIONS:				info->getdispositions = tx0_tape_get_open_mode; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap,rim"); break;
+	}
 }
 
-static void tx0_printer_getinfo(struct IODevice *dev)
+static void tx0_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
-	dev->type = IO_PRINTER;
-	dev->count = 1;
-	dev->file_extensions = "typ\0";
-	dev->readable = 0;
-	dev->writeable = 1;
-	dev->creatable = 1;
-	dev->load = device_load_tx0_typewriter;
-	dev->unload = device_unload_tx0_typewriter;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_PRINTER; break;
+		case DEVINFO_INT_READABLE:						info->i = 0; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_tx0_typewriter; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_tx0_typewriter; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "typ"); break;
+	}
 }
 
-static void tx0_magtape_getinfo(struct IODevice *dev)
+static void tx0_magtape_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* magtape */
-	dev->type = IO_CASSETTE;
-	dev->count = 1;
-	dev->file_extensions = "tap\0";
-	dev->readable = 1;
-	dev->writeable = 1;
-	dev->creatable = 0;
-	dev->init = device_init_tx0_magtape;
-	dev->load = device_load_tx0_magtape;
-	dev->unload = device_unload_tx0_magtape;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
+		case DEVINFO_INT_READABLE:						info->i = 1; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_INIT:							info->init = device_init_tx0_magtape; break;
+		case DEVINFO_PTR_LOAD:							info->load = device_load_tx0_magtape; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_tx0_magtape; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap"); break;
+	}
 }
 
 SYSTEM_CONFIG_START(tx0)

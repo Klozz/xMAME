@@ -4,237 +4,248 @@ MESS = 1
 # core defines
 COREDEFS += -DNEOFREE -DMESS
 
-# CPU cores used in MESS
-# uncomment the following lines to include a CPU core
-CPUS+=Z80@
-CPUS+=Z180@
-CPUS+=8080@
-#CPUS+=8085A@
-CPUS+=M6502@
-CPUS+=M65C02@
-CPUS+=M65SC02@
-#CPUS+=M65CE02@
-CPUS+=M6509@
-CPUS+=M6510@
-CPUS+=M6510T@
-CPUS+=M7501@
-CPUS+=M8502@
-CPUS+=N2A03@
-#CPUS+=DECO16@
-CPUS+=M4510@
-CPUS+=H6280@
-CPUS+=I86@
-CPUS+=I88@
-CPUS+=I186@
-#CPUS+=I188@
-CPUS+=I286@
-CPUS+=V20@
-CPUS+=V30@
-#CPUS+=V33@
-#CPUS+=V60@
-#CPUS+=V70@
-#CPUS+=I8035@
-CPUS+=I8039@
-CPUS+=I8048@
-#CPUS+=N7751@
-#CPUS+=I8X41@
-#CPUS+=I8051@
-#CPUS+=I8052@
-#CPUS+=I8751@
-#CPUS+=I8752@
-CPUS+=M6800@
-#CPUS+=M6801@
-#CPUS+=M6802@
-CPUS+=M6803@
-CPUS+=M6808@
-CPUS+=HD63701@
-CPUS+=NSC8105@
-CPUS+=M6805@
-#CPUS+=M68705@
-#CPUS+=HD63705@
-CPUS+=HD6309@
-CPUS+=M6809@
-CPUS+=M6809E@
-#CPUS+=KONAMI@
-CPUS+=M68000@
-CPUS+=M68008@
-CPUS+=M68010@
-CPUS+=M68EC020@
-CPUS+=M68020@
-#CPUS+=T11@
-CPUS+=S2650@
-#CPUS+=TMS34010@
-#CPUS+=TMS34020@
-CPUS+=TMS9900@
-#CPUS+=TMS9940@
-CPUS+=TMS9980@
-#CPUS+=TMS9985@
-#CPUS+=TMS9989@
-CPUS+=TMS9995@
-#CPUS+=TMS99000@
-CPUS+=TMS99010@
-#CPUS+=TMS99105A@
-#CPUS+=TMS99110A@
-#CPUS+=Z8000@
-#CPUS+=TMS32010@
-#CPUS+=TMS32025@
-#CPUS+=TMS32026@
-#CPUS+=TMS32031@
-#CPUS+=CCPU@
-#CPUS+=ADSP2100@
-#CPUS+=ADSP2101@
-#CPUS+=ADSP2104@
-#CPUS+=ADSP2105@
-#CPUS+=ADSP2115@
-#CPUS+=ADSP2181@
-CPUS+=PSXCPU@
-#CPUS+=ASAP@
-#CPUS+=UPD7810@
-#CPUS+=UPD7807@
-CPUS+=ARM@
-#CPUS+=ARM7@
-CPUS+=JAGUAR@
-#CPUS+=R3000@
-CPUS+=R4600@
-#CPUS+=R4700@
-CPUS+=R5000@
-#CPUS+=QED5271@
-#CPUS+=RM7000@
-CPUS+=SH2@
-#CPUS+=DSP32C@
-#CPUS+=PIC16C54@
-#CPUS+=PIC16C55@
-#CPUS+=PIC16C56@
-#CPUS+=PIC16C57@
-#CPUS+=PIC16C58@
-CPUS+=G65816@
-CPUS+=SPC700@
-CPUS+=E116T@
-#CPUS+=E116XT@
-#CPUS+=E116XS@
-#CPUS+=E116XSR@
-#CPUS+=E132N@
-#CPUS+=E132T@
-#CPUS+=E132XN@
-#CPUS+=E132XT@
-#CPUS+=E132XS@
-#CPUS+=E132XSR@
-#CPUS+=GMS30C2116@
-#CPUS+=GMS30C2132@
-#CPUS+=GMS30C2216@
-#CPUS+=GMS30C2232@
-CPUS+=I386@
-CPUS+=I486@
-#CPUS+=PENTIUM@
-#CPUS+=MEDIAGX@
-#CPUS+=I960@
-#CPUS+=H83002@
-#CPUS+=V810@
-#CPUS+=M37710@
-#CPUS+=PPC403@
-#CPUS+=PPC602@
-CPUS+=PPC603@
-#CPUS+=SE3208@
-#CPUS+=MC68HC11@
-CPUS+=Z80GB@
-CPUS+=CDP1802@
-CPUS+=SC61860@
-CPUS+=SATURN@
-CPUS+=APEXC@
-CPUS+=F8@
-CPUS+=CP1610@
-#CPUS+=TMS99010@
-CPUS+=PDP1@
-#CPUS+=TMS7000@
-CPUS+=TMS7000_EXL@
-CPUS+=TX0@
-CPUS+=COP411@
+
+
+#-------------------------------------------------
+# specify available CPU cores; some of these are
+# only for MAME and so aren't included
+#-------------------------------------------------
+
+CPUS+=Z80
+CPUS+=Z180
+CPUS+=8080
+#CPUS+=8085A
+CPUS+=M6502
+CPUS+=M65C02
+CPUS+=M65SC02
+#CPUS+=M65CE02
+CPUS+=M6509
+CPUS+=M6510
+CPUS+=M6510T
+CPUS+=M7501
+CPUS+=M8502
+CPUS+=N2A03
+#CPUS+=DECO16
+CPUS+=M4510
+CPUS+=H6280
+CPUS+=I86
+CPUS+=I88
+CPUS+=I186
+#CPUS+=I188
+CPUS+=I286
+CPUS+=V20
+CPUS+=V30
+#CPUS+=V33
+#CPUS+=V60
+#CPUS+=V70
+#CPUS+=I8035
+CPUS+=I8039
+CPUS+=I8048
+#CPUS+=N7751
+#CPUS+=I8X41
+#CPUS+=I8051
+#CPUS+=I8052
+#CPUS+=I8751
+#CPUS+=I8752
+CPUS+=M6800
+#CPUS+=M6801
+#CPUS+=M6802
+CPUS+=M6803
+CPUS+=M6808
+CPUS+=HD63701
+CPUS+=NSC8105
+CPUS+=M6805
+#CPUS+=M68705
+#CPUS+=HD63705
+CPUS+=HD6309
+CPUS+=M6809
+CPUS+=M6809E
+#CPUS+=KONAMI
+CPUS+=M68000
+CPUS+=M68008
+CPUS+=M68010
+CPUS+=M68EC020
+CPUS+=M68020
+#CPUS+=T11
+CPUS+=S2650
+#CPUS+=TMS34010
+#CPUS+=TMS34020
+CPUS+=TMS9900
+#CPUS+=TMS9940
+CPUS+=TMS9980
+#CPUS+=TMS9985
+#CPUS+=TMS9989
+CPUS+=TMS9995
+#CPUS+=TMS99000
+CPUS+=TMS99010
+#CPUS+=TMS99105A
+#CPUS+=TMS99110A
+#CPUS+=Z8000
+#CPUS+=TMS32010
+#CPUS+=TMS32025
+#CPUS+=TMS32026
+#CPUS+=TMS32031
+#CPUS+=CCPU
+#CPUS+=ADSP2100
+#CPUS+=ADSP2101
+#CPUS+=ADSP2104
+#CPUS+=ADSP2105
+#CPUS+=ADSP2115
+#CPUS+=ADSP2181
+CPUS+=PSXCPU
+#CPUS+=ASAP
+#CPUS+=UPD7810
+#CPUS+=UPD7807
+CPUS+=ARM
+#CPUS+=ARM7
+CPUS+=JAGUAR
+#CPUS+=R3000
+CPUS+=R4600
+#CPUS+=R4700
+CPUS+=R5000
+#CPUS+=QED5271
+#CPUS+=RM7000
+CPUS+=SH2
+#CPUS+=DSP32C
+#CPUS+=PIC16C54
+#CPUS+=PIC16C55
+#CPUS+=PIC16C56
+#CPUS+=PIC16C57
+#CPUS+=PIC16C58
+CPUS+=G65816
+CPUS+=SPC700
+CPUS+=E116T
+#CPUS+=E116XT
+#CPUS+=E116XS
+#CPUS+=E116XSR
+#CPUS+=E132N
+#CPUS+=E132T
+#CPUS+=E132XN
+#CPUS+=E132XT
+#CPUS+=E132XS
+#CPUS+=E132XSR
+#CPUS+=GMS30C2116
+#CPUS+=GMS30C2132
+#CPUS+=GMS30C2216
+#CPUS+=GMS30C2232
+CPUS+=I386
+CPUS+=I486
+CPUS+=PENTIUM
+#CPUS+=MEDIAGX
+#CPUS+=I960
+#CPUS+=H83002
+#CPUS+=V810
+#CPUS+=M37710
+#CPUS+=PPC403
+#CPUS+=PPC602
+CPUS+=PPC603
+#CPUS+=SE3208
+#CPUS+=MC68HC11
+#CPUS += ADSP21062
+#CPUS += DSP56156
+CPUS += RSP
+CPUS+=Z80GB
+CPUS+=CDP1802
+CPUS+=SC61860
+CPUS+=SATURN
+CPUS+=APEXC
+CPUS+=F8
+CPUS+=CP1610
+#CPUS+=TMS99010
+CPUS+=PDP1
+#CPUS+=TMS7000
+CPUS+=TMS7000_EXL
+CPUS+=TX0
+CPUS+=COP411
+CPUS+=SM8500
+CPUS+=V30MZ
 
 # SOUND cores used in MESS
-SOUNDS+=CUSTOM@
-SOUNDS+=SAMPLES@
-SOUNDS+=DAC@
-SOUNDS+=DMADAC@
-SOUNDS+=DISCRETE@
-SOUNDS+=AY8910@
-SOUNDS+=YM2203@
+SOUNDS+=CUSTOM
+SOUNDS+=SAMPLES
+SOUNDS+=DAC
+SOUNDS+=DMADAC
+SOUNDS+=DISCRETE
+SOUNDS+=AY8910
+SOUNDS+=YM2203
 # enable only one of the following two
-SOUNDS+=YM2151@
-SOUNDS+=YM2151_ALT@
-SOUNDS+=YM2608@
-SOUNDS+=YM2610@
-SOUNDS+=YM2610B@
-SOUNDS+=YM2612@
-#SOUNDS+=YM3438@
-SOUNDS+=YM2413@
-SOUNDS+=YM3812@
-#SOUNDS+=YMZ280B@
-#SOUNDS+=YM3526@
-#SOUNDS+=Y8950@
-SOUNDS+=SN76477@
-SOUNDS+=SN76496@
-SOUNDS+=POKEY@
-SOUNDS+=TIA@
-SOUNDS+=NES@
-SOUNDS+=ASTROCADE@
-#SOUNDS+=NAMCO@
-#SOUNDS+=NAMCO_15XX@
-#SOUNDS+=NAMCO_CUS30@
-#SOUNDS+=NAMCO_52XX@
-#SOUNDS+=NAMCO_54XX@
-#SOUNDS+=NAMCO_63701X@
-#SOUNDS+=NAMCONA@
-#SOUNDS+=TMS36XX@
-SOUNDS+=TMS5110@
-SOUNDS+=TMS5220@
-#SOUNDS+=VLM5030@
-#SOUNDS+=ADPCM@
-SOUNDS+=OKIM6295@
-#SOUNDS+=MSM5205@
-#SOUNDS+=MSM5232@
-#SOUNDS+=UPD7759@
-#SOUNDS+=HC55516@
-#SOUNDS+=K005289@
-#SOUNDS+=K007232@
-SOUNDS+=K051649@
-#SOUNDS+=K053260@
-#SOUNDS+=K054539@
-#SOUNDS+=SEGAPCM@
-#SOUNDS+=RF5C68@
-#SOUNDS+=CEM3394@
-#SOUNDS+=C140@
-SOUNDS+=QSOUND@
-SOUNDS+=SAA1099@
-#SOUNDS+=IREMGA20@
-#SOUNDS+=ES5505@
-#SOUNDS+=ES5506@
-#SOUNDS+=BSMT2000@
-#SOUNDS+=YMF262@
-#SOUNDS+=YMF278B@
-#SOUNDS+=GAELCO_CG1V@
-#SOUNDS+=GAELCO_GAE1@
-#SOUNDS+=X1_010@
-#SOUNDS+=MULTIPCM@
-SOUNDS+=C6280@
-#SOUNDS+=SP0250@
-#SOUNDS+=SCSP@
-#SOUNDS+=YMF271@
-SOUNDS+=PSXSPU@
-#SOUNDS+=CDDA@
-#SOUNDS+=ICS2115@
-#SOUNDS+=ST0016@
-#SOUNDS+=C352@
-#SOUNDS+=VRENDER0@
-SOUNDS+=SPEAKER@
-SOUNDS+=WAVE@
-SOUNDS+=BEEP@
-SOUNDS+=SID6581@
-SOUNDS+=SID8580@
-SOUNDS+=ES5503@
+SOUNDS+=YM2151
+SOUNDS+=YM2151_ALT
+SOUNDS+=YM2608
+SOUNDS+=YM2610
+SOUNDS+=YM2610B
+SOUNDS+=YM2612
+#SOUNDS+=YM3438
+SOUNDS+=YM2413
+SOUNDS+=YM3812
+#SOUNDS+=YMZ280B
+#SOUNDS+=YM3526
+#SOUNDS+=Y8950
+SOUNDS+=SN76477
+SOUNDS+=SN76496
+SOUNDS+=POKEY
+SOUNDS+=TIA
+SOUNDS+=NES
+SOUNDS+=ASTROCADE
+#SOUNDS+=NAMCO
+#SOUNDS+=NAMCO_15XX
+#SOUNDS+=NAMCO_CUS30
+#SOUNDS+=NAMCO_52XX
+#SOUNDS+=NAMCO_54XX
+#SOUNDS+=NAMCO_63701X
+#SOUNDS+=NAMCONA
+#SOUNDS+=TMS36XX
+SOUNDS+=TMS5110
+SOUNDS+=TMS5220
+#SOUNDS+=VLM5030
+#SOUNDS+=ADPCM
+SOUNDS+=OKIM6295
+#SOUNDS+=MSM5205
+#SOUNDS+=MSM5232
+#SOUNDS+=UPD7759
+#SOUNDS+=HC55516
+#SOUNDS+=K005289
+#SOUNDS+=K007232
+SOUNDS+=K051649
+#SOUNDS+=K053260
+#SOUNDS+=K054539
+#SOUNDS+=SEGAPCM
+#SOUNDS+=RF5C68
+#SOUNDS+=CEM3394
+#SOUNDS+=C140
+SOUNDS+=QSOUND
+SOUNDS+=SAA1099
+#SOUNDS+=IREMGA20
+#SOUNDS+=ES5505
+#SOUNDS+=ES5506
+#SOUNDS+=BSMT2000
+#SOUNDS+=YMF262
+#SOUNDS+=YMF278B
+#SOUNDS+=GAELCO_CG1V
+#SOUNDS+=GAELCO_GAE1
+#SOUNDS+=X1_010
+#SOUNDS+=MULTIPCM
+SOUNDS+=C6280
+#SOUNDS+=SP0250
+#SOUNDS+=SCSP
+#SOUNDS+=YMF271
+SOUNDS+=PSXSPU
+#SOUNDS+=CDDA
+#SOUNDS+=ICS2115
+#SOUNDS+=ST0016
+#SOUNDS+=C352
+#SOUNDS+=VRENDER0
+SOUNDS+=SPEAKER
+SOUNDS+=WAVE
+SOUNDS+=BEEP
+SOUNDS+=SID6581
+SOUNDS+=SID8580
+SOUNDS+=ES5503
 
 # Archive definitions
 DRVLIBS = \
 	$(OBJ)/coco.a     \
+	$(OBJ)/mc10.a     \
 	$(OBJ)/apple.a    \
 	$(OBJ)/apexc.a	  \
 	$(OBJ)/pdp1.a	  \
@@ -315,6 +326,7 @@ DRVLIBS = \
 	$(OBJ)/primo.a		\
 	$(OBJ)/dgn_beta.a	\
 	$(OBJ)/be.a			\
+	$(OBJ)/tiger.a		\
 
 
 $(OBJ)/neocd.a:						\
@@ -384,17 +396,22 @@ $(OBJ)/nintendo.a:					\
 	$(OBJ)/sndhrdw/snes.o			\
 	$(OBJ)/machine/snes.o			\
 	$(OBJ)/vidhrdw/snes.o			\
-	$(OBJ)/mess/systems/snes.o	 
+	$(OBJ)/mess/systems/snes.o	 	\
+	$(OBJ)/mess/systems/n64.o		\
+	$(OBJ)/machine/n64.o			\
+	$(OBJ)/vidhrdw/n64.o			\
 
 $(OBJ)/amiga.a: \
 	$(OBJ)/vidhrdw/amiga.o			\
 	$(OBJ)/machine/amiga.o			\
+	$(OBJ)/sndhrdw/amiga.o			\
+	$(OBJ)/machine/6526cia.o		\
 	$(OBJ)/mess/machine/amigafdc.o	\
 	$(OBJ)/mess/systems/amiga.o
 
 $(OBJ)/cbmshare.a: \
+	$(OBJ)/machine/6526cia.o		\
 	$(OBJ)/mess/machine/tpi6525.o	\
-	$(OBJ)/mess/machine/cia6526.o	\
 	$(OBJ)/mess/machine/cbm.o		\
 	$(OBJ)/mess/machine/cbmdrive.o	\
 	$(OBJ)/mess/machine/vc1541.o	 \
@@ -432,20 +449,25 @@ $(OBJ)/coco.a:   \
 	$(OBJ)/mess/machine/cococart.o	\
 	$(OBJ)/mess/machine/ds1315.o	\
 	$(OBJ)/mess/machine/m6242b.o	\
-	$(OBJ)/mess/machine/dragon.o	\
-	$(OBJ)/mess/vidhrdw/dragon.o	\
-	$(OBJ)/mess/systems/dragon.o	\
+	$(OBJ)/mess/machine/coco.o		\
+	$(OBJ)/mess/vidhrdw/coco.o		\
+	$(OBJ)/mess/systems/coco.o		\
+	$(OBJ)/mess/vidhrdw/coco3.o		\
 	$(OBJ)/mess/formats/cocopak.o	\
 	$(OBJ)/mess/formats/coco_cas.o	\
 	$(OBJ)/mess/formats/coco_dsk.o	\
 	$(OBJ)/mess/devices/coco_vhd.o	\
+
+$(OBJ)/mc10.a:	\
 	$(OBJ)/mess/machine/mc10.o		\
 	$(OBJ)/mess/systems/mc10.o		\
+	$(OBJ)/mess/formats/coco_cas.o	\
 
 $(OBJ)/dgn_beta.a:	\
 	$(OBJ)/mess/machine/dgn_beta.o	\
 	$(OBJ)/mess/vidhrdw/dgn_beta.o	\
-	$(OBJ)/mess/systems/dgn_beta.o	
+	$(OBJ)/mess/systems/dgn_beta.o	\
+	$(OBJ)/mess/formats/coco_dsk.o	\
 
 $(OBJ)/trs80.a:    \
 	$(OBJ)/mess/machine/trs80.o	 \
@@ -498,8 +520,8 @@ $(OBJ)/apple.a:   \
 	$(OBJ)/mess/systems/lisa.o			\
 	$(OBJ)/mess/machine/applefdc.o		\
 	$(OBJ)/mess/machine/8530scc.o		\
-	$(OBJ)/mess/machine/sonydriv.o		\
-	$(OBJ)/mess/machine/appldriv.o		\
+	$(OBJ)/mess/devices/sonydriv.o		\
+	$(OBJ)/mess/devices/appldriv.o		\
 	$(OBJ)/mess/sndhrdw/mac.o			\
 	$(OBJ)/mess/vidhrdw/mac.o			\
 	$(OBJ)/mess/machine/mac.o			\
@@ -578,10 +600,12 @@ $(OBJ)/pcshare.a:					\
 	$(OBJ)/machine/8237dma.o	\
 	$(OBJ)/machine/pic8259.o	\
 	$(OBJ)/machine/pcshare.o	\
+	$(OBJ)/mess/machine/pc_turbo.o	\
 	$(OBJ)/mess/sndhrdw/pc.o		\
 	$(OBJ)/mess/sndhrdw/sblaster.o	\
 	$(OBJ)/mess/machine/pc_fdc.o	\
 	$(OBJ)/mess/machine/pc_hdc.o	\
+	$(OBJ)/mess/machine/pc_joy.o	\
 	$(OBJ)/mess/vidhrdw/pc_video.o	\
 	$(OBJ)/mess/vidhrdw/pc_mda.o	\
 	$(OBJ)/mess/vidhrdw/pc_cga.o	\
@@ -603,7 +627,8 @@ $(OBJ)/at.a:	   \
 	$(OBJ)/mess/machine/pc_ide.o   \
 	$(OBJ)/mess/machine/ps2.o	 \
 	$(OBJ)/mess/machine/at.o       \
-	$(OBJ)/mess/systems/at.o
+	$(OBJ)/mess/systems/at.o	\
+	$(OBJ)/mess/machine/i82439tx.o
 
 $(OBJ)/p2000.a:    \
 	$(OBJ)/mess/vidhrdw/saa5050.o  \
@@ -694,6 +719,7 @@ $(OBJ)/vtech.a :   \
 	$(OBJ)/mess/machine/vtech2.o	\
 	$(OBJ)/mess/systems/vtech2.o	\
 	$(OBJ)/mess/formats/vt_cas.o	\
+	$(OBJ)/mess/formats/vt_dsk.o	\
 
 $(OBJ)/jupiter.a : \
 	$(OBJ)/mess/systems/jupiter.o	\
@@ -726,6 +752,7 @@ $(OBJ)/mtx.a:	   \
 $(OBJ)/acorn.a:    \
 	$(OBJ)/mess/machine/i8271.o	 \
 	$(OBJ)/mess/machine/upd7002.o  \
+	$(OBJ)/mess/vidhrdw/saa505x.o	     \
 	$(OBJ)/mess/vidhrdw/bbc.o	     \
 	$(OBJ)/mess/machine/bbc.o	     \
 	$(OBJ)/mess/systems/bbc.o	     \
@@ -734,7 +761,11 @@ $(OBJ)/acorn.a:    \
 	$(OBJ)/mess/vidhrdw/z88.o      \
 	$(OBJ)/mess/vidhrdw/atom.o	 \
 	$(OBJ)/mess/systems/atom.o	 \
-	$(OBJ)/mess/machine/atom.o	 
+	$(OBJ)/mess/machine/atom.o	 \
+	$(OBJ)/mess/formats/uef_cas.o	\
+	$(OBJ)/mess/vidhrdw/electron.o	\
+	$(OBJ)/mess/machine/electron.o	\
+	$(OBJ)/mess/systems/electron.o
 
 $(OBJ)/samcoupe.a: \
 	$(OBJ)/mess/vidhrdw/coupe.o	 \
@@ -924,22 +955,28 @@ $(OBJ)/be.a:						\
 	$(OBJ)/machine/intelfsh.o		\
 	$(OBJ)/machine/53c810.o
 
+$(OBJ)/tiger.a:				\
+	$(OBJ)/mess/systems/gamecom.o	\
+	$(OBJ)/mess/machine/gamecom.o	\
+	$(OBJ)/mess/vidhrdw/gamecom.o
+
 # MESS specific core $(OBJ)s
 COREOBJS +=							\
 	$(EXPAT)						\
 	$(ZLIB)							\
-	$(OBJ)/cheat.o					\
 	$(OBJ)/vidhrdw/tms9928a.o		\
 	$(OBJ)/machine/8255ppi.o		\
-	$(OBJ)/machine/random.o			\
 	$(OBJ)/machine/6522via.o		\
 	$(OBJ)/machine/6821pia.o		\
-	$(OBJ)/machine/z80fmly.o		\
+	$(OBJ)/machine/z80ctc.o			\
+	$(OBJ)/machine/z80pio.o			\
+	$(OBJ)/machine/z80sio.o			\
 	$(OBJ)/machine/idectrl.o		\
 	$(OBJ)/machine/6532riot.o		\
 	$(OBJ)/mess/mess.o				\
+	$(OBJ)/mess/mesvalid.o			\
 	$(OBJ)/mess/image.o				\
-	$(OBJ)/mess/system.o			\
+	$(OBJ)/mess/messdriv.o			\
 	$(OBJ)/mess/device.o			\
 	$(OBJ)/mess/hashfile.o			\
 	$(OBJ)/mess/inputx.o			\
@@ -951,7 +988,6 @@ COREOBJS +=							\
 	$(OBJ)/mess/compcfg.o			\
 	$(OBJ)/mess/utils.o				\
 	$(OBJ)/mess/eventlst.o			\
-	$(OBJ)/mess/videomap.o			\
 	$(OBJ)/mess/mscommon.o			\
 	$(OBJ)/mess/pool.o				\
 	$(OBJ)/mess/cheatms.o			\
@@ -997,7 +1033,7 @@ COREOBJS +=							\
 	$(OBJ)/machine/pckeybrd.o \
 	$(OBJ)/mess/machine/d88.o      \
 	$(OBJ)/mess/machine/nec765.o   \
-	$(OBJ)/mess/machine/wd179x.o   \
+	$(OBJ)/mess/machine/wd17xx.o   \
 	$(OBJ)/mess/machine/serial.o   \
 	$(OBJ)/mess/formats/wavfile.o
 
@@ -1009,11 +1045,13 @@ TOOLS = dat2html$(EXE) messtest$(EXE) chdman$(EXE) messdocs$(EXE) imgtool$(EXE)
 include mess/tools/imgtool/imgtool.mak
 
 DAT2HTML_OBJS =								\
+	$(OBJ)/mamecore.o						\
 	$(OBJ)/mess/tools/dat2html/dat2html.o	\
 	$(OBJ)/mess/tools/imgtool/stubs.o		\
-	$(OBJ)/mess/utils.o
+	$(OBJ)/mess/utils.o						\
 
 MESSDOCS_OBJS =								\
+	$(OBJ)/mamecore.o						\
 	$(OBJ)/mess/tools/messdocs/messdocs.o	\
 	$(OBJ)/mess/utils.o						\
 	$(OBJ)/mess/pool.o						\

@@ -62,7 +62,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "state.h"
+#include "includes/pacman.h"
 
 static INT8 counter=0;
 
@@ -238,7 +238,7 @@ READ8_HANDLER( theglobp_decrypt_rom )
 }
 
 
-MACHINE_INIT( theglobp )
+MACHINE_RESET( theglobp )
 {
 	unsigned char *RAM = memory_region(REGION_CPU1);
 

@@ -1,6 +1,4 @@
 #include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
 
 #define COLORTABLE_START(gfxn,color)	Machine->drv->gfxdecodeinfo[gfxn].color_codes_start + \
 					color * Machine->gfx[gfxn]->color_granularity
@@ -31,8 +29,7 @@ void mnight_mark_background_dirty(void)
 
 VIDEO_START( mnight )
 {
-	if ((bg_dirtybuffer = auto_malloc(1024)) == 0)
-		return 1;
+	bg_dirtybuffer = auto_malloc(1024);
 
 	if ((bitmap_bg = auto_bitmap_alloc (Machine->drv->screen_width*2,Machine->drv->screen_height*2)) == 0)
 		return 1;

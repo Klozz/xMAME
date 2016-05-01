@@ -148,21 +148,21 @@ TODO:
 
 struct namcoio
 {
-	int type;
+	INT32 type;
 	read8_handler in[4];
 	write8_handler out[2];
-	int reset;
-	int lastcoins,lastbuttons;
-	int credits;
-	int coins[2];
-	int coins_per_cred[2];
-	int creds_per_coin[2];
-	int in_count;
-	int mode,coincred_mode,remap_joy;	/* for 51XX */
+	INT32 reset;
+	INT32 lastcoins,lastbuttons;
+	INT32 credits;
+	INT32 coins[2];
+	INT32 coins_per_cred[2];
+	INT32 creds_per_coin[2];
+	INT32 in_count;
+	INT32 mode,coincred_mode,remap_joy;	/* for 51XX */
 };
 
 static struct namcoio io[MAX_NAMCOIO];
-static int nmi_cpu[MAX_06XX];
+static INT32 nmi_cpu[MAX_06XX];
 static void *nmi_timer[MAX_06XX];
 
 static READ8_HANDLER( nop_r ) { return 0x0f; }
@@ -310,13 +310,13 @@ Flags: 80h=high score, 40h=first bonus, 20h=interval bonus
 
 #define MAX_50XX 2
 
-static int		HiScore[MAX_50XX];
-int		Score[2][MAX_50XX];
-int		NextBonus[2][MAX_50XX];
-int		FirstBonus[MAX_50XX],IntervalBonus[MAX_50XX];
-int Player[MAX_50XX];
+static INT32 HiScore[MAX_50XX];
+static INT32 Score[2][MAX_50XX];
+static INT32 NextBonus[2][MAX_50XX];
+static INT32 FirstBonus[MAX_50XX],IntervalBonus[MAX_50XX];
+static INT32 Player[MAX_50XX];
 
-static int in_count_50XX[MAX_50XX];
+static INT32 in_count_50XX[MAX_50XX];
 
 void namcoio_50XX_write(int chipnum,int data)
 {
@@ -592,9 +592,21 @@ void namcoio_51XX_write(int chip,int data)
 
 				{
 					/* kludge for a possible bug in Xevious */
-					extern const game_driver driver_xevious;
+					static const game_driver *namcoio_51XX_driver = NULL;
+					static int namcoio_51XX_kludge = 0;
 
-					if (Machine->gamedrv == &driver_xevious || Machine->gamedrv->clone_of == &driver_xevious)
+					/* Only compute namcoio_51XX_kludge when gamedrv changes */
+					if (namcoio_51XX_driver != Machine->gamedrv)
+					{
+						namcoio_51XX_driver = Machine->gamedrv;
+						if (strcmp(namcoio_51XX_driver->name, "xevious") == 0 ||
+							strcmp(namcoio_51XX_driver->parent, "xevious") == 0)
+							namcoio_51XX_kludge = 1;
+						else
+							namcoio_51XX_kludge = 0;
+					}
+
+					if (namcoio_51XX_kludge)
 					{
 						io[chip].coincred_mode = 6;
 						io[chip].remap_joy = 1;
@@ -679,7 +691,7 @@ UINT8 namcoio_51XX_read(int chip)
 
 					if (io[chip].coins_per_cred[0] > 0)
 					{
-						if (io[chip].credits >= 9)
+						if (io[chip].credits >= 99)
 						{
 							WRITE_PORT(1,1);	/* coin lockout */
 						}
@@ -1164,6 +1176,23 @@ void namcoio_set_irq_line(int chipnum, int state)
 	}
 }
 
+static void namcoio_state_save(int chipnum)
+{
+
+	state_save_register_item_pointer("namcoio", chipnum, ((UINT8 *) (&namcoio_ram[chipnum * 16])), 16);
+	state_save_register_item("namcoio", chipnum, io[chipnum].reset);
+	state_save_register_item("namcoio", chipnum, io[chipnum].lastcoins);
+	state_save_register_item("namcoio", chipnum, io[chipnum].lastbuttons);
+	state_save_register_item("namcoio", chipnum, io[chipnum].credits);
+	state_save_register_item_array("namcoio", chipnum, io[chipnum].coins);
+	state_save_register_item_array("namcoio", chipnum, io[chipnum].coins_per_cred);
+	state_save_register_item_array("namcoio", chipnum, io[chipnum].creds_per_coin);
+	state_save_register_item("namcoio", chipnum, io[chipnum].in_count);
+	state_save_register_item("namcoio", chipnum, io[chipnum].mode);
+	state_save_register_item("namcoio", chipnum, io[chipnum].coincred_mode);
+	state_save_register_item("namcoio", chipnum, io[chipnum].remap_joy);
+}
+
 void namcoio_init(int chipnum, int type, const struct namcoio_interface *intf)
 {
 	if (chipnum < MAX_NAMCOIO)
@@ -1175,6 +1204,7 @@ void namcoio_init(int chipnum, int type, const struct namcoio_interface *intf)
 		io[chipnum].in[3] = (intf && intf->in[3]) ? intf->in[3] : nop_r;
 		io[chipnum].out[0] = (intf && intf->out[0]) ? intf->out[0] : nop_w;
 		io[chipnum].out[1] = (intf && intf->out[1]) ? intf->out[1] : nop_w;
+		namcoio_state_save(chipnum);
 		namcoio_set_reset_line(chipnum,PULSE_LINE);
 	}
 }
@@ -1185,7 +1215,7 @@ void namcoio_init(int chipnum, int type, const struct namcoio_interface *intf)
 
 
 
-void nmi_generate(int param)
+static void nmi_generate(int param)
 {
 	if (!cpunum_is_suspended(param, SUSPEND_REASON_HALT | SUSPEND_REASON_RESET | SUSPEND_REASON_DISABLE))
 	{
@@ -1197,8 +1227,23 @@ void nmi_generate(int param)
 	}
 }
 
-
 int customio_command[MAX_06XX];
+
+static void namco_06xx_state_save(int chipnum)
+{
+
+		/*state_save_register_item("namcoio06xx", chipnum, nmi_cpu[chipnum]); */
+		state_save_register_item("namcoio06xx", chipnum, customio_command[chipnum]);
+		state_save_register_item("namcoio06xx", chipnum, HiScore[chipnum]);
+		state_save_register_item("namcoio06xx", chipnum, Score[0][chipnum]);
+		state_save_register_item("namcoio06xx", chipnum, Score[1][chipnum]);
+		state_save_register_item("namcoio06xx", chipnum, NextBonus[0][chipnum]);
+		state_save_register_item("namcoio06xx", chipnum, NextBonus[1][chipnum]);
+		state_save_register_item("namcoio06xx", chipnum, FirstBonus[chipnum]);
+		state_save_register_item("namcoio06xx", chipnum, IntervalBonus[chipnum]);
+		state_save_register_item("namcoio06xx", chipnum, Player[chipnum]);
+
+}
 
 
 void namco_06xx_init(int chipnum, int cpu,
@@ -1215,6 +1260,7 @@ void namco_06xx_init(int chipnum, int cpu,
 		namcoio_init(4*chipnum + 3, type3, intf3);
 		nmi_cpu[chipnum] = cpu;
 		nmi_timer[chipnum] = timer_alloc(nmi_generate);
+		namco_06xx_state_save(chipnum);
 	}
 }
 

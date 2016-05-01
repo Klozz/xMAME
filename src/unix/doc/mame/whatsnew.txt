@@ -1,576 +1,515 @@
-0.103
+0.106
 -----
 
 
-MAMETesters Bugs Fixed
-----------------------
-astrob0102u5gre [Nicola Salmoria]
-
-
-
 Source Changes
 --------------
-Completely rewrote machine/stvcd.c and .h. There's a lot less there now, 
-but what's there is more understandable and works much better. [R. Belmont]
+Fixed vconv.exe so it doesn't use options that have been deprecated
+in MSVC 2005. [Aaron Giles]
 
-Some RF5C400 improvements. [hoot development team]
-
-Cleaned up/reorganized some of the messy Neo Geo code. Separated out bootleg-
-specific hacks into additional files. [David Haywood]
-
-Replaced a few stray exit() calls with osd_die(). [Oliver Stoneberg]
-
-Fixed layer 1 colors in Blandia. [Pierpaolo Prazzoli]
-
-Corrected interrupt timing in wwfstar driver. [David Haywood]
-
-Fixed chdman to support 64-bit file sizes on some *nix platforms.
-[Lawrence Gold]
-
-More ST-V updates: [Mariusz Wojcieszek]
- * added idle loop skipping for rsgun
- * added RBG caching
- * added RBG "two screens" mode
- * added Critter Crusher (not working due to missing inputs)
- * fixed several bugs introduced recently with all the other changes
-
-Changed i286 core to use the same INPUT_LINE_A20 that the i386 core uses.
-[Nathan Woods]
-
-Added partial updates and boosted the interleave in the ddragon driver.
-[David Haywood]
-
-Added cdrom_get_track_length() to cdrom.c. [R. Belmont]
-
-Added an atexit handler to ensure trace files are closed in the debugger
-in the event of an early exit. [Nathan Woods]
-
-Merged the Sprint 4/Ultra Tank drivers and made the following fixes:
-[Stefan Jokisch]
-
- * Ultra Tank:
-    - hardware collision detection (computer is now able to manoeuvre 
-         around barriers)
-    - sprite fixes (invisble tank option works, tank explosion sequence)
-    - playfield fixes (text colors are different)
-    - watchdog and coin lockout added
-    - sync and color proms added
-    - motor sound fix (previously this was hooked up to the wrong address)
-    - misc internal fixes like cpu speed, RAM size etc
-
- * Sprint 4:
-   - sound support (inherited from Ultra Tank)
-   - watchdog added
-
-Fixed bug in the Grand Champion fog effect. [Hans Andersson]
-
-Fixed Triple Hunt and several older Atari games to use RAM mirroring for
-zero page memory. [Stefan Jokisch]
-
-Fixed several endian issues with the SE3208 core and the Crystal System
-driver. [Brad Oliver]
-
-Got the DCS-3 sound system working for Road Burners. [Aaron Giles]
-
-Did some cleanup in the ADSP-21xx core to support program memory more 
-correctly and support execution from multiple banks. [Aaron Giles]
+Fixed crash in the model3 games introduced by cleaning up empty ROM
+regions. [Ville Linde]
 
 
 
-New games added or promoted from NOT_WORKING status
----------------------------------------------------
-Mad Ball [David Haywood, Brian Troha]
-Super Model [David Haywood]
-Garogun Seroyang (Korea) [David Haywood, Pierpaolo Prazzoli]
-MuHanSeungBu (SemiCom Baseball) [David Haywood, Brian Troha]
-Games V18.2 [Pierpaolo Prazzoli, Guru]
-
-
-
-New clones added
-----------------
-Puzzle Bang Bang [Brian Troha, Pierpaolo Prazzoli]
-Super World Court (World) [Stefan Lindberg]
-Out Zone (set 3) [David Haywood]
-Mini Vegas 4in1 [Tomasz Slanina]
-Crazy Rally (set 2) [David Haywood, Guru]
-Gouketsuji Ichizoku (Japan) [Pierpaolo Prazzoli, Guru]
-Dynamite Duke (Japan) [Pierpaolo Prazzoli, Guru]
-The Double Dynamites (Japan) [Pierpaolo Prazzoli, Bryan McPhail, Guru]
-Passing Shot (World, 4 Players, FD1094 317-0074) [Mame Italia]
-
-
-
-New games marked as GAME_NOT_WORKING
-------------------------------------
-Martial Masters [David Haywood]
-Demon Front [David Haywood]
-Canvas Croquis [David Haywood]
-Go 2000 [David Haywood, Brian Troha]
-Gekisou (Japan) [David Haywood]
-Critter Crusher [Mariusz Wojcieszek, Guru]
-Card Line [Tomasz Slanina]
-Shuttle Invader [Tomasz Slanina, Guru]
-
-
-
-0.102u5
+0.105u5
 -------
 
 
 MAMETesters Bugs Fixed
 ----------------------
-dspirit099u2yel [BUT]
-mjkjidai097u2gre [Mamesick]
-suprnova0102u4red [Aaron Giles]
-nbmj8991c095u2yel [Mamesick]
-grchamp055yel [Hans Andersson]
-grchamp137b12gre [Hans Andersson]
-grchamp237b12gre [Hans Andersson]
-vulcan137b1gre (part 2, and maybe parts 4 and 5) [Pierpaolo Prazzoli]
-gunlock097u2yel [Nicola Salmoria]
-gekirido096u3gre [Nicola Salmora]
-ssi061gre [Nicola Salmoria]
-ssi137b2gre [Nicola Salmoria]
-ctribe088u4gra [Mamesick]
-groundfx068gra [Mamesick]
-tengai062gre [AWJ]
+memory0105u4red [Aaron Giles]
 
 
 
 Source Changes
 --------------
-Fixed bug in discrete filtering code. [Frank Palazzolo]
+Cleaned up the freekick.c driver [Sonikos]:
+ - added 2nd button in gigas/gias2m/oigas
+ - matched the Z80 chip mhz to the "confirmed" mhz of gigas
 
-Fixed speedup for znpwfv so that it boots once again. [Mariusz Wojcieszek]
+Extended the gfxlayout structure to support "extended" arrays of
+x and y offsets. These are used for layouts that are larger than
+32x32. This enables the standard structure to be smaller for the
+vast majority of games that don't require huge graphics decodes.
+The end result is that the MAME .exe is ~3MB smaller.
+[Atari Ace, Aaron Giles]
 
-Improvements to cuoreuno and elephfam: [Roberto Fresca]
- * Corrected videoram and colorram (now can see the nvram initialization).
- * Corrected the CPU frequency to 2 MHz.
-Still not working...
+Added some Amiga enhancements needed for MESS Amiga and CDTV 
+drivers. [Dirk Best]
 
-Fixed Playchoice/VSNES drivers. [Rob Bohms]
+Removed non-existant 3rd & 4th player controls from deadconx.
+[Don Maeby]
 
-Hooked up the same NES APU implementation in both MAME and MESS. Also
-correctd the memory mapping of the APU in the Playchoice 10 driver. 
-[R. Belmont]
+Improvements to the MACS driver: [Tomasz Slanina]
+ - fixed a couple of gfx bugs in st0016 video emulation
+ - added hacks to allow MACS games to boot
+ - removed REGION_DISPOSE flag from srmp5 and speaglsht (no more 
+    crashes)
 
-Hooked up Psikyo 4 PCM banking. [Anonymous]
+Fixed/improved DIP switches in the powerbal.c, konamigx.c, and 
+gsword.c drivers. [Twisty]
 
-Significant improvements to the Grand Champion driver: [Hans Andersson]
- * Tunnel headlights
- * Corrected rain effect
- * Corrected colors
- * Added speech
- * Improved collision detection (removed false collision when lightning)
- * Improved fog effect
- * Added skeleton code for motor noise
- * Fixed graphic glitch in bottom row
- * Corrected CPU speed for Cpu board / Game board
+More improvements to the BFM driver and the 6840 timer emulation.
+[El Condor]
 
-Added simulated version of the N64 PIF boot rom to the Aleck64 driver, so 
-the cartridges now boot properly, though the cartridge CRC check fails on 
-both games. [Ville Linde]
+Improvements to the x86 drc engine and the Windows blitters:
+ - Blitter CPUID features now accessed by drc_x86_get_features() call
+ - Added win_blit_init(), to initialize the blitter
+ - Changes to DRC to support usage for things other than CPU cores
+ - Fixed drc_dasm() so it works once again
+ - Added macros for a number of MMX/SSE instructions
+ - Added a number of MMX/SSE instructions to the i386 disassembler
 
-Fixed instruction alignment in the old debugger. Also added support for
-64-bit qword display. [AWJ]
+Actually applied the Marine Date fixes which were mentioned in a
+previous u release. [Aaron Giles]
 
-Fixed timing between CPU and MCU in chaknpop. In previous driver, you will 
-notice problems in stages with water and coffee break (not always). New 
-driver fixes it but it is not perfect about timing. [BUT]
+Added experimental support for building using Visual C++ 2003/2005.
+To do this, you still need the mingw environment (ironically) because
+we rely on the mingw make system to call out to the MSVC compilers.
+Set the variable MSVC_BUILD=1 on the command line or by modifying
+windows.mak, and it will build using the Microsoft compilers. This
+works through the use of a stub program vconv.exe which translates
+gcc options into MSVC options. As a bootstrapping measure, vconv.exe
+is compiled at the start of a clean build by mingw. Most of the
+standard build options just work (SYMBOLS, MAP, DEBUG, etc). If you
+have a beefy computer, you can also set MAXOPT=1 and use link-time
+code generation for maximum optimization effect. :) [Aaron Giles]
 
-Added sound to Honey Doll. [David Haywood]
+Added preliminary support for 64-bit targets. A new makefile define
+PTR64 should be set if you are compiling for a 64-bit target. This
+propogates a PTR64 define into the C files as well. Made the makefile
+smart enough to auto-disable the drc cores for 64-bit, and removed
+most of the roadblocks to a 64-bit build, apart from the assembly
+blitters, which are currently undergoing a rewrite. [Aaron Giles]
 
-Changed activecpu_dasm() and activecpu_dasm_new() so that they "function" 
-even if the getinfo handler does not specify CPUINFO_PTR_DISASSEMBLE nor 
-CPUINFO_PTR_DISASSEMBLE_NEW. [Nathan Woods]
 
-Completed the X-Multiply DIP switches. [Roberto Fresca]
 
-Moved m6809, hd6309 and z80 disassemblers to the new interface, and did 
-some cleanups. [Nathan Woods]
+New games added or promoted from NOT_WORKING status
+---------------------------------------------------
+Hidden Catch 2 [Pierpaolo Prazzoli, Guru]
+Fishing Maniac 3 [Pierpaolo Prazzoli, Guru]
+Yu-Ka [Tomasz Slanina]
+Yu-Jan [Tomasz Slanina]
 
-Fixed the SUBW H flag in the SPC700 core. [Rob Bohms]
 
-Added missing functionality needed to get rsgun working. [Olivier Galibert]
 
-SP0250 update: [Nicola Salmoria]
- * Added SP0250 speech chip to 3 Stooges.
- * Streamlined the SP0250 emulation to avoid timing issues which were 
-    preventing 3 stooges from working.
- * Fixed glitches in the speech that were caused by not resetting the 
-    filter stages when a speech frame is loaded.
- * Made the SP0250 support the external clock rate
- * Changed the playback rate to match the real board by making the clock 
-    divider a reasonable number.
+New clones added
+----------------
+Greyhound Selection (Version 40.02TMB) set 2 [Brian Troha]
+Greyhound Poker (3 new sets) [Brian Troha]
 
-Added new debugger command 'map', which tells logical -> physical mappings
-as well as what read/write handlers are connected to an address. Also added
-'mapd' and 'mapi' for performing the same operation on data and I/O space.
-[Aaron Giles]
 
-More Voodoo updates: [Aaron Giles]
- * fixed overflow in 1/W calculation that messed up some textures
- * added missing color combine mode used by Gauntlet Dark Legacy
+New games marked as GAME_NOT_WORKING
+------------------------------------
+Master Boy [David Haywood]
+Intersecti [David Haywood]
 
-Fixed subtle bug in the MIPS3 recompiler that prevented Tenth Degree from
-working. [Aaron Giles]
 
-Implemented some more functionality of the ADSP-2181 needed for Road Burners.
+
+0.105u4
+-------
+
+
+MAMETesters Bugs Fixed
+----------------------
+invaders0105u2gre [Giuseppe Gorgoglione]
+taitosj0105u3yel [Aaron Giles]
+wardner0105u3red [Aaron Giles]
+
+
+
+Source Changes
+--------------
+Nintendo 64 system improvements: [Ville Linde, Ryan Holtz]
+ - Fixed a major bug in the RSP core
+ - Rewrote the PIF handling
+ - Slightly improved triangle rendering
+
+Added a NULL check on memory_set_bankptr(), memory_configure_bank() 
+and memory_configure_bank_decrypted(). [Nathan Woods]
+
+Added support in the debugger memory window to change the number
+of bytes displayed per row. [Andrew Gardner]
+
+Started simulation of orlegend super / special protection.
+[XingXing, ElSemi]
+
+Fixed colors and music tempo in Perfect Billiard. [Sonikos]
+
+Cleaned up 6840 implementation and revised scorpion2 driver's 
+handling of unmapped regions. Also updated the MPU4 memory
+map. [El Condor]
+
+Major Toaplan 2 driver cleanup: [Quench]
+ - Added Knuckle Bash 2 (kbash2)
+ - Consolidated the Read/Write memory maps
+ - Fixed coin counters on a few games
+ - Raised the volumes on a few games
+ - Cleaned the inputs by:
+    Adding input inheritance and DIPSW locations
+    Added conditional dependance to DIPSWs where required
+    Fixing a few incorrect inputs here and there
+
+Fixed/improved DIP switches in the m92, afega, tumbleb, and yunsun16 
+drivers. [Twisty]
+
+Cleaned up the liberate.c driver. [Sonikos]
+
+Improved ARM7 thumb mode disassembler. [MooglyGuy]
+
+Some improvements to Air Raid/Cross Shooter, but not playable 
+due to missing gfx roms. [Tomasz Slanina]
+
+Fixed UI positioning when artwork is enabled. [Giuseppe Gorgoglione]
+
+Big pile of updates/improvements to the ARM7 core thumb mode and
+the PGM drivers. [David Haywood, ElSemi]
+
+Improved OKI frequency in sslam and powerbls. [f205v]
+
+More DIP switch improvements to m62.c, m72.c, ddragon.c. [Twisty]
+
+Fixed bug in the debugger that would prevent you from typing a
+command line longer than what was visible. [Aaron Giles]
+
+Added a new tool jedutil, which will convert .JED files to binary
+form and back again. [Aaron Giles]
+
+Added new ROM region REGION_PLDS, which is designed to hold binary
+dumps of PLD fusemaps (produced from .JED files by jedutil). Added
+logic to -romident to automatically parse .JED files to identify them
+against these binary dumps. Added PLD dumps to the Vindicators,
+Batman, Pit Fighter, ThunderJaws, and Relief Pitcher drivers. More to
+come shortly. [Aaron Giles]
+
+Converted PLDs for catnmous and lazarian to the new binary format.
 [Aaron Giles]
 
 
 
 New games added or promoted from NOT_WORKING status
 ---------------------------------------------------
-Mosaic (F2 System) [Pierpaolo Prazzoli]
-Vs. Hot Smash [Nicola Salmoria]
-Noah's Ark [David Widel]
-Top Roller [Tomasz Slanina]
-Squash (Ver. 1.0) [David Haywood, Mike Coates, Nicola Salmoria]
+Tetris (D.R. Korea) [David Haywood]
+Knuckle Bash 2 (bootleg) [Quench]
 
 
 
 New clones added
 ----------------
-California Speed (Version 2.1a) [Reznor007]
-Gauntlet Dark Legacy (version DL 2.52) [Reznor007]
-Tenkomori Shooting (Japan) [Guru]
-Soul Calibur (SOC11/VER.B) [smf]
-Tekken Tag Tournament (TEG3/VER.C1) [smf]
-Quiz [Pierpaolo Prazzoli]
-King of Gladiator (The King of Fighters '97 bootleg)
-Crouching Tiger Hidden Dragon 2003 (The King of Fighters 2001 bootleg)
-King Of Fighters 10th Anniversary (The King of Fighters 2002 bootleg)
-The King of Fighters Special Edition 2004 (The King of Fighters 2002 bootleg)
-Lansquenet 2004 (Shock Troopers - 2nd Squad bootleg)
+Metal Slug 6 (Metal Slug 3 bootleg) [Mame32Plus]
+Metal Slug 5 (JAMMA PCB) [Mame32Plus]
+SVC Chaos - SNK vs CAPCOM (JAMMA PCB, set 2) [Mame32Plus]
+Night Slashers (Over Sea Rev 1.2) [Stefan Lindberg]
+Double Dragon (World Set 2) [Stefan Lindberg]
 
 
 
-New games marked as GAME_NOT_WORKING
-------------------------------------
-Real Battle Mahjong King [Tomasz Slanina, David Haywood]
-Little Robin [David Haywood, Pierpaolo Prazzoli]
-Ghoul Panic (OB2/VER.A) [Guru]
-Knights of Valour 2
-
-
-
-0.102u4
--------
-
-
-Source Changes
---------------
-Corrected some YM2151 frequencies in the dooyong.c driver. [Mamesick]
-
-Major update to the STV driver: [Mariusz Wojcieszek]
- * sh2: introduced cpu_readop16() for opcode fetching
- * stv: added idle skip to various games
- * stv: optimized master/slave sh2 syncing
- * vdp1: fixed sprite transparency for RGB sprites
- * vdp2: added linescroll
- * vdp2: added 16x16 15bit tiles (fixes missing gfx in znpwfv)
- * vdp2: optimized tilemap scrolling, bitmaps and framebuffer drawing
- * vdp2: fixed page and map calculation
- * dsp: fixed some bugs making vfremix run up to the end of second match
-
-Fixed sprite-tilemap collision detection in Taito SJ driver when the screen
-is flipped. [Nicola Salmoria]
-
-Fixed some logical errors in sprite handling and palette reads, DMA timing, 
-and one invalid opcode in the NES drivers. [Rob Bohms]
-
-Cleaned up and standardized usage of M_PI constants in the code.
-[William Krick]
-
-Added external ram read and write handlers and data read port to YMZ280B.
-[Ville Linde]
-
-Fixed sprite priorities in Tang Tang. [Pierpaolo Prazzoli]
-
-Fixed bug in Chack'n Pop that was introduced in the recent memory system
-changes. [Nicola Salmoria]
-
-Fixes branch target address disassembly in the PSX disassembler. [smf]
-
-More Voodoo updates: [Aaron Giles]
- * fixed bug that trashed fbzMode when the fogMode was changed
- * added preliminary Voodoo 2 support; Gauntlet Legends works again
- * changed float-to-int conversion to be done manually
-
-
-
-New games added or promoted from NOT_WORKING status
----------------------------------------------------
-Flame Gunner [Guru, smf]
-Paca Paca Passion Special [Guru, smf]
-Paca Paca Passion 2 [Guru, smf]
-
-
-
-New clones added
-----------------
-WWF Superstars (US, Newer) [Philip Bennett]
-Time Pilot '84 (set 3) [chaneman]
-Multi Champ Deluxe (ver. 0106) [David Haywood]
-Columns (US, cocktail) [Arzeno Fabrice]
-Mace: The Dark Age (boot ROM 1.0ce) [Brian Troha]
-Arabian Fight (World) [Arzeno Fabrice]
-
-
-
-New games marked as GAME_NOT_WORKING
-------------------------------------
-Emergency Call Ambulance [Ville Linde]
-
-
-
-0.102u3
+0.105u3
 -------
 
 
 MAMETesters Bugs Fixed
 ----------------------
-taotaida088u4gra [RansAckeR]
-tempest095u5gre [RansAckeR]
+mystston097u3yel [David Haywood]
+decocass0105u2yel [Aaron Giles]
+taitosj0105u2yel [Aaron Giles]
+vicdual0105u2gre [Aaron Giles]
+chqflag0105u2red [Aaron Giles]
 
 
 
 Source Changes
 --------------
-Aquarium update: [Pierpaolo Prazzoli]
- * Fixed tilemaps - sprites priority
- * Added sprites wrap around y
- * Added tiles flipx and flipy
+Fixed and cleaned up the DIP switches in the dec0 driver.
+[Roberto Fresca]
 
-Fixed several bugs in the SPC700 core: [R. Belmont]
- * Fixed carry usage in ADC/SBC
- * Fixed overflow flag in ADDW/SUBW (I think)
- * BRK now modifies the status register properly
- * Fixed DAA/DAS edge case
+More improvements to the PGM video code. Also added hooks for halting
+the sound CPU which allows ddp2 to boot. [David Haywood] 
 
-Updated driver.c with more consistent and updated info. [Brian Troha]
+Fixed incorrect lightgun names. [Derrick Renaud]
 
-NSS/SNES updates from latest MESS: [R. Belmont]
- * Improved memory mapping
- * Improved raster timing
- * Added HIRQ support and better VIRQ support
- * Improved joypad support
- * DSP-1 support (including all subtypes)
- * Counter latching support
- * Fixed OAM read/write
- * Fixed stereo sound
+Fixed Bonze Adventure levels 2 & 9. [Bryan McPhail]
 
-Added a MESS specific ROM entry type, and changed ROM entry processing code 
-to ignore any unrecognized ROM entry types. [Nathan Woods]
+Refactored the 8530 CIA code from the Amiga into a separate module
+and made it support both the 6526 and 8530 variants. [Nathan Woods]
 
-Merged in recent changes to the PC share code from MESS. [Nathan Woods]
+Fixed/improved DIP switches in the megasys1, dietgo, and yunsun16
+drivers. [Twisty]
 
-Removed several obsolete files: machine\s16math.h, vidhrdw\medlanes.h,
-windows\dirty.h, windows\snprintf.c. [Giuseppe Gorgoglione]
+Fixed some DIP switches and added controls for 2nd player in cocktail 
+mode in Lost Castle in Darkmist. [Sonikos]
 
-Fixed a couple of minor compatibility exposed by VC2005.
+Fixed a number of issues in the Windows rendering code:
 [Giuseppe Gorgoglione]
+ * fixed blit_vectors so it used the dirty pixel array in D3D mode
+ * fixed blit_vectors rotation issue for dirty pixels as well
+ * changed -full_screen_brightness to -full_screen_gamma
+    (which is a more correct description)
+ * changed -d3dfilter to be a boolean, since the other filtering modes
+    are either obsolete or not applicable to MAME
+ * removed limitations on windowing position so you no longer need to
+    be aligned on an 8-pixel boundary
+ * cleaned up a number of unused global variables
+ * improved multi-monitor support to work in GDI mode as well as in
+    non-full-screen modes
+ * added missing documentation for the -screen parameter
 
-Fixed the ADC and SBC opcodes in G65816 (for BCD math). [Rob Bohms]
+Fixed some remaining errors and inconsistencies in the content and 
+usage of MAME header files by comparing declarations against actual
+definitions. Removed many orphaned/duplicate declarations. Added
+#includes where appropriate, and moved a few declarations to another
+file when they were in the wrong location. [Atari Ace]
 
-Fixed $4014 sprite DMA in NES PPU. [Rob Bohms]
-
-Updated the H8/3002 emulation: [R. Belmont]
- * Added more bXXX.b #imm, (@)Rn instructions
- * Added subtract with carry instructions
-
-Implemented some N2A03 undocumented opcodes. [Rob Bohms]
-
-Major update to Namco System 22: [Phil Stroffolino]
- * depth cueing support (fog); some open issues remain
- * depth bias improvements
- * zbuffer has been replaced with back-to-front rendering
- * sprite and text translucency
- * direct access to rendering device (used by video tests)
- * preliminary support for spotlight feature
- * support for sprite bottom-alignment
- * support for sprite, polygon priority over text
-
-More Voodoo updates: [Aaron Giles]
- * Added support for CLUT/gamma ramps; enables fade in/out effects
- * Changed stall callback to notify both start and end of stalling
- * Decreased bilinear resolution to 4 bits for Voodoo 1
- * Fixed statistics and added some new ones
- * Now properly masking off unsupported bits for earlier chipsets
- * Fixed NOP command so it doesn't always reset statistics
- * Fixed bug that caused the refresh rate to never be updated
- * Fixed 16-bit writes to the frame buffer
- * Fixed crashing bug after resetting the chip
- * Added support for Voodoo 2's new fog, colorpath, and chromaRange modes
- * Added correct wrapping for ARGB, W and Z values
- * Fixed bug where depth was written to the Z buffer without bias
- * Now aggregates shorter commands to reduce the number of context switches
+Removed a number of unused ROM regions. Most (but not all) of the
+empty ROM region warnings are now taken care of. Also uncommented/
+added missing undumped ROMs/XORs in the Namco and CPS2 games.
+[Aaron Giles]
+ 
+More Amiga cleanups: [Aaron Giles]
+ * fixed dual playfield mode
+ * rewrote blitter code (fixes glitches in ar_bowl and others)
+ * changed Arcadia boot loading to use ROMtags instead of autoconfig
+ * swapped Kickstart 1.2 in for Arcadia BIOS (fixes ar_sdwr)
 
 
 
 New games added or promoted from NOT_WORKING status
 ---------------------------------------------------
-Magic Stick [Pierpaolo Prazzoli]
+Puzzle Star [XingXing]
+Marine Date [MAME32Plus]
+Speed Up [Aaron Giles]
+Up Scope [Mariusz Wojcieszek, Tomasz Slanina, Aaron Giles]
+Greyhound Poker (Version 50.02) [Pierpaolo Prazzoli]
 
 
 
 New clones added
 ----------------
-Progressive Music Trivia (Question set 3) [Pierpaolo Prazzoli]
-Super Puzzle Fighter II Turbo (Asia 960529) [Razoola]
-Funky Jet (Japan) [Guru]
-Kid Niki - Radical Ninja (World) [Stefan Lindberg]
+The Pit (Bootleg) [Brian Troha]
+Amidar (Bootleg) [Brian Troha]
+Moon Cresta (bootleg set 3) [Brian Troha]
+Xexex (ver AAA) [Corrado Tomaselli]
 
 
 
 New games marked as GAME_NOT_WORKING
 ------------------------------------
-Fortress 2 Blue Arcade [Guru]
+The Gladiator [David Haywood]
 
 
 
-0.102u2
+0.105u2
 -------
 
 
 MAMETesters Bugs Fixed
 ----------------------
-f1en097u1gre2 [Anonymous]
-ozmawars055gre [RansAckeR]
+raizing0105u1red [Ville Linde]
+psbasedgames0105u1red [Nathan Woods]
 
 
 
 Source Changes
 --------------
-Some minor cleanups to the System 32 driver. Air Rescue and F1 Exhaust Note
-now share common multi-PCB faking logic. [Anonymous]
+Fixed Monster World DIP switches. [Sonikos]
 
-Properly hooked up tape samples in Thief, NATO Defense, and Shark Attack now
-that sample pausing is available. [Bart Tobalske]
+Fixed floating point rounding error in the PowerPC FPU. [Ville Linde]
 
-Fixed several uninitialized variables, incorrect string compares, and
-inconsistent variable declarations found by the VC compiler. [Oshah]
+Some more work on the Killing Blade protection. [El Semi]
 
-Fixed 16-bit i386 disassembly so it stays within the current segment.
-[Nathan Woods]
+Reorganized and cleaned up the PGM sprite drawing code a bit. Added
+zooming support. [David Haywood]
 
-Some minor Turbo Sub changes: [Philip Bennett]
- * Added some more notes.
- * Corrected some hardware functions in accordance with the schematics.
+Did some cleanup on the 6821 PIA functions, converting to new MAME
+struct conventions and enforcing that configuration/initialization
+happens only at init time. [Nathan Woods]
 
-Tweaked the 68000 disassembler to display F-line traps in a more obvious
-fashion. Also changed to decorate jump targets for relative branches.
-[Alex Jackson]
+Fixed some unknown DIP switches in Galivan and Dangar Ufo Robo.
+[Twisty]
 
-Rewrote the Voodoo emulation code to be more accurate to the original.
- * Support for multiple simultaneous boards (hello Silent Scope)
- * Pixel-pipelined framebuffer accesses now work
- * Alpha buffer operations now supported
- * Triple buffering now supported
- * Proper memory allocation and handling based on configuration
- * Proper FIFO handling, including low/high water marks and stalling
- * Approximate timing calculations based on quoted fill rate specs
- * Detail textures implemented
- * All math is done in fixed point
- * Proper edges calculated for polygons (stars appear in Gradius 4 now)
- * Much easier to add specific rasterizers now
-This is a work in progress; some stuff is not quite right yet. Voodoo 2
-emulation is completely broken. [Aaron Giles]
+Some improvements to Playmark's Roulette, though it still doesn't
+quite work properly. [David Haywood]
+
+Fixed Showdown start button. [Don Maeby]
+
+Fixed sound frequency in Shocking. [Brian Troha, Guru]
+
+Fixes to Top Roller: [Tomasz Slanina]
+ - correct colors
+ - fixed gfx bugs
+ - better audio (added rom with samples)
+There's still minor problem with fg text layer colors.
+
+Made "This game doesn't work" text more explicit. [Olivier Galibert]
+
+Added PAIR and PAIR64 as valid save state types. [Nathan Woods]
+
+More Amiga/Arcadia system updates: [Aaron Giles]
+ - Rewrote autoconfig system to be more generically useful
+ - Cleaned up/rewrote the CIA emulation to be more complete
+ - Added dual playfield and sprite priority support
+ - Added collision detection support
+ - Tweaked COPPER timing to fix scores on Fast Break
+ - Shuffled the BIOSes so that the newer version is the default
 
 
 
 New games added or promoted from NOT_WORKING status
 ---------------------------------------------------
-Lovely Pop Mahjong Jan Jan Shimasyo 2 [Guru]
+Mang-Chi [David Haywood, Brian Troha]
+New Hidden Catch [Pierpaolo Prazzoli]
 
 
 
 New clones added
 ----------------
-Trivia Master (set 2) [Pierpaolo Prazzoli]
-Tech Romancer (EURO 980914) [Arzeno Fabrice]
-Splatter House (World) [Arzeno Fabrice]
-Strider 2 (USA 991213) [Brian Troha]
-Touch & Go (World) [Stefan Lindberg]
-Wonder Boy (system 2) [David Widel]
-Kageki (World?, hack) [David Haywood]
+Abscam [David Widel]
+Ms. Pac-Man (bootleg, encrypted) [David Widel]
+Billiard Academy Real Break (Korea) [Corrado Tomaselli]
+Carrier Air Wing (World 901009) [Stefan Lindberg]
+Plasma Sword (ASIA 980316) [Chris Hardy]
 
 
 
 New games marked as GAME_NOT_WORKING
 ------------------------------------
-Fighting Vipers 2 [Ville Linde]
-Tang Tang [David Haywood]
-Spectrum 2000 [David Haywood]
-Spikeout [Ville Linde]
-Spikeout Final Edition [Ville Linde]
+Total Vice [Curt Coder]
+Sega Ski Super G [R. Belmont]
+Over Rev [R. Belmont]
+Sliver [David Haywood]
+Puck People [David Haywood]
 
 
 
-0.102u1
+0.105u1
 -------
 
 
+MAMETesters Bugs Fixed
+----------------------
+metmqstr0105yel [Aaron Giles]
+
+
+
 Source Changes
 --------------
-Several fixes for the kaneko16 drivers: [Pierpaolo Prazzoli]
- - fixed tilemap priorities
- - fixed some sprites priorities
- - added some missing coin counters
- - added right palette filling for games using sprite type 1
- - swapped berlwall and berlwalt sets as per SebV notes in the source code
+Cleaned up the usage of includes/*.h files across the project, by
+ensuring that:
+ 1. All includes/foo.h files are annotated with comments describing 
+     the source of the declarations.
+ 2. Each source file so annotated also explicitly does an
+     #include "includes/foo.h" to ensure consistent definitions.
+Along the way a number of inconsistent, irrelevant, and incomplete
+declarations were removed/cleaned up. [Atari Ace]
 
-Fixed compilation issue for MSVC when using the winalloc code. [Nathan Woods]
+Moved calls to ui_set_visible_area() into set_visible_area() to work
+around timing problems when they are called at separate times during
+a single frame. [Nathan Woods]
 
-Replaced the 68705 MCU from the bootleg Knight Boy with simulation. Added 
-Knight Boy to keep using the MCU code. [Nicola Salmoria]
+Updated CPS driver to more accurately draw tilemaps, based on
+evidence from a board with mixed ROMs. [David Haywood]
 
-Added redump of bad ROMs for Cruis'n World (rev L1.3). [Guru]
+Fixed crash bug in old debugger introduced in the last release.
+[Olivier Galibert]
 
-Changed some i386 disassembly parameters to be unsigned. [Nathan Woods]
+Added demo sounds DIP switch to Pig Newton. [Derrick Renaud]
 
-Fixed output of mame.ini options that have spaces in them. [Nathan Woods]
+Fixed DIP switches in gunmast, batlbubl. [Brian Troha]
 
-Improvements to Wheels and Fire, partial understanding of the blitter.
-[David Haywood, Tomasz Slanina]
+Added simulated sound for tumbleb2 and pangpang. [David Haywood]
 
-Added very, very preliminary emulation of the Ricoh RF5C400. [Ville Linde]
+Added accessors for the CA2, CB2 and IRQ signals on the 6821 PIA.
+[Nathan Woods]
 
-Added new inline math functions to mamecore.h, along with mechanisms for the
-OSD layer to override them with platform-specific variants: 
-count_leading_zeros, count_leading_ones, and fixed_mul_shift. Updated the
-TMS32031 core to make use of the first two. [Aaron Giles]
+Accurate C-Chip emulation in Bonze Adventure to fix protection 
+problems (no more missing or made up data, all data extracted from 
+working pcb). [Bryan McPhail]
 
-Changed the Windows blitters to use an array allocated by 
-osd_alloc_executable() to prevent potential access violations on systems
-with no-execute support. [Aaron Giles]
+Some cleanups to the Taito F3 naming. [Marco, Bryan McPhail]
 
-Fixed some minor problems with the LOD calculations in the Voodoo driver.
-[Aaron Giles]
+Fixed the Z80 PIO code to prevent an interrupt to occur between the 
+PIO_OP_MODE byte and mask which follows. According to the datasheet, 
+this is not permitted in hardware. [Robert]
 
+Added many FPU opcodes to the M68040 core. [Ville Linde]
+
+Fixed rom loading in all Taito JC games. [Ville Linde]
+
+Added TMS320C51 cpu core. [Ville Linde]
+
+Split out some of the Nintendo 64 core pieces into MESS-shareable
+modules. [R. Belmont]
+
+Removed hard linkage of game driver clones. This reduces hard 
+inter-driver dependencies and allows for easier usage of tiny.mak.
+[Atari Ace, Aaron Giles]
+
+Updates to the PGM driver: [El Semi]
+ - Corrected mask on sprite width parameter in sprite list
+ - Corrected decryption function for The Killing Blade
+ - Fixed GFX Rom loading in The Killing Blade
+ - Added set The Killing Blade (Taiwan?)
+ - Added some WIP protection simulation for The Killing Blade
+    (Taiwan?), game boots but at least one stage is broken
+
+Added $(OBJ)/%.s target to the makefile for easy disassembly
+analysis of generated code (you can also use the $(OBJ)/%.pp to
+examine preprocessor output). [Nathan Woods]
+
+Moved region and address space names out of the Windows-specific
+code and into more common locations. [Olivier Galibert]
+
+Fixed a bug with code comments that led to incorrect display for
+long comments. [Andrew Gardner]
+
+Added several missing H8 opcodes to the core and color DAC to 
+lastfght.c. [Tomasz Slanina]
+
+Changed -romident option so that it returns errorlevels based on how
+many ROMs were identified (0=all files identified, 1=all files except
+some non-ROM files identified, 2=some files identified, 3=no files
+identified). [Aaron Giles]
+
+Added stricter type checking for save state registrations (only works 
+in gcc). [Aaron Giles]
+
+Changed automatic ROM assignment logic in the memory system so that
+it doesn't auto-assign out-of-bounds ROM regions. [Aaron Giles]
+
+Changed memory save state registration so it doesn't register for
+saving memory areas that overlap memory regions. This means that 
+drivers which rely on extra memory regions for RAM will need to fix
+that before supporting save. [Aaron Giles]
+
+Modified a number of drivers that were using empty RAM regions for
+RAM or which had extraneous memory regions. Most significant changes
+were to the arcadia, nss, and stv drivers. [Aaron Giles]
+
+Added a warning during validity checks to point out empty memory
+regions. These should either be eliminated, or marked with an 
+explicit fill value (ROMREGION_ERASE00 or ROMREGION_ERASEFF) to clear
+the warnings. [Aaron Giles]
+
+Rewrote a large chunk of the Amiga emulation to support sound and
+additional video modes/effects including extra half-bright mode, 
+manual sprites, and mid-scanline changes. This is still a work
+in progress. [Aaron Giles]
 
 
 New games added or promoted from NOT_WORKING status
 ---------------------------------------------------
-Dark Horse [Luca Elia]
-Virtua Bowling (Japan) [Luca Elia]
-Honey Dolls [David Haywood]
+Pang Pang [David Haywood]
+Crazy Fight [Luca Elia]
+Puzzle King (Dance & Puzzle) [Pierpaolo Prazzoli]
+Fighter's History [Bryan McPhail]
+Sex Triv [Pierpaolo Prazzoli]
 
 
 
 New clones added
 ----------------
-Red Clash (set 2) [chaneman]
-Stack Columns (World) [Arzeno Fabrice]
-Puzzle & Action: Ichidant-R (Korea) [David Haywood]
-Knight Boy [Nicola Salmoria]
-Dragon World [Luca Elia]
-Billiard Academy Real Break (Europe) [Corrado Tomaselli]
-
-
-
-New games marked as GAME_NOT_WORKING
-------------------------------------
-Fred Flintstones' Memory Match [Brian Troha]
+Battle Bubble [f205v, Corrado Tomaselli]
+Bonze Adventure (World, Older) [Bryan McPhail]
+Fantasia II (set 2, less explicit) [HIGHWAYMAN]
+The Killing Blade (Taiwan?) [El Semi]

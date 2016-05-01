@@ -2221,7 +2221,7 @@ DRIVER_INIT ( saturn )
  	smpc_ram[0x5f] = 0x10;
 }
 
-MACHINE_INIT( saturn )
+MACHINE_RESET( saturn )
 {
 	/* don't let the slave cpu and the 68k go anywhere */
 	cpunum_set_input_line(1, INPUT_LINE_HALT, ASSERT_LINE);
@@ -2364,7 +2364,7 @@ static MACHINE_DRIVER_START( saturn )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(192);	/* guess, needed to force video update after V-Blank OUT interrupt */
 
-	MDRV_MACHINE_INIT(saturn)
+	MDRV_MACHINE_RESET(saturn)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK | VIDEO_RGB_DIRECT )
@@ -2414,40 +2414,16 @@ ROM_START(saturneu)
 	ROM_REGION( 0x100000, REGION_GFX2, 0 ) /* VDP1 GFX */
 ROM_END
 
-static DEVICE_INIT( saturn_chdcd )
-{
-	return device_init_mess_cd(image);
-}
-
-static DEVICE_LOAD( saturn_chdcd )
-{
-	return device_load_mess_cd(image, file);
-}
-
-static DEVICE_UNLOAD( saturn_chdcd )
-{
-	device_unload_mess_cd(image);
-}
-
-static const char *saturn_cdrom_getname(const struct IODevice *dev, int id, char *buf, size_t bufsize)
-{
-	snprintf(buf, bufsize, "CD-ROM");
-	return buf;
-}
-
-static void saturn_chdcd_getinfo(struct IODevice *dev)
+static void saturn_chdcd_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* CHD CD-ROM */
-	dev->type = IO_CDROM;
-	dev->name = saturn_cdrom_getname;
-	dev->count = 1;
-	dev->file_extensions = "chd\0";
-	dev->readable = 1;
-	dev->writeable = 0;
-	dev->creatable = 0;
-	dev->init = device_init_saturn_chdcd;
-	dev->load = device_load_saturn_chdcd;
-	dev->unload = device_unload_saturn_chdcd;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		default: cdrom_device_getinfo(devclass, state, info);
+	}
 }
 
 SYSTEM_CONFIG_START( saturn )

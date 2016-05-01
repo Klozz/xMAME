@@ -7,7 +7,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 
 static int flipscreen;
@@ -86,9 +85,6 @@ PALETTE_INIT( gyruss )
 VIDEO_START( gyruss )
 {
 	sprite_mux_buffer = auto_malloc(256 * spriteram_size);
-
-	if (!sprite_mux_buffer)
-		return 1;
 
 	return video_start_generic();
 }

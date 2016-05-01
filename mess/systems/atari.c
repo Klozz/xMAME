@@ -810,7 +810,7 @@ static MACHINE_DRIVER_START( a400 )
 	MDRV_CPU_PROGRAM_MAP(a400_mem, 0)
 	MDRV_CPU_VBLANK_INT(a400_interrupt, TOTAL_LINES_60HZ)
 
-	MDRV_MACHINE_INIT( a400 )
+	MDRV_MACHINE_RESET( a400 )
 	MDRV_FRAMES_PER_SECOND(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
 MACHINE_DRIVER_END
@@ -823,7 +823,7 @@ static MACHINE_DRIVER_START( a400pal )
 	MDRV_CPU_PROGRAM_MAP(a400_mem, 0)
 	MDRV_CPU_VBLANK_INT(a400_interrupt, TOTAL_LINES_50HZ)
 
-	MDRV_MACHINE_INIT( a400 )
+	MDRV_MACHINE_RESET( a400 )
 	MDRV_FRAMES_PER_SECOND(FRAME_RATE_50HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_50HZ)
 MACHINE_DRIVER_END
@@ -836,7 +836,7 @@ static MACHINE_DRIVER_START( a800 )
 	MDRV_CPU_PROGRAM_MAP(a800_mem, 0)
 	MDRV_CPU_VBLANK_INT(a800_interrupt, TOTAL_LINES_60HZ)
 
-	MDRV_MACHINE_INIT( a800 )
+	MDRV_MACHINE_RESET( a800 )
 	MDRV_FRAMES_PER_SECOND(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
 MACHINE_DRIVER_END
@@ -849,7 +849,7 @@ static MACHINE_DRIVER_START( a800pal )
 	MDRV_CPU_PROGRAM_MAP(a800_mem, 0)
 	MDRV_CPU_VBLANK_INT(a800_interrupt, TOTAL_LINES_50HZ)
 
-	MDRV_MACHINE_INIT( a800 )
+	MDRV_MACHINE_RESET( a800 )
 	MDRV_FRAMES_PER_SECOND(FRAME_RATE_50HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_50HZ)
 MACHINE_DRIVER_END
@@ -862,7 +862,7 @@ static MACHINE_DRIVER_START( a800xl )
 	MDRV_CPU_PROGRAM_MAP(a800xl_mem, 0)
 	MDRV_CPU_VBLANK_INT(a800xl_interrupt, TOTAL_LINES_60HZ)
 
-	MDRV_MACHINE_INIT( a800xl )
+	MDRV_MACHINE_RESET( a800xl )
 	MDRV_FRAMES_PER_SECOND(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
 MACHINE_DRIVER_END
@@ -875,7 +875,7 @@ static MACHINE_DRIVER_START( a5200 )
 	MDRV_CPU_PROGRAM_MAP(a5200_mem, 0)
 	MDRV_CPU_VBLANK_INT(a5200_interrupt, TOTAL_LINES_60HZ)
 
-	MDRV_MACHINE_INIT( a5200 )
+	MDRV_MACHINE_RESET( a5200 )
 	MDRV_FRAMES_PER_SECOND(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
 MACHINE_DRIVER_END
@@ -916,30 +916,52 @@ ROM_START(a5200)
 	ROM_LOAD("5200.rom", 0xf800, 0x0800, CRC(4248d3e3) SHA1(6ad7a1e8c9fad486fbec9498cb48bf5bc3adc530))
 ROM_END
 
-static void atari_floppy_getinfo(struct IODevice *dev)
+ROM_START(a5200a)
+	ROM_REGION(0x14000,REGION_CPU1,0) /* 64K for the CPU + 16K for cartridges */
+	ROM_LOAD("5200a.rom", 0xf800, 0x0800, CRC(c2ba2613) SHA1(1d2a3f00109d75d2d79fecb565775eb95b7d04d5))
+ROM_END
+
+static void atari_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	dev->type = IO_FLOPPY;
-	dev->count = 4;
-	dev->file_extensions = "atr\0dsk\0xfd\0";
-	dev->readable = 1;
-	dev->writeable = 1;
-	dev->creatable = 1;
-	dev->load = device_load_a800_floppy;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_FLOPPY; break;
+		case DEVINFO_INT_READABLE:						info->i = 1; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case DEVINFO_INT_COUNT:							info->i = 4; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_a800_floppy; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "atr,dsk,xfd"); break;
+	}
 }
 
 SYSTEM_CONFIG_START(atari)
 	CONFIG_DEVICE(atari_floppy_getinfo)
 SYSTEM_CONFIG_END
 
-static void a400_cartslot_getinfo(struct IODevice *dev)
+static void a400_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 1;
-	dev->file_extensions = "rom\0bin\0";
-	dev->load = device_load_a800_cart;
-	dev->unload = device_unload_a800_cart;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_a800_cart; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_a800_cart; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom,bin"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(a400)
@@ -948,14 +970,23 @@ SYSTEM_CONFIG_START(a400)
 	CONFIG_DEVICE(a400_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
-static void a800_cartslot_getinfo(struct IODevice *dev)
+static void a800_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 2;
-	dev->file_extensions = "rom\0bin\0";
-	dev->load = device_load_a800_cart;
-	dev->unload = device_unload_a800_cart;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 2; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_a800_cart; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_a800_cart; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom,bin"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(a800)
@@ -964,14 +995,23 @@ SYSTEM_CONFIG_START(a800)
 	CONFIG_DEVICE(a800_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
-static void a5200_cartslot_getinfo(struct IODevice *dev)
+static void a5200_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 1;
-	dev->file_extensions = "rom\0bin\0a52\0";
-	dev->load = device_load_a5200_cart;
-	dev->unload = device_unload_a5200_cart;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_a5200_cart; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_a5200_cart; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom,bin,a52"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(a5200)
@@ -992,3 +1032,4 @@ COMP ( 1979, a800,	   0,		 0,		a800,		a800,	 atari, a800,	"Atari",  "Atari 800 (
 COMP ( 1979, a800pal,  a800,	 0,		a800pal,	a800,	 atari,	a800,	"Atari",  "Atari 800 (PAL)" , 0)
 COMP ( 1983, a800xl,   a800,	 0,		a800xl,		a800xl,	 atari, a800,	"Atari",  "Atari 800XL", GAME_NOT_WORKING )
 CONS ( 1982, a5200,    0,		 0,		a5200,		a5200,	 atari, a5200,	"Atari",  "Atari 5200", 0)
+CONS ( 1982, a5200a,    a5200,		 0,		a5200,		a5200,	 atari, a5200,	"Atari",  "Atari 5200 (alt)", 0)

@@ -1,6 +1,4 @@
 #include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/taitoic.h"
 
 
@@ -57,8 +55,6 @@ VIDEO_START( darius )
 		return 1;
 
 	spritelist = auto_malloc(0x800 * sizeof(*spritelist));
-	if (!spritelist)
-		return 1;
 
 	/* (chips, gfxnum, x_offs, y_offs, y_invert, opaque, dblwidth) */
 	if ( PC080SN_vh_start(1,1,-16,8,0,1,1) )

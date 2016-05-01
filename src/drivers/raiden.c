@@ -38,7 +38,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "sndhrdw/seibu.h"
 #include "sound/3812intf.h"
@@ -100,7 +99,7 @@ static ADDRESS_MAP_START( sub_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x00000, 0x01fff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x02000, 0x027ff) AM_WRITE(raiden_background_w) AM_BASE(&raiden_back_data)
 	AM_RANGE(0x02800, 0x02fff) AM_WRITE(raiden_foreground_w) AM_BASE(&raiden_fore_data)
-	AM_RANGE(0x03000, 0x03fff) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_w) AM_BASE(&paletteram)
+	AM_RANGE(0x03000, 0x03fff) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_le_w) AM_BASE(&paletteram)
 	AM_RANGE(0x04000, 0x04fff) AM_WRITE(raiden_shared_w)
 	AM_RANGE(0x07ffe, 0x0afff) AM_WRITE(MWA8_NOP)
 	AM_RANGE(0xc0000, 0xfffff) AM_WRITE(MWA8_ROM)
@@ -296,7 +295,7 @@ static MACHINE_DRIVER_START( raiden )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(200)
 
-	MDRV_MACHINE_INIT(seibu_sound_2)
+	MDRV_MACHINE_RESET(seibu_sound_2)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
@@ -331,7 +330,7 @@ static MACHINE_DRIVER_START( raidena )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(120)
 
-	MDRV_MACHINE_INIT(seibu_sound_2)
+	MDRV_MACHINE_RESET(seibu_sound_2)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
@@ -527,9 +526,10 @@ bit-swapping */
 static void common_decrypt(void)
 {
 	unsigned char *RAM = memory_region(REGION_CPU1);
-	int i,a;
+	int i;
+	unsigned char a;
 
-	int xor_table[4][16]={
+	static const unsigned char xor_table[4][16]={
 	  {0xF1,0xF9,0xF5,0xFD,0xF1,0xF1,0x3D,0x3D,   /* rom 3 */
 	   0x73,0xFB,0x77,0xFF,0x73,0xF3,0x3F,0x3F},
 	  {0xDF,0xFF,0xFF,0xFF,0xDB,0xFF,0xFB,0xFF,   /* rom 4 */

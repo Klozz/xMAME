@@ -5,7 +5,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "cpuintrf.h"
+#include "profiler.h"
 #include "cpu/m6809/m6809.h"
 #include "irobot.h"
 
@@ -87,7 +87,6 @@ WRITE8_HANDLER( irobot_sharedmem_w )
 static void irvg_done_callback (int param)
 {
 	logerror("vg done. ");
-	IR_CPU_STATE;
 	irvg_running = 0;
 }
 
@@ -188,7 +187,7 @@ static void scanline_callback(int scanline)
 }
 
 static void irmb_done_callback (int param);
-MACHINE_INIT( irobot )
+MACHINE_RESET( irobot )
 {
 	UINT8 *MB = memory_region(REGION_CPU2);
 
@@ -375,7 +374,6 @@ void load_oproms(void)
 
 	/* allocate RAM */
 	mbops = auto_malloc(sizeof(irmb_ops) * 1024);
-	if (!mbops) return;
 
 	for (i = 0; i < 1024; i++)
 	{
@@ -456,7 +454,6 @@ DRIVER_INIT( irobot )
 static void irmb_done_callback (int param)
 {
     logerror("mb done. ");
-	IR_CPU_STATE;
 	irmb_running = 0;
 	cpunum_set_input_line(0, M6809_FIRQ_LINE, ASSERT_LINE);
 }

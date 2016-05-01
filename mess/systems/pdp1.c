@@ -297,7 +297,7 @@ static gfx_decode gfxdecodeinfo[] =
 	black.  Grey levels follow an exponential law, so that decrementing the
 	color index periodically will simulate the remanence of a cathode ray tube.
 */
-static unsigned char palette[] =
+static const UINT8 palette[] =
 {
 	0xFF,0xFF,0xFF,	/* white */
 	0x00,0xFF,0x00,	/* green */
@@ -306,7 +306,7 @@ static unsigned char palette[] =
 	0x80,0x80,0x80	/* light gray */
 };
 
-static unsigned short colortable[] =
+static const UINT16 colortable[] =
 {
 	pen_panel_bg, pen_panel_caption,
 	pen_typewriter_bg, pen_black,
@@ -324,10 +324,6 @@ static void palette_init_pdp1(unsigned short *sys_colortable, const unsigned cha
 	const double update_period = 1./refresh_rate;
 	double decay_1, decay_2;
 	double cur_level_1, cur_level_2;
-#ifdef MAME_DEBUG
-	/* level at which we stop emulating the decay and say the pixel is black */
-	double cut_level = .02;
-#endif
 	int i;
 	int r, g, b;
 
@@ -352,20 +348,6 @@ static void palette_init_pdp1(unsigned short *sys_colortable, const unsigned cha
 		cur_level_1 *= decay_1;
 		cur_level_2 *= decay_2;
 	}
-
-#ifdef MAME_DEBUG
-	{
-		int recommended_pen_crt_num_levels;
-		if (decay_1 > decay_2)
-			recommended_pen_crt_num_levels = ceil(log(cut_level)/log(decay_1))+1;
-		else
-			recommended_pen_crt_num_levels = ceil(log(cut_level)/log(decay_2))+1;
-		if (recommended_pen_crt_num_levels != pen_crt_num_levels)
-			printf("File %s line %d: recommended value for pen_crt_num_levels is %d\n", __FILE__, __LINE__, recommended_pen_crt_num_levels);
-	}
-	/*if ((cur_level_1 > 255.*cut_level) || (cur_level_2 > 255.*cut_level))
-		printf("File %s line %d: Please take higher value for pen_crt_num_levels or smaller value for decay\n", __FILE__, __LINE__);*/
-#endif
 
 	palette_set_color(0, 0, 0, 0);
 
@@ -418,25 +400,17 @@ static MACHINE_DRIVER_START(pdp1)
 	MDRV_CPU_ADD(PDP1, 1000000/*the CPU core uses microsecond counts*/)
 	MDRV_CPU_CONFIG(pdp1_reset_param)
 	MDRV_CPU_PROGRAM_MAP(pdp1_map, 0)
-	/*MDRV_CPU_PORTS(readport, writeport)*/
-	/* dummy interrupt: handles input */
-	MDRV_CPU_VBLANK_INT(pdp1_interrupt, 1)
-	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
+	MDRV_CPU_VBLANK_INT(pdp1_interrupt, 1)	/* dummy interrupt: handles input */
 
 	MDRV_FRAMES_PER_SECOND(refresh_rate)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	/*MDRV_INTERLEAVE(interleave)*/
 
-	MDRV_MACHINE_INIT( pdp1 )
-	MDRV_MACHINE_STOP( pdp1 )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
+	MDRV_MACHINE_START( pdp1 )
 
 	/* video hardware (includes the control panel and typewriter output) */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	/*MDRV_ASPECT_RATIO(num, den)*/
 	MDRV_SCREEN_SIZE(virtual_width, virtual_height)
 	MDRV_VISIBLE_AREA(0, virtual_width-1, 0, virtual_height-1)
-	/*MDRV_VISIBLE_AREA(0, crt_window_width-1, 0, crt_window_height-1)*/
 
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(pen_crt_num_levels + (sizeof(palette) / sizeof(palette[0]) / 3))
@@ -446,64 +420,76 @@ static MACHINE_DRIVER_START(pdp1)
 	MDRV_VIDEO_START(pdp1)
 	MDRV_VIDEO_EOF(crt)
 	MDRV_VIDEO_UPDATE(pdp1)
-
-	/* no sound */
-
 MACHINE_DRIVER_END
 
 /*
 	pdp1 can address up to 65336 18 bit words when extended (4096 otherwise).
 */
 ROM_START(pdp1)
-	/*CPU memory space*/
-#ifdef SUPPORT_ODD_WORD_SIZES
-	ROM_REGION(0x10000 * sizeof(UINT32),REGION_CPU1,0)
-		/* Note this computer has no ROM... */
-#else
-	ROM_REGION(0x10000 * sizeof(int),REGION_CPU1,0)
-		/* Note this computer has no ROM... */
-#endif
-
 	ROM_REGION(pdp1_fontdata_size, REGION_GFX1, 0)
 		/* space filled with our font */
 ROM_END
 
-static void pdp1_punchtape_getinfo(struct IODevice *dev)
+static void pdp1_punchtape_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* punchtape */
-	dev->type = IO_PUNCHTAPE;
-	dev->count = 2;
-	dev->file_extensions = "tap\0rim\0";
-	dev->getdispositions = pdp1_get_open_mode;
-	dev->init = device_init_pdp1_tape;
-	dev->load = device_load_pdp1_tape;
-	dev->unload = device_unload_pdp1_tape;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_PUNCHTAPE; break;
+		case DEVINFO_INT_COUNT:							info->i = 2; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_INIT:							info->init = device_init_pdp1_tape; break;
+		case DEVINFO_PTR_LOAD:							info->load = device_load_pdp1_tape; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_pdp1_tape; break;
+		case DEVINFO_PTR_GET_DISPOSITIONS:				info->getdispositions = pdp1_get_open_mode; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap,rim"); break;
+	}
 }
 
-static void pdp1_printer_getinfo(struct IODevice *dev)
+static void pdp1_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
-	dev->type = IO_PRINTER;
-	dev->count = 1;
-	dev->file_extensions = "typ\0";
-	dev->readable = 0;
-	dev->writeable = 1;
-	dev->creatable = 1;
-	dev->load = device_load_pdp1_typewriter;
-	dev->unload = device_unload_pdp1_typewriter;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_PRINTER; break;
+		case DEVINFO_INT_READABLE:						info->i = 0; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_pdp1_typewriter; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_pdp1_typewriter; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "typ"); break;
+	}
 }
 
-static void pdp1_cylinder_getinfo(struct IODevice *dev)
+static void pdp1_cylinder_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cylinder */
-	dev->type = IO_CYLINDER;
-	dev->count = 1;
-	dev->file_extensions = "drm\0";
-	dev->readable = 1;
-	dev->writeable = 1;
-	dev->creatable = 0;
-	dev->load = device_load_pdp1_drum;
-	dev->unload = device_unload_pdp1_drum;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_CYLINDER; break;
+		case DEVINFO_INT_READABLE:						info->i = 1; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_pdp1_drum; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_pdp1_drum; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "drm"); break;
+	}
 }
 
 SYSTEM_CONFIG_START(pdp1)
@@ -523,4 +509,4 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*	  YEAR	NAME	  PARENT	COMPAT	MACHINE   INPUT 	INIT	CONFIG	COMPANY	FULLNAME */
-COMP( 1961, pdp1,	  0, 		0,		pdp1,	  pdp1, 	pdp1,	pdp1,	"Digital Equipment Corporation",  "PDP-1" , 0)
+COMP( 1961, pdp1,	  0, 		0,		pdp1,	  pdp1, 	0,		pdp1,	"Digital Equipment Corporation",  "PDP-1" , 0)

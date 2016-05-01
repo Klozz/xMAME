@@ -1,20 +1,22 @@
 /* arm.c
 
-    ARM 2/3/6 Emulation
+    ARM 2/3/6 Emulation (26 bit address bus)
 
     Todo:
-    Software interrupts unverified (nothing uses them so far, but they should be ok)
-    Timing - Currently very approximated, nothing relies on proper timing so far.
-    IRQ timing not yet correct (again, nothing is affected by this so far).
+      Timing - Currently very approximated, nothing relies on proper timing so far.
+      IRQ timing not yet correct (again, nothing is affected by this so far).
+
+    Recent changes (2005):
+      Fixed software interrupts
+      Fixed various mode change bugs
+      Added preliminary co-processor support.
 
     By Bryan McPhail (bmcphail@tendril.co.uk) and Phil Stroffolino
 
 */
 
-#include <stdio.h>
 #include "arm.h"
-#include "state.h"
-#include "mamedbg.h"
+#include "debugger.h"
 
 #define READ8(addr)			cpu_read8(addr)
 #define WRITE8(addr,data)	cpu_write8(addr,data)
@@ -22,6 +24,7 @@
 #define WRITE32(addr,data)	cpu_write32(addr,data)
 
 #define ARM_DEBUG_CORE 0
+#define ARM_DEBUG_COPRO 0
 
 enum
 {
@@ -141,7 +144,8 @@ static UINT8 arm_win_layout[] = {
 #define I_IS_CLEAR(pc)	(!I_IS_SET(pc))
 #define F_IS_CLEAR(pc)	(!F_IS_SET(pc))
 
-#define PSR_MASK		((UINT32) 0xfc000000u)
+#define PSR_MASK		((UINT32) 0xf0000000u)
+#define IRQ_MASK		((UINT32) 0x0c000000u)
 #define ADDRESS_MASK	((UINT32) 0x03fffffcu)
 #define MODE_MASK		((UINT32) 0x00000003u)
 
@@ -250,6 +254,7 @@ enum
 typedef struct
 {
 	UINT32 sArmRegister[kNumRegisters];
+	UINT32 coproRegister[16];
 	UINT8 pendingIrq;
 	UINT8 pendingFiq;
 	int (*irq_callback)(int);
@@ -265,7 +270,9 @@ static void HandleMul( UINT32 insn);
 static void HandleBranch( UINT32 insn);
 static void HandleMemSingle( UINT32 insn);
 static void HandleMemBlock( UINT32 insn);
+static void HandleCoPro( UINT32 insn);
 static UINT32 decodeShift( UINT32 insn, UINT32 *pCarry);
+static void arm_check_irq_state(void);
 
 /***************************************************************************/
 
@@ -318,9 +325,11 @@ INLINE void SetRegister( int rIndex, UINT32 value )
 
 /***************************************************************************/
 
-static void arm_reset(void *param)
+static void arm_reset(void)
 {
+	int (*save_irqcallback)(int) = arm.irq_callback;
 	memset(&arm, 0, sizeof(arm));
+	arm.irq_callback = save_irqcallback;
 
 	/* start up in SVC mode with interrupts disabled. */
 	R15 = eARM_MODE_SVC|I_MASK|F_MASK;
@@ -340,10 +349,7 @@ static int arm_execute( int cycles )
 	do
 	{
 
-#ifdef MAME_DEBUG
-		if (mame_debug)
-			MAME_Debug();
-#endif
+		CALL_MAME_DEBUG;
 
 		/* load instruction */
 		pc = R15;
@@ -420,12 +426,17 @@ static int arm_execute( int cycles )
 		{
 			HandleBranch(insn);
 		}
+		else if ((insn & 0x0f000000u) == 0x0e000000u)	/* Coprocessor */
+		{
+			HandleCoPro(insn);
+			R15 += 4;
+		}
 		else if ((insn & 0x0f000000u) == 0x0f000000u)	/* Software interrupt */
 		{
 			pc=R15+4;
 			R15 = eARM_MODE_SVC;	/* Set SVC mode so PC is saved to correct R14 bank */
 			SetRegister( 14, pc );	/* save PC */
-			R15 = (pc&PSR_MASK)|0x8|eARM_MODE_SVC|(pc&MODE_MASK);
+			R15 = (pc&PSR_MASK)|(pc&IRQ_MASK)|0x8|eARM_MODE_SVC|I_MASK|(pc&MODE_MASK);
 		}
 		else /* Undefined */
 		{
@@ -434,6 +445,8 @@ static int arm_execute( int cycles )
 			arm_icount -= S_CYCLE;
 			R15 += 4;
 		}
+
+		arm_check_irq_state();
 
 		arm_icount -= 3;
 	} while( arm_icount > 0 );
@@ -475,14 +488,16 @@ static void arm_check_irq_state(void)
 	if (arm.pendingFiq && (pc&F_MASK)==0) {
 		R15 = eARM_MODE_FIQ;	/* Set FIQ mode so PC is saved to correct R14 bank */
 		SetRegister( 14, pc );	/* save PC */
-		R15 = (pc&PSR_MASK)|0x1c|eARM_MODE_FIQ|I_MASK|F_MASK; /* Mask both IRQ & FIRQ, set PC=0x1c */
+		R15 = (pc&PSR_MASK)|(pc&IRQ_MASK)|0x1c|eARM_MODE_FIQ|I_MASK|F_MASK; /* Mask both IRQ & FIRQ, set PC=0x1c */
+		arm.pendingFiq=0;
 		return;
 	}
 
 	if (arm.pendingIrq && (pc&I_MASK)==0) {
 		R15 = eARM_MODE_IRQ;	/* Set IRQ mode so PC is saved to correct R14 bank */
 		SetRegister( 14, pc );	/* save PC */
-		R15 = (pc&PSR_MASK)|0x18|eARM_MODE_IRQ|I_MASK|(pc&F_MASK); /* Mask only IRQ, set PC=0x18 */
+		R15 = (pc&PSR_MASK)|(pc&IRQ_MASK)|0x18|eARM_MODE_IRQ|I_MASK|(pc&F_MASK); /* Mask only IRQ, set PC=0x18 */
+		arm.pendingIrq=0;
 		return;
 	}
 }
@@ -492,14 +507,14 @@ static void set_irq_line(int irqline, int state)
 	switch (irqline) {
 
 	case ARM_IRQ_LINE: /* IRQ */
-		if (state)
+		if (state && (R15&0x3)!=eARM_MODE_IRQ) /* Don't allow nested IRQs */
 			arm.pendingIrq=1;
 		else
 			arm.pendingIrq=0;
 		break;
 
 	case ARM_FIRQ_LINE: /* FIRQ */
-		if (state)
+		if (state && (R15&0x3)!=eARM_MODE_FIQ) /* Don't allow nested FIRQs */
 			arm.pendingFiq=1;
 		else
 			arm.pendingFiq=0;
@@ -520,19 +535,14 @@ static offs_t arm_dasm(char *buffer, offs_t pc)
 #endif
 }
 
-static void arm_init(void)
+static void arm_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	int cpu = cpu_getactivecpu(),i;
-	char buf[8];
+	arm.irq_callback = irqcallback;
 
-	for (i=0; i<kNumRegisters; i++) {
-		sprintf(buf,"R%d",i);
-		state_save_register_UINT32("arm", cpu, buf, &arm.sArmRegister[i], 4);
-	}
-	state_save_register_UINT8("arm", cpu, "IRQ", &arm.pendingIrq, 1);
-	state_save_register_UINT8("arm", cpu, "FIQ", &arm.pendingFiq, 1);
-
-	return;
+	state_save_register_item_array("arm", index, arm.sArmRegister);
+	state_save_register_item_array("arm", index, arm.coproRegister);
+	state_save_register_item("arm", index, arm.pendingIrq);
+	state_save_register_item("arm", index, arm.pendingFiq);
 }
 
 /***************************************************************************/
@@ -592,8 +602,8 @@ static void HandleMemSingle( UINT32 insn )
 		if (insn & INSN_SDT_W)
 		{
 			SetRegister(rn,rnv);
-
-	/*check writeback??? */
+			if (ARM_DEBUG_CORE && rn == eR15)
+				logerror("writeback R15 %08x\n", R15);
 		}
 		else if (rn == eR15)
 		{
@@ -620,16 +630,26 @@ static void HandleMemSingle( UINT32 insn )
 		/* Load */
 		if (insn & INSN_SDT_B)
 		{
+			if (ARM_DEBUG_CORE && rd == eR15)
+				logerror("read byte R15 %08x\n", R15);
 			SetRegister(rd,(UINT32) READ8(rnv));
 		}
 		else
 		{
 			if (rd == eR15)
 			{
-				if (ARM_DEBUG_CORE)
-					logerror("%08x:  LDR to R15\n",R15);
 				R15 = (READ32(rnv) & ADDRESS_MASK) | (R15 & PSR_MASK) | (R15 & MODE_MASK);
-				R15 -= 4;
+
+				/*
+                The docs are explicit in that the bottom bits should be masked off
+                when writing to R15 in this way, however World Cup Volleyball 95 has
+                an example of an unaligned jump (bottom bits = 2) where execution
+                should definitely continue from the rounded up address.
+
+                In other cases, 4 is subracted from R15 here to account for pipelining.
+                */
+				if ((READ32(rnv)&3)==0)
+					R15 -= 4;
 			}
 			else
 			{
@@ -665,7 +685,6 @@ static void HandleMemSingle( UINT32 insn )
                 so writeback is effectively ignored */
 			if (rd==rn) {
 				SetRegister(rn,GetRegister(rd));
-				/*todo: check for offs... ? */
 			}
 			else {
 
@@ -681,7 +700,6 @@ static void HandleMemSingle( UINT32 insn )
                 so writeback is effectively ignored */
 			if (rd==rn) {
 				SetRegister(rn,GetRegister(rd));
-			/*  logerror("Arm %08x: LDR style with rn==rn\n",R15); */
 			}
 			else {
 				SetRegister(rn,(rnv - off));
@@ -691,9 +709,6 @@ static void HandleMemSingle( UINT32 insn )
 			}
 		}
 	}
-
-/*  arm_check_irq_state() */
-
 } /* HandleMemSingle */
 
 /* Set NZCV flags for ADDS / SUBS */
@@ -736,7 +751,6 @@ static void HandleALU( UINT32 insn )
 {
 	UINT32 op2, sc=0, rd, rn, opcode;
 	UINT32 by, rdn;
-	UINT32 oldMode=R15&3;
 
 	opcode = (insn & INSN_OPCODE) >> INSN_OPCODE_SHIFT;
 
@@ -852,35 +866,53 @@ static void HandleALU( UINT32 insn )
 		if (rdn == eR15 && !(insn & INSN_S))
 		{
 			/* Merge the old NZCV flags into the new PC value */
-			R15 = (rd & ADDRESS_MASK) | (R15 & PSR_MASK) | oldMode;
-
-			/* Retain old mode regardless */
-			if (ARM_DEBUG_CORE)
-				logerror("%08x:  Suspected R15 mode change\n",R15);
+			R15 = (rd & ADDRESS_MASK) | (R15 & PSR_MASK) | (R15 & IRQ_MASK) | (R15&MODE_MASK);
 		}
 		else
 		{
-			if (rdn==eR15) {
-				if (ARM_DEBUG_CORE)
-					logerror("%08x: Setting R15 with S flag\n",R15);
-				SetRegister(rdn,rd|oldMode); /* Todo: Should mask rd?? Mode not affected by S bit? */
-
-				/* IRQ masks may have changed in this instruction */
-/*              arm_check_irq_state(); */
+			if (rdn==eR15)
+			{
+				/* S Flag is set - update PSR & mode if in non-user mode only */
+				if ((R15&MODE_MASK)!=0)
+				{
+					SetRegister(rdn,rd);
+				}
+				else
+				{
+					SetRegister(rdn,(rd&ADDRESS_MASK) | (rd&PSR_MASK) | (R15&IRQ_MASK) | (R15&MODE_MASK));
+				}
 			}
 			else
-				/* S Flag is set - update PSR & mode */
+			{
 				SetRegister(rdn,rd);
+			}
 		}
 	/* TST & TEQ can affect R15 (the condition code register) with the S bit set */
 	} else if (rdn==eR15) {
 		if (insn & INSN_S) {
 			if (ARM_DEBUG_CORE)
 				logerror("%08x: TST class on R15 s bit set\n",R15);
-			R15 = rd;
 
-			/* IRQ masks may have changed in this instruction */
-/*          arm_check_irq_state(); */
+			/* Dubious hack for 'TEQS R15, #$3', the docs suggest execution
+                should continue two instructions later (because pipelined R15
+                is read back as already being incremented), but it seems the
+                hardware should execute the instruction in the delay slot.
+                Simulate it by just setting the PC back to the previously
+                skipped instruction.
+
+                See Heavy Smash (Data East) at 0x1c4
+            */
+			if (insn==0xe33ff003)
+				rd-=4;
+
+			if ((R15&MODE_MASK)!=0)
+			{
+				SetRegister(15, rd);
+			}
+			else
+			{
+				SetRegister(15, (rd&ADDRESS_MASK) | (rd&PSR_MASK) | (R15&IRQ_MASK) | (R15&MODE_MASK));
+			}
 		} else {
 			if (ARM_DEBUG_CORE)
 				logerror("%08x: TST class on R15 no s bit set\n",R15);
@@ -931,7 +963,7 @@ static int loadInc ( UINT32 pat, UINT32 rbv, UINT32 s)
 				if (s) /* Pull full contents from stack */
 					SetRegister( 15, READ32(rbv+=4) );
 				else /* Pull only address, preserve mode & status flags */
-					SetRegister( 15, (R15&PSR_MASK) | (R15&MODE_MASK) | ((READ32(rbv+=4))&ADDRESS_MASK) );
+					SetRegister( 15, (R15&PSR_MASK) | (R15&IRQ_MASK) | (R15&MODE_MASK) | ((READ32(rbv+=4))&ADDRESS_MASK) );
 			} else
 				SetRegister( i, READ32(rbv+=4) );
 
@@ -941,7 +973,7 @@ static int loadInc ( UINT32 pat, UINT32 rbv, UINT32 s)
 	return result;
 }
 
-static int loadDec( UINT32 pat, UINT32 rbv, UINT32 s)
+static int loadDec( UINT32 pat, UINT32 rbv, UINT32 s, UINT32* deferredR15, int* defer)
 {
 	int i,result;
 
@@ -951,10 +983,11 @@ static int loadDec( UINT32 pat, UINT32 rbv, UINT32 s)
 		if( (pat>>i)&1 )
 		{
 			if (i==15) {
+				*defer=1;
 				if (s) /* Pull full contents from stack */
-					SetRegister( 15, READ32(rbv-=4) );
+					*deferredR15=READ32(rbv-=4);
 				else /* Pull only address, preserve mode & status flags */
-					SetRegister( 15, (R15&PSR_MASK) | (R15&MODE_MASK) | ((READ32(rbv-=4))&ADDRESS_MASK) );
+					*deferredR15=(R15&PSR_MASK) | (R15&IRQ_MASK) | (R15&MODE_MASK) | ((READ32(rbv-=4))&ADDRESS_MASK);
 			}
 			else
 				SetRegister( i, READ32(rbv -=4) );
@@ -1027,24 +1060,38 @@ static void HandleMemBlock( UINT32 insn)
 
 			if (insn & INSN_BDT_W)
 			{
+				/* Arm docs notes: The base register can always be loaded without any problems.
+                However, don't specify writeback if the base register is being loaded -
+                you can't end up with both a written-back value and a loaded value in the base register!
+
+                However - Fighter's History does exactly that at 0x121e4 (LDMUW [R13], { R13-R15 })!
+
+                This emulator implementation skips applying writeback in this case, which is confirmed
+                correct for this situation, but that is not necessarily true for all ARM hardware
+                implementations (the results are officially undefined).
+                */
+
 				if (ARM_DEBUG_CORE && rb==15)
 					logerror("%08x:  Illegal LDRM writeback to r15\n",R15);
 
-				SetRegister(rb,GetRegister(rb)+result*4);
+				if ((insn&(1<<rb))==0)
+					SetRegister(rb,GetRegister(rb)+result*4);
+				else if (ARM_DEBUG_CORE)
+					logerror("%08x:  Illegal LDRM writeback to base register (%d)\n",R15, rb);
 			}
 		}
 		else
 		{
+			UINT32 deferredR15=0;
+			int defer=0;
+
 			/* Decrementing */
 			if (!(insn & INSN_BDT_P))
 			{
 				rbp = rbp - (- 4);
 			}
 
-			result = loadDec( insn&0xffff, rbp, insn&INSN_BDT_S );
-			if (insn & 0x8000) {
-				R15-=4;
-			}
+			result = loadDec( insn&0xffff, rbp, insn&INSN_BDT_S, &deferredR15, &defer );
 
 			if (insn & INSN_BDT_W)
 			{
@@ -1052,11 +1099,27 @@ static void HandleMemBlock( UINT32 insn)
 					logerror("%08x:  Illegal LDRM writeback to r15\n",R15);
 				SetRegister(rb,GetRegister(rb)-result*4);
 			}
+
+			/* If R15 is pulled from memory we defer setting it until after writeback */
+			/* is performed, else we may writeback to the wrong context (ie, the new */
+			/* context if the mode has changed as a result of the R15 read) */
+			if (defer)
+				SetRegister(15, deferredR15);
+
+			if (insn & 0x8000) {
+				R15-=4;
+			}
 		}
 	} /* Loading */
 	else
 	{
-		/* Storing */
+		/* Storing
+
+            ARM docs notes: Storing a list of registers including the base register using writeback
+            will write the value of the base register before writeback to memory only if the base
+            register is the first in the list. Otherwise, the value which is used is not defined.
+
+        */
 		if (insn & (1<<eR15))
 		{
 			if (ARM_DEBUG_CORE)
@@ -1194,6 +1257,135 @@ static UINT32 decodeShift( UINT32 insn, UINT32 *pCarry)
 } /* decodeShift */
 
 
+static UINT32 BCDToDecimal(UINT32 value)
+{
+	UINT32	accumulator = 0;
+	UINT32	multiplier = 1;
+	int		i;
+
+	for(i = 0; i < 8; i++)
+	{
+		accumulator += (value & 0xF) * multiplier;
+
+		multiplier *= 10;
+		value >>= 4;
+	}
+
+	return accumulator;
+}
+
+static UINT32 DecimalToBCD(UINT32 value)
+{
+	UINT32	accumulator = 0;
+	UINT32	divisor = 10;
+	int		i;
+
+	for(i = 0; i < 8; i++)
+	{
+		UINT32	temp;
+
+		temp = value % divisor;
+		value -= temp;
+		temp /= divisor / 10;
+
+		accumulator += temp << (i * 4);
+
+		divisor *= 10;
+	}
+
+	return accumulator;
+}
+
+static void HandleCoPro( UINT32 insn)
+{
+	UINT32 rn=(insn>>12)&0xf;
+	UINT32 crn=(insn>>16)&0xf;
+
+	/* MRC - transfer copro register to main register */
+	if( (insn&0x0f100010)==0x0e100010 )
+	{
+		SetRegister(rn, arm.coproRegister[crn]);
+
+		if (ARM_DEBUG_COPRO)
+			logerror("%08x:  Copro read CR%d (%08x) to R%d\n", R15, crn, arm.coproRegister[crn], rn);
+	}
+	/* MCR - transfer main register to copro register */
+	else if( (insn&0x0f100010)==0x0e000010 )
+	{
+		arm.coproRegister[crn]=GetRegister(rn);
+
+		/* Data East 156 copro specific - trigger BCD operation */
+		if (crn==2)
+		{
+			if (arm.coproRegister[crn]==0)
+			{
+				/* Unpack BCD */
+				int v0=BCDToDecimal(arm.coproRegister[0]);
+				int v1=BCDToDecimal(arm.coproRegister[1]);
+
+				/* Repack vcd */
+				arm.coproRegister[5]=DecimalToBCD(v0+v1);
+
+				if (ARM_DEBUG_COPRO)
+					logerror("Cmd:  Add 0 + 1, result in 5 (%08x + %08x == %08x)\n", v0, v1, arm.coproRegister[5]);
+			}
+			else if (arm.coproRegister[crn]==1)
+			{
+				/* Unpack BCD */
+				int v0=BCDToDecimal(arm.coproRegister[0]);
+				int v1=BCDToDecimal(arm.coproRegister[1]);
+
+				/* Repack vcd */
+				arm.coproRegister[5]=DecimalToBCD(v0*v1);
+
+				if (ARM_DEBUG_COPRO)
+					logerror("Cmd:  Multiply 0 * 1, result in 5 (%08x * %08x == %08x)\n", v0, v1, arm.coproRegister[5]);
+			}
+			else if (arm.coproRegister[crn]==3)
+			{
+				/* Unpack BCD */
+				int v0=BCDToDecimal(arm.coproRegister[0]);
+				int v1=BCDToDecimal(arm.coproRegister[1]);
+
+				/* Repack vcd */
+				arm.coproRegister[5]=DecimalToBCD(v0-v1);
+
+				if (ARM_DEBUG_COPRO)
+					logerror("Cmd:  Sub 0 - 1, result in 5 (%08x - %08x == %08x)\n", v0, v1, arm.coproRegister[5]);
+			}
+			else
+			{
+				logerror("Unknown bcd copro command %08x\n", arm.coproRegister[crn]);
+			}
+		}
+
+		if (ARM_DEBUG_COPRO)
+			logerror("%08x:  Copro write R%d (%08x) to CR%d\n", R15, rn, GetRegister(rn), crn);
+	}
+	/* CDP - perform copro operation */
+	else if( (insn&0x0f000010)==0x0e000000 )
+	{
+		/* Data East 156 copro specific divider - result in reg 3/4 */
+		if (arm.coproRegister[1])
+		{
+			arm.coproRegister[3]=arm.coproRegister[0] / arm.coproRegister[1];
+			arm.coproRegister[4]=arm.coproRegister[0] % arm.coproRegister[1];
+		}
+		else
+		{
+			/* Unverified */
+			arm.coproRegister[3]=0xffffffff;
+			arm.coproRegister[4]=0xffffffff;
+		}
+
+		if (ARM_DEBUG_COPRO)
+			logerror("%08x:  Copro cdp (%08x) (3==> %08x, 4==> %08x)\n", R15, insn, arm.coproRegister[3], arm.coproRegister[4]);
+	}
+	else
+	{
+		logerror("%08x:  Unimplemented copro instruction %08x\n", R15, insn);
+	}
+}
 
 /**************************************************************************
  * Generic set_info
@@ -1238,9 +1430,6 @@ static void arm_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_PC:
 		case CPUINFO_INT_REGISTER + ARM32_PC:	R15 = (R15&~ADDRESS_MASK)|info->i;				break;
 		case CPUINFO_INT_SP:					SetRegister(13,info->i);						break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:			arm.irq_callback = info->irqcallback;			break;
 	}
 }
 
@@ -1322,7 +1511,6 @@ void arm_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = arm_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = arm_dasm;			break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = arm.irq_callback;	break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &arm_icount;				break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = arm_reg_layout;				break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = arm_win_layout;				break;
@@ -1330,9 +1518,9 @@ void arm_get_info(UINT32 state, union cpuinfo *info)
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "ARM"); break;
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s = cpuintrf_temp_str(), "Acorn Risc Machine"); break;
-		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s = cpuintrf_temp_str(), "1.2"); break;
+		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s = cpuintrf_temp_str(), "1.3"); break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s = cpuintrf_temp_str(), __FILE__); break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s = cpuintrf_temp_str(), "Copyright 2002 Bryan McPhail, bmcphail@tendril.co.uk"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s = cpuintrf_temp_str(), "Copyright 2002-2006 Bryan McPhail, bmcphail@tendril.co.uk"); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s = cpuintrf_temp_str(), "%c%c%c%c%c%c",

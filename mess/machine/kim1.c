@@ -605,7 +605,7 @@ static void set_chip_clock(int chip, int data)
 	timer_adjust(m6530[chip].timer, 0, chip, TIME_IN_HZ((data + 1) * m6530[chip].clock / 256 / 256));
 }
 
-MACHINE_INIT( kim1 )
+MACHINE_RESET( kim1 )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
 
@@ -794,11 +794,6 @@ INLINE int m6530_r(int chip, int offset)
 	return m6530_r(1, offset);
 }
 
- READ8_HANDLER ( kim1_mirror_r )
-{
-	return program_read_byte(offset & 0x1fff);
-}
-
 static void m6530_w(int chip, int offset, int data)
 {
 	switch (offset)
@@ -915,21 +910,24 @@ WRITE8_HANDLER ( m6530_002_w )
 	m6530_w(1, offset, data);
 }
 
-WRITE8_HANDLER ( kim1_mirror_w )
+void kim1_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
-	program_write_byte(offset & 0x1fff, data);
-}
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
+		case DEVINFO_INT_READABLE:						info->i = 1; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 0; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
 
-void kim1_cassette_getinfo(struct IODevice *dev)
-{
-	dev->type = IO_CASSETTE;
-	dev->count = 1;
-	dev->file_extensions = "kim1\0";
-	dev->reset_on_load = 1;
-	dev->readable = 1;
-	dev->writeable = 0;
-	dev->creatable = 0;
-	dev->load = device_load_kim1_cassette;
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_kim1_cassette; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "kim1"); break;
+	}
 }
 
 

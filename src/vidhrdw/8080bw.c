@@ -7,10 +7,9 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "artwork.h"
 #include "8080bw.h"
-#include "math.h"
+#include <math.h>
 
 static int screen_red;
 static int screen_red_enabled;		/* 1 for games that can turn the screen red */
@@ -30,6 +29,7 @@ static WRITE8_HANDLER( sstrngr2_videoram_w );
 static WRITE8_HANDLER( phantom2_videoram_w );
 static WRITE8_HANDLER( invadpt2_videoram_w );
 static WRITE8_HANDLER( cosmo_videoram_w );
+static WRITE8_HANDLER( shuttlei_videoram_w );
 
 static VIDEO_UPDATE( 8080bw_common );
 static VIDEO_UPDATE( seawolf );
@@ -214,6 +214,12 @@ DRIVER_INIT( indianbt )
 {
 	init_8080bw();
 	videoram_w_p = invadpt2_videoram_w;
+}
+
+DRIVER_INIT( shuttlei )
+{
+	init_8080bw();
+	videoram_w_p = shuttlei_videoram_w;
 }
 
 void c8080bw_flip_screen_w(int data)
@@ -480,6 +486,19 @@ static WRITE8_HANDLER( phantom2_videoram_w )
 }
 
 
+static WRITE8_HANDLER( shuttlei_videoram_w )
+{
+	int x,y,i;
+	videoram[offset] = data;
+	y = offset >>5;
+	x = 8 * (offset &31);
+	for (i = 0; i < 8; i++)
+	{
+		plot_pixel_8080(x+(7-i), y, (data & 0x01) ? 1 : 0);
+		data >>= 1;
+	}
+}
+
 /***************************************************************************
 
   Draw the game screen in the given mame_bitmap.
@@ -623,8 +642,8 @@ static VIDEO_UPDATE( bowler )
 /*
     int x,y,i;
 
-    char score_line_1[] = "Bonus 200 400 500 700 500 400 200";
-    char score_line_2[] = "      110 220 330 550 330 220 110";
+    static const char score_line_1[] = "Bonus 200 400 500 700 500 400 200";
+    static const char score_line_2[] = "      110 220 330 550 330 220 110";
 
 
     fix me -- this should be done with artwork

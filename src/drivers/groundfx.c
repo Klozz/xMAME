@@ -64,25 +64,13 @@
 
 #include "driver.h"
 #include "cpu/m68000/m68000.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/taitoic.h"
 #include "machine/eeprom.h"
 #include "sound/es5506.h"
+#include "includes/taito_f3.h"
 
 VIDEO_START( groundfx );
 VIDEO_UPDATE( groundfx );
-
-/* F3 sound */
-READ16_HANDLER(f3_68000_share_r);
-WRITE16_HANDLER(f3_68000_share_w);
-READ16_HANDLER(f3_68681_r);
-WRITE16_HANDLER(f3_68681_w);
-READ16_HANDLER(es5510_dsp_r);
-WRITE16_HANDLER(es5510_dsp_w);
-WRITE16_HANDLER(f3_volume_w);
-WRITE16_HANDLER(f3_es5505_bank_w);
-void f3_68681_reset(void);
-extern UINT32 *f3_shared_ram;
 
 static UINT16 coin_word, frame_counter=0;
 static UINT16 port_sel = 0;
@@ -430,7 +418,7 @@ static const gfx_decode groundfx_gfxdecodeinfo[] =
                  MACHINE DRIVERS
 ***********************************************************/
 
-static MACHINE_INIT( groundfx )
+static MACHINE_RESET( groundfx )
 {
 	/* Sound cpu program loads to 0xc00000 so we use a bank */
 	UINT16 *ROM = (UINT16 *)memory_region(REGION_CPU2);
@@ -470,7 +458,7 @@ static MACHINE_DRIVER_START( groundfx )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(groundfx)
+	MDRV_MACHINE_RESET(groundfx)
 	MDRV_NVRAM_HANDLER(groundfx)
 
 	/* video hardware */

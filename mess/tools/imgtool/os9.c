@@ -41,8 +41,7 @@ struct os9_diskinfo
 	unsigned int octal_track_density : 1;
 
 	char name[33];
-
-	UINT8 allocation_bitmap[1024];
+	UINT8 *allocation_bitmap;
 };
 
 
@@ -574,12 +573,13 @@ done:
 
 
 
-static imgtoolerr_t os9_diskimage_open(imgtool_image *image)
+static imgtoolerr_t os9_diskimage_open(imgtool_image *image, imgtool_stream *stream)
 {
+	imgtoolerr_t err;
+	floperr_t ferr;
 	struct os9_diskinfo *info;
 	UINT32 track_size_in_sectors, attributes, i;
 	UINT8 header[256];
-	floperr_t ferr;
 	UINT32 allocation_bitmap_lsns;
 	UINT8 b, mask;
 
@@ -620,8 +620,10 @@ static imgtoolerr_t os9_diskimage_open(imgtool_image *image)
 		return IMGTOOLERR_CORRUPTIMAGE;
 
 	/* is the allocation bitmap too big? */
-	if (info->allocation_bitmap_bytes > sizeof(info->allocation_bitmap))
-		return IMGTOOLERR_CORRUPTIMAGE;
+	info->allocation_bitmap = img_malloc(image, info->allocation_bitmap_bytes);
+	if (!info->allocation_bitmap)
+		return IMGTOOLERR_OUTOFMEMORY;
+	memset(info->allocation_bitmap, 0, info->allocation_bitmap_bytes);
 
 	/* sectors per track and track size dont jive? */
 	if (info->sectors_per_track != track_size_in_sectors)
@@ -636,10 +638,13 @@ static imgtoolerr_t os9_diskimage_open(imgtool_image *image)
 		return IMGTOOLERR_CORRUPTIMAGE;
 
 	/* read the allocation bitmap */
-	ferr = floppy_read_sector(imgtool_floppy(image), 0, 0, 2, 0, info->allocation_bitmap,
-		info->allocation_bitmap_bytes);
-	if (ferr)
-		return imgtool_floppy_error(ferr);
+	for (i = 0; i < allocation_bitmap_lsns; i++)
+	{
+		err = os9_read_lsn(image, 1 + i, 0, &info->allocation_bitmap[i * info->sector_size],
+			MIN(info->allocation_bitmap_bytes - (i * info->sector_size), info->sector_size));
+		if (err)
+			return err;
+	}
 
 	/* check to make sure that the allocation bitmap and root sector are reserved */
 	for (i = 0; i <= allocation_bitmap_lsns; i++)
@@ -655,7 +660,7 @@ static imgtoolerr_t os9_diskimage_open(imgtool_image *image)
 
 
 
-static imgtoolerr_t os9_diskimage_create(imgtool_image *img, option_resolution *opts)
+static imgtoolerr_t os9_diskimage_create(imgtool_image *img, imgtool_stream *stream, option_resolution *opts)
 {
 	imgtoolerr_t err;
 	UINT8 *header;
@@ -1104,25 +1109,27 @@ static imgtoolerr_t os9_diskimage_deletedir(imgtool_image *image, const char *pa
 
 
 
-static imgtoolerr_t coco_os9_module_populate(imgtool_library *library, struct ImgtoolFloppyCallbacks *module)
+static void coco_os9_module_populate(UINT32 state, union imgtoolinfo *info)
 {
-	module->initial_path_separator		= 1;
-	module->open_is_strict				= 1;
-	module->image_extra_bytes			+= sizeof(struct os9_diskinfo);
-	module->imageenum_extra_bytes		+= sizeof(struct os9_direnum);
-	module->eoln						= EOLN_CR;
-	module->path_separator				= '/';
-	module->create						= os9_diskimage_create;
-	module->open						= os9_diskimage_open;
-	module->begin_enum					= os9_diskimage_beginenum;
-	module->next_enum					= os9_diskimage_nextenum;
-	module->free_space					= os9_diskimage_freespace;
-	module->read_file					= os9_diskimage_readfile;
-	module->write_file					= os9_diskimage_writefile;
-	module->delete_file					= os9_diskimage_deletefile;
-	module->create_dir					= os9_diskimage_createdir;
-	module->delete_dir					= os9_diskimage_deletedir;
-	return IMGTOOLERR_SUCCESS;
+	switch(state)
+	{
+		case IMGTOOLINFO_INT_INITIAL_PATH_SEPARATOR:		info->i = 1; break;
+		case IMGTOOLINFO_INT_OPEN_IS_STRICT:				info->i = 1; break;
+		case IMGTOOLINFO_INT_IMAGE_EXTRA_BYTES:				info->i = sizeof(struct os9_diskinfo); break;
+		case IMGTOOLINFO_INT_ENUM_EXTRA_BYTES:				info->i = sizeof(struct os9_direnum); break;
+		case IMGTOOLINFO_STR_EOLN:							strcpy(info->s = imgtool_temp_str(), "\r"); break;
+		case IMGTOOLINFO_INT_PATH_SEPARATOR:				info->i = '/'; break;
+		case IMGTOOLINFO_PTR_CREATE:						info->create = os9_diskimage_create; break;
+		case IMGTOOLINFO_PTR_OPEN:							info->open = os9_diskimage_open; break;
+		case IMGTOOLINFO_PTR_BEGIN_ENUM:					info->begin_enum = os9_diskimage_beginenum; break;
+		case IMGTOOLINFO_PTR_NEXT_ENUM:						info->next_enum = os9_diskimage_nextenum; break;
+		case IMGTOOLINFO_PTR_FREE_SPACE:					info->free_space = os9_diskimage_freespace; break;
+		case IMGTOOLINFO_PTR_READ_FILE:						info->read_file = os9_diskimage_readfile; break;
+		case IMGTOOLINFO_PTR_WRITE_FILE:					info->write_file = os9_diskimage_writefile; break;
+		case IMGTOOLINFO_PTR_DELETE_FILE:					info->delete_file = os9_diskimage_deletefile; break;
+		case IMGTOOLINFO_PTR_CREATE_DIR:					info->create_dir = os9_diskimage_createdir; break;
+		case IMGTOOLINFO_PTR_DELETE_DIR:					info->delete_dir = os9_diskimage_deletedir; break;
+	}
 }
 
 

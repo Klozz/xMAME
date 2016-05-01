@@ -4,6 +4,9 @@
 
     Functions which handle the CPU memory accesses.
 
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
 ***************************************************************************/
 
 #pragma once
@@ -12,8 +15,6 @@
 #define __MEMORY_H__
 
 #include "mamecore.h"
-#include <stddef.h>
-#include <stdio.h>
 
 
 
@@ -689,6 +690,7 @@ address_map *construct_map_##_name(address_map *map)					\
 #define AM_READWRITE(_read,_write)			AM_READ(_read) AM_WRITE(_write)
 #define AM_ROM								AM_READ((_rh_t)STATIC_ROM)
 #define AM_RAM								AM_READWRITE((_rh_t)STATIC_RAM, (_wh_t)STATIC_RAM)
+#define AM_UNMAP							AM_READWRITE((_rh_t)STATIC_UNMAP, (_wh_t)STATIC_UNMAP)
 #define AM_ROMBANK(_bank)					AM_READ((_rh_t)(STATIC_BANK1 + (_bank) - 1))
 #define AM_RAMBANK(_bank)					AM_READWRITE((_rh_t)(STATIC_BANK1 + (_bank) - 1), (_wh_t)(STATIC_BANK1 + (_bank) - 1))
 #define AM_NOP								AM_READWRITE((_rh_t)STATIC_NOP, (_wh_t)STATIC_NOP)
@@ -725,6 +727,8 @@ address_map *construct_map_##_name(address_map *map)					\
 #define ADDRESS_SPACE_PROGRAM	0						/* program address space */
 #define ADDRESS_SPACE_DATA		1						/* data address space */
 #define ADDRESS_SPACE_IO		2						/* I/O address space */
+
+extern const char *address_space_names[ADDRESS_SPACES];
 
 /* ----- address map lookup table definitions ----- */
 #define SUBTABLE_COUNT			64						/* number of slots reserved for subtables */
@@ -928,7 +932,7 @@ void 		memory_set_decrypted_region(int cpunum, offs_t start, offs_t end, void *b
 /* ----- return a base pointer to memory ---- */
 void *		memory_get_read_ptr(int cpunum, int spacenum, offs_t offset);
 void *		memory_get_write_ptr(int cpunum, int spacenum, offs_t offset);
-void *		memory_get_op_ptr(int cpunum, offs_t offset);
+void *		memory_get_op_ptr(int cpunum, offs_t offset, int arg);
 
 /* ----- memory banking ----- */
 void		memory_configure_bank(int banknum, int startentry, int numentries, void *base, offs_t stride);
@@ -938,21 +942,27 @@ void		memory_set_bankptr(int banknum, void *base);
 
 /* ----- debugging ----- */
 void		memory_set_debugger_access(int debugger);
+void		memory_set_log_unmap(int spacenum, int log);
+int			memory_get_log_unmap(int spacenum);
 
 /* ----- dynamic address space mapping ----- */
+void *		_memory_install_read_handler   (int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, int handler, const char *handler_name);
 UINT8 *		_memory_install_read8_handler  (int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, read8_handler handler, const char *handler_name);
 UINT16 *	_memory_install_read16_handler (int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, read16_handler handler, const char *handler_name);
 UINT32 *	_memory_install_read32_handler (int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, read32_handler handler, const char *handler_name);
 UINT64 *	_memory_install_read64_handler (int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, read64_handler handler, const char *handler_name);
+void *		_memory_install_write_handler  (int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, int handler, const char *handler_name);
 UINT8 *		_memory_install_write8_handler (int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, write8_handler handler, const char *handler_name);
 UINT16 *	_memory_install_write16_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, write16_handler handler, const char *handler_name);
 UINT32 *	_memory_install_write32_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, write32_handler handler, const char *handler_name);
 UINT64 *	_memory_install_write64_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, write64_handler handler, const char *handler_name);
 
+void *		_memory_install_read_matchmask_handler   (int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, int handler, const char *handler_name);
 UINT8 *		_memory_install_read8_matchmask_handler  (int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, read8_handler handler, const char *handler_name);
 UINT16 *	_memory_install_read16_matchmask_handler (int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, read16_handler handler, const char *handler_name);
 UINT32 *	_memory_install_read32_matchmask_handler (int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, read32_handler handler, const char *handler_name);
 UINT64 *	_memory_install_read64_matchmask_handler (int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, read64_handler handler, const char *handler_name);
+void *		_memory_install_write_matchmask_handler  (int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, int handler, const char *handler_name);
 UINT8 *		_memory_install_write8_matchmask_handler (int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, write8_handler handler, const char *handler_name);
 UINT16 *	_memory_install_write16_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, write16_handler handler, const char *handler_name);
 UINT32 *	_memory_install_write32_matchmask_handler(int cpunum, int spacenum, offs_t matchval, offs_t maskval, offs_t mask, offs_t mirror, write32_handler handler, const char *handler_name);
@@ -1014,6 +1024,8 @@ extern address_map *	construct_map_0(address_map *map);
 #endif
 
 /* ----- dynamic memory installation ----- */
+#define memory_install_read_handler(cpu, space, start, end, mask, mirror, handler)				\
+	_memory_install_read_handler(cpu, space, start, end, mask, mirror, handler, #handler)
 #define memory_install_read8_handler(cpu, space, start, end, mask, mirror, handler)				\
 	_memory_install_read8_handler(cpu, space, start, end, mask, mirror, handler, #handler)
 #define memory_install_read16_handler(cpu, space, start, end, mask, mirror, handler)			\
@@ -1023,6 +1035,8 @@ extern address_map *	construct_map_0(address_map *map);
 #define memory_install_read64_handler(cpu, space, start, end, mask, mirror, handler)			\
 	_memory_install_read64_handler(cpu, space, start, end, mask, mirror, handler, #handler)
 
+#define memory_install_write_handler(cpu, space, start, end, mask, mirror, handler)			\
+	_memory_install_write_handler(cpu, space, start, end, mask, mirror, handler, #handler)
 #define memory_install_write8_handler(cpu, space, start, end, mask, mirror, handler)			\
 	_memory_install_write8_handler(cpu, space, start, end, mask, mirror, handler, #handler)
 #define memory_install_write16_handler(cpu, space, start, end, mask, mirror, handler)			\
@@ -1032,6 +1046,8 @@ extern address_map *	construct_map_0(address_map *map);
 #define memory_install_write64_handler(cpu, space, start, end, mask, mirror, handler)			\
 	_memory_install_write64_handler(cpu, space, start, end, mask, mirror, handler, #handler)
 
+#define memory_install_read_matchmask_handler(cpu, space, start, end, mask, mirror, handler)			\
+	_memory_install_read_matchmask_handler(cpu, space, start, end, mask, mirror, handler, #handler)
 #define memory_install_read8_matchmask_handler(cpu, space, start, end, mask, mirror, handler)			\
 	_memory_install_read8_matchmask_handler(cpu, space, start, end, mask, mirror, handler, #handler)
 #define memory_install_read16_matchmask_handler(cpu, space, start, end, mask, mirror, handler)			\
@@ -1041,6 +1057,8 @@ extern address_map *	construct_map_0(address_map *map);
 #define memory_install_read64_matchmask_handler(cpu, space, start, end, mask, mirror, handler)			\
 	_memory_install_read64_matchmask_handler(cpu, space, start, end, mask, mirror, handler, #handler)
 
+#define memory_install_write_matchmask_handler(cpu, space, start, end, mask, mirror, handler)			\
+	_memory_install_write_matchmask_handler(cpu, space, start, end, mask, mirror, handler, #handler)
 #define memory_install_write8_matchmask_handler(cpu, space, start, end, mask, mirror, handler)			\
 	_memory_install_write8_matchmask_handler(cpu, space, start, end, mask, mirror, handler, #handler)
 #define memory_install_write16_matchmask_handler(cpu, space, start, end, mask, mirror, handler)			\

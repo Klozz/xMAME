@@ -1,5 +1,5 @@
 #include "driver.h"
-#include "vidhrdw/generic.h"
+#include "includes/blockade.h"
 
 static tilemap *bg_tilemap;
 

@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 UINT16 *legionna_back_data,*legionna_fore_data,*legionna_mid_data,*legionna_scrollram16,*legionna_textram;
 
@@ -144,8 +143,6 @@ VIDEO_START( legionna )
 
 	legionna_scrollram16 = auto_malloc(0x60);
 
-	if (!legionna_scrollram16)	return 1;
-
 	tilemap_set_transparent_pen(background_layer,15);
 	tilemap_set_transparent_pen(midground_layer,15);
 	tilemap_set_transparent_pen(foreground_layer,15);
@@ -165,8 +162,6 @@ VIDEO_START( cupsoc )
 		return 1;
 
 	legionna_scrollram16 = auto_malloc(0x60);
-
-	if (!legionna_scrollram16)	return 1;
 
 	tilemap_set_transparent_pen(background_layer,15);
 	tilemap_set_transparent_pen(midground_layer,15);

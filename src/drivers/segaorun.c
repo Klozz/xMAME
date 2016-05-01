@@ -133,8 +133,6 @@ static void outrun_generic_init(void)
 	segaic16_tileram_0   = auto_malloc(0x10000);
 	segaic16_textram_0   = auto_malloc(0x01000);
 	workram              = auto_malloc(0x08000);
-	if (!segaic16_spriteram_0 || !paletteram16 || !segaic16_tileram_0 || !segaic16_textram_0 || !workram)
-		osd_die("Out of memory allocating RAM space\n");
 
 	/* init the memory mapper */
 	segaic16_memory_mapper_init(0, outrun_info, sound_w, NULL);
@@ -247,7 +245,7 @@ static void outrun_reset(void)
 }
 
 
-static MACHINE_INIT( outrun )
+static MACHINE_RESET( outrun )
 {
 	fd1094_machine_init();
 
@@ -631,7 +629,7 @@ static INPUT_PORTS_START( outrun )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
 
 	PORT_START_TAG("ADC0")	/* steering */
-	PORT_BIT( 0xff, 0x7f, IPT_PADDLE ) PORT_MINMAX(0x00,0xff) PORT_SENSITIVITY(100) PORT_KEYDELTA(4)
+	PORT_BIT( 0xff, 0x7f, IPT_PADDLE ) PORT_MINMAX(0x01,0xff) PORT_SENSITIVITY(100) PORT_KEYDELTA(4)
 
 	PORT_START_TAG("ADC1")	/* gas pedal */
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_MINMAX(0x00,0xff) PORT_SENSITIVITY(100) PORT_KEYDELTA(20)
@@ -663,7 +661,7 @@ static INPUT_PORTS_START( outrundx )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
 
 	PORT_START_TAG("ADC0")	/* steering */
-	PORT_BIT( 0xff, 0x7f, IPT_PADDLE ) PORT_MINMAX(0x00,0xff) PORT_SENSITIVITY(100) PORT_KEYDELTA(4)
+	PORT_BIT( 0xff, 0x7f, IPT_PADDLE ) PORT_MINMAX(0x01,0xff) PORT_SENSITIVITY(100) PORT_KEYDELTA(4)
 
 	PORT_START_TAG("ADC1")	/* gas pedal */
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_MINMAX(0x00,0xff) PORT_SENSITIVITY(100) PORT_KEYDELTA(20)
@@ -704,7 +702,7 @@ static INPUT_PORTS_START( toutrun )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
 
 	PORT_START_TAG("ADC0")	/* steering */
-	PORT_BIT( 0xff, 0x7f, IPT_PADDLE ) PORT_MINMAX(0x00,0xff) PORT_SENSITIVITY(100) PORT_KEYDELTA(4)
+	PORT_BIT( 0xff, 0x7f, IPT_PADDLE ) PORT_MINMAX(0x01,0xff) PORT_SENSITIVITY(100) PORT_KEYDELTA(4)
 
 	PORT_START_TAG("ADC1")	/* gas pedal */
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_MINMAX(0x00,0xff) PORT_SENSITIVITY(100) PORT_KEYDELTA(20)
@@ -746,7 +744,7 @@ static INPUT_PORTS_START( shangon )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
 
 	PORT_START_TAG("ADC0")	/* steering */
-	PORT_BIT( 0xff, 0x7f, IPT_PADDLE ) PORT_MINMAX(0x00,0xff) PORT_SENSITIVITY(100) PORT_KEYDELTA(4) PORT_REVERSE
+	PORT_BIT( 0xff, 0x7f, IPT_PADDLE ) PORT_MINMAX(0x01,0xff) PORT_SENSITIVITY(100) PORT_KEYDELTA(4) PORT_REVERSE
 
 	PORT_START_TAG("ADC1")	/* gas pedal */
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_MINMAX(0x00,0xff) PORT_SENSITIVITY(100) PORT_KEYDELTA(20)
@@ -820,7 +818,7 @@ static MACHINE_DRIVER_START( outrun )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(1000000 * (262 - 224) / (262 * 60))
 
-	MDRV_MACHINE_INIT(outrun)
+	MDRV_MACHINE_RESET(outrun)
 	MDRV_NVRAM_HANDLER(outrun)
 	MDRV_INTERLEAVE(100)
 
@@ -841,7 +839,7 @@ static MACHINE_DRIVER_START( outrun )
 	MDRV_SOUND_ROUTE(0, "left", 0.43)
 	MDRV_SOUND_ROUTE(1, "right", 0.43)
 
-	MDRV_SOUND_ADD_TAG("pcm", SEGAPCM,SEGAPCM_SAMPLE15K)
+	MDRV_SOUND_ADD_TAG("pcm", SEGAPCM, SOUND_CLOCK/4)
 	MDRV_SOUND_CONFIG(segapcm_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)

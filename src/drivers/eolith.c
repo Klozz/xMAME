@@ -1,9 +1,11 @@
 /********************************************************************
- Hyperstone based Eolith games driver (Gradation 2D system)
+ Eolith 32 bits hardware: Gradation 2D system
+
  driver by Tomasz Slanina    analog [at] op.pl
+ and       Pierpaolo Prazzoli
 
  Main CPU:
-  Hyperstone E1-32N 50 MHz
+  Hyperstone E1-32N @ 45MHz
 
   Sound CPU:
    80c301/AT89c52
@@ -22,30 +24,28 @@
     256KByte x2 VRAM
     512Kbyte/1Mega main RAM
 
-
-
  Games dumped
- - Hidden Catch
- - Land Breaker ver 3.03
- - Land Breaker ver 3.02(MCU internal flash dump is missing)
+ - Hidden Catch (pcb ver 3.03)
+ - New Hidden Catch (pcb ver 3.02)
+ - Hidden Catch 2 (pcb ver 3.03)
+ - Land Breaker (pcb ver 3.03) (MCU internal flash dump is missing)
+ - Land Breaker (pcb ver 3.02)
  - Raccoon World
- - Fortress 2 Blue Arcade
+ - Fortress 2 Blue Arcade (v. 1.01 / pcb ver 3.05)
+ - Fortress 2 Blue Arcade (v. 1.00 / pcb ver 3.05)
+ - Puzzle King (Dance & Puzzle)
 
  Known games not dumped
+ - Hidden Catch (pcb ver 3.02)
+ - Fortress 2 Blue Arcade (v. 1.02)
  - Ribbon (Step1. Mild Mind) (c) 1999
 
  TODO:
-
- - fix hidden catch (needs more ROM mirrors ?)
- - hook up EEPROM
  - sound & sound cpu
- - dips
-
 
  *********************************************************************/
 
 #include "driver.h"
-#include "machine/random.h"
 #include "machine/eeprom.h"
 
 READ32_HANDLER(eolith_vram_r);
@@ -55,17 +55,20 @@ VIDEO_UPDATE(eolith);
 
 extern int eolith_buffer;
 
+static int coin_counter_bit = 0;
 
-struct EEPROM_interface eeprom_interface_eolith =
+/* It's configured for 512 bytes */
+static struct EEPROM_interface eeprom_interface_93C66 =
 {
-	8,				/* address bits 8 */
-	16,				/* data bits    16 */
-	"*110",			/* read         1 10 aaaaaa */
-	"*101",			/* write        1 01 aaaaaa dddddddddddddddd */
-	"*111",			/* erase        1 11 aaaaaa */
-	"*10000xxxx",	/* lock         1 00 00xxxx */
-	"*10011xxxx"	/* unlock       1 00 11xxxx */
+	9,				/* address bits 9 */
+	8,				/* data bits    8 */
+	"*110",			/* read         110 aaaaaaaaa */
+	"*101",			/* write        101 aaaaaaaaa dddddddd */
+	"*111",			/* erase        111 aaaaaaaaa */
+	"*10000xxxxxx",	/* lock         100 00xxxxxxx */
+	"*10011xxxxxx"	/* unlock       100 11xxxxxxx */
 };
+
 
 
 static NVRAM_HANDLER( eolith )
@@ -74,101 +77,149 @@ static NVRAM_HANDLER( eolith )
 		EEPROM_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface_eolith);
+		EEPROM_init(&eeprom_interface_93C66);
 		if (file)	EEPROM_load(file);
 	}
 }
 
 
-static READ32_HANDLER(inputs_r)
+static READ32_HANDLER( eeprom_r )
 {
 	/*
+        bit 3 = eeprom bit
         bit 6 = vblank flag
-        bit 8 = ??? eeprom read
+
+        Are these used only in landbrka ?
+        bit 8 = ???
         bit 9 = ???
     */
-	return  (input_port_0_dword_r(0,mem_mask)&~0x340) | (mame_rand()&0x340);
+
+	return (readinputport(0) & ~0x308) | (EEPROM_read_bit() << 3) | (mame_rand() & 0x300);
 }
 
-static WRITE32_HANDLER(systemcontrol_w) /*BAD!!! */
+static WRITE32_HANDLER( systemcontrol_w )
 {
-	if (!(mem_mask & 0x00ff))
-	{
-		eolith_buffer=(data&0x80)>>7;
-		EEPROM_write_bit(data & 0x08);
-		EEPROM_set_cs_line((data & 0x02) ? CLEAR_LINE : ASSERT_LINE);
-		EEPROM_set_clock_line((data & 0x04) ? ASSERT_LINE : CLEAR_LINE);
-	}
+	eolith_buffer = (data & 0x80) >> 7;
+	coin_counter_w(0, data & coin_counter_bit);
+	set_led_status(0, data & 1);
+
+	EEPROM_write_bit(data & 0x08);
+	EEPROM_set_cs_line((data & 0x02) ? CLEAR_LINE : ASSERT_LINE);
+	EEPROM_set_clock_line((data & 0x04) ? ASSERT_LINE : CLEAR_LINE);
+
+	/* bit 0x100 and 0x040 ? */
 }
 
 static ADDRESS_MAP_START( eolith_map, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x00000000, 0x00ffffff) AM_RAM /* fort2b needs ram here, mirror? */
-	AM_RANGE(0x40000000, 0x40ffffff) AM_RAM
-	AM_RANGE(0x90000000, 0x907fffff) AM_WRITE(eolith_vram_w) AM_READ(eolith_vram_r)
-	AM_RANGE(0xfa000000, 0xfbffffff) AM_ROM AM_REGION(REGION_USER1, 0)/*mirror for hiddnctch */
-	AM_RANGE(0xfc000000, 0xfc000003) AM_READ(inputs_r)
+	AM_RANGE(0x00000000, 0x001fffff) AM_RAM /* fort2b wants ram here */
+	AM_RANGE(0x40000000, 0x401fffff) AM_RAM
+	AM_RANGE(0x90000000, 0x9003ffff) AM_READWRITE(eolith_vram_r, eolith_vram_w)
+	AM_RANGE(0xfc000000, 0xfc000003) AM_READ(eeprom_r)
 	AM_RANGE(0xfc400000, 0xfc400003) AM_WRITE(systemcontrol_w)
-	AM_RANGE(0xfc800000, 0xfc800003) AM_WRITENOP
-	AM_RANGE(0xfcc00000, 0xfcc0005b) AM_WRITENOP
+	AM_RANGE(0xfc800000, 0xfc800003) AM_WRITENOP /* sound latch */
+	AM_RANGE(0xfcc00000, 0xfcc0005b) AM_WRITENOP /* crt registers ? */
 	AM_RANGE(0xfca00000, 0xfca00003) AM_READ(input_port_1_dword_r)
 	AM_RANGE(0xfd000000, 0xfeffffff) AM_ROM AM_REGION(REGION_USER1, 0)
 	AM_RANGE(0xfff80000, 0xffffffff) AM_ROM AM_REGION(REGION_CPU1, 0)
 ADDRESS_MAP_END
 
-#define EOLITH_IN1 PORT_START_TAG("IN1") \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 ) \
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 ) \
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN1 ) \
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_VBLANK ) \
-	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP	) PORT_8WAY PORT_PLAYER(1) \
-	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	) PORT_8WAY PORT_PLAYER(1) \
-	PORT_BIT( 0x00040000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT	) PORT_8WAY PORT_PLAYER(1) \
-	PORT_BIT( 0x00080000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	) PORT_8WAY PORT_PLAYER(1) \
-	PORT_BIT( 0x00100000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) \
-	PORT_BIT( 0x00200000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) \
-	PORT_BIT( 0x01000000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP	) PORT_8WAY PORT_PLAYER(2) \
-	PORT_BIT( 0x02000000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	) PORT_8WAY PORT_PLAYER(2) \
-	PORT_BIT( 0x04000000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT	) PORT_8WAY PORT_PLAYER(2) \
-	PORT_BIT( 0x08000000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	) PORT_8WAY PORT_PLAYER(2) \
-	PORT_BIT( 0x10000000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) \
-	PORT_BIT( 0x20000000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) \
-	PORT_BIT( 0xc0c0ffac, IP_ACTIVE_LOW, IPT_UNUSED	)
-
-INPUT_PORTS_START( eolith )
-	EOLITH_IN1
+static INPUT_PORTS_START( common )
+	PORT_START_TAG("IN0")
+	PORT_BIT( 0x00000001, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x00000002, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_BIT( 0x00000004, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x00000008, IP_ACTIVE_LOW, IPT_SPECIAL ) /* eeprom bit */
+	PORT_BIT( 0x00000010, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x00000020, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x00000040, IP_ACTIVE_LOW, IPT_VBLANK )
+	PORT_BIT( 0x00003f80, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x00004000, IP_ACTIVE_LOW, IPT_SERVICE1 )
+	PORT_SERVICE_NO_TOGGLE( 0x00008000, IP_ACTIVE_LOW )
+	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP	) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x00040000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT	) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x00080000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x00100000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x00200000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x00400000, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x00800000, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x01000000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP	) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x02000000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x04000000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT	) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x08000000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x10000000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x20000000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x40000000, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80000000, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START_TAG("DSW1")
-	PORT_DIPNAME( 0x0001, 0x0001, "Test Mode" ) /*hidnctch */
-	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0002, 0x0002, "DSW1-2" )
-	PORT_DIPSETTING(      0x0002, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0004, 0x0004, "DSW1-3" )
-	PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0008, 0x0008, "DSW1-4" )
-	PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0010, 0x0010, "DSW1-5" )
-	PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0020, 0x0020, "DSW1-6" )
-	PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0040, 0x0040, "DSW1-7" )
-	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0080, 0x0080, "DSW1-8" )
-	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_BIT( 0xfffffffe, IP_ACTIVE_LOW, IPT_UNUSED	)
+	PORT_BIT( 0xffffffff, IP_ACTIVE_LOW, IPT_UNUSED	)
+INPUT_PORTS_END
 
+INPUT_PORTS_START( hidnctch )
+	PORT_INCLUDE(common)
+	PORT_MODIFY("IN0")
+	PORT_BIT( 0x00000020, IP_ACTIVE_LOW, IPT_COIN2 )
+
+	PORT_MODIFY("DSW1")
+	PORT_DIPNAME( 0x00000001, 0x00000001, "Show Settings" )
+	PORT_DIPSETTING(          0x00000001, DEF_STR( Off ) )
+	PORT_DIPSETTING(          0x00000000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x00000002, 0x00000002, "Show Counters" )
+	PORT_DIPSETTING(          0x00000002, DEF_STR( Off ) )
+	PORT_DIPSETTING(          0x00000000, DEF_STR( On ) )
+	PORT_BIT( 0xfffffffc, IP_ACTIVE_LOW, IPT_UNUSED	)
+INPUT_PORTS_END
+
+INPUT_PORTS_START( raccoon )
+	PORT_INCLUDE(common)
+	PORT_MODIFY("IN0")
+	PORT_BIT( 0x00008000, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_MODIFY("DSW1")
+	PORT_DIPNAME( 0x0000000f, 0x0000000f, DEF_STR( Coinage ) )
+	PORT_DIPSETTING(          0x0000000d, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(          0x0000000e, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(          0x0000000c, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(          0x0000000f, DEF_STR( 1C_1C ) )
+	/* other values are just mirrors */
+	PORT_BIT( 0xfffffff0, IP_ACTIVE_LOW, IPT_UNUSED	)
+INPUT_PORTS_END
+
+INPUT_PORTS_START( landbrk )
+	PORT_INCLUDE(common)
+	PORT_MODIFY("DSW1")
+	PORT_DIPNAME( 0x00000001, 0x00000001, "Show Settings" )
+	PORT_DIPSETTING(          0x00000001, DEF_STR( Off ) )
+	PORT_DIPSETTING(          0x00000000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x00000002, 0x00000002, "Show Counters" )
+	PORT_DIPSETTING(          0x00000002, DEF_STR( Off ) )
+	PORT_DIPSETTING(          0x00000000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x00000004, 0x00000004, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(          0x00000004, DEF_STR( Off ) )
+	PORT_DIPSETTING(          0x00000000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x00000008, 0x00000008, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(          0x00000008, DEF_STR( Off ) )
+	PORT_DIPSETTING(          0x00000000, DEF_STR( On ) )
+	PORT_BIT( 0xfffffff0, IP_ACTIVE_LOW, IPT_UNUSED	)
+INPUT_PORTS_END
+
+INPUT_PORTS_START( puzzlekg )
+	PORT_INCLUDE(common)
+	PORT_MODIFY("IN0")
+	PORT_BIT( 0x00004000, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x00008000, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_MODIFY("DSW1")
+	PORT_SERVICE( 0x0000000f, IP_ACTIVE_LOW ) /* every bit enables it */
+	PORT_BIT( 0xfffffff0, IP_ACTIVE_LOW, IPT_UNUSED	)
 INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( eolith )
-	MDRV_CPU_ADD(E132N,10000000*2)		 /* 50 Mhz */
+	MDRV_CPU_ADD(E132N, 45000000)		 /* 45 MHz */
 	MDRV_CPU_PROGRAM_MAP(eolith_map,0)
+
+	/* sound cpu */
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
@@ -180,29 +231,13 @@ static MACHINE_DRIVER_START( eolith )
 	MDRV_SCREEN_SIZE(512, 512)
 	MDRV_VISIBLE_AREA(0, 319, 0, 239)
 
-	MDRV_PALETTE_LENGTH(32768)
-
 	MDRV_VIDEO_START(eolith)
 	MDRV_VIDEO_UPDATE(eolith)
 
+	/* sound hardware */
 MACHINE_DRIVER_END
 
-/*
-
-Name         Size     CRC32       Chip Type
--------------------------------------------
-hc0_u39.bin  4194304  0xeefb6add  C32000 dumped as SGS 27C322
-hc1_u34.bin  4194304  0x482f3e52  C32000 dumped as SGS 27C322
-hc2_u40.bin  4194304  0x914a1544  C32000 dumped as SGS 27C322
-hc3_u35.bin  4194304  0x80c59133  C32000 dumped as SGS 27C322
-hc4_u41.bin  4194304  0x9a9e2203  C32000 dumped as SGS 27C322
-hc5_u36.bin  4194304  0x74b1719d  C32000 dumped as SGS 27C322
-hc_u108.bin   524288  0x2bae46cb  27C040
-hc_u43.bin    524288  0x635b4478  27C040
-hc_u97.bin    524288  0xebf9f77b  27C040
-hc_u107.bin    32768  0xafd5263d  AMIC 275308 dumped as 27256
-hc_u111.bin    32768  0x79012474  AMIC 275308 dumped as 27256
-*/
+/* Hidden Catch */
 
 ROM_START( hidnctch )
 	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* Hyperstone CPU Code */
@@ -215,6 +250,7 @@ ROM_START( hidnctch )
 	ROM_LOAD32_WORD_SWAP( "hc3_u35.bin", 0x0800002, 0x400000, CRC(80c59133) SHA1(66ca4c2c014c4a1c87c46a3971732f0a2be95408) )
 	ROM_LOAD32_WORD_SWAP( "hc4_u41.bin", 0x1000000, 0x400000, CRC(9a9e2203) SHA1(a90f5842b63696753e6c16114b1893bbeb91e45c) )
 	ROM_LOAD32_WORD_SWAP( "hc5_u36.bin", 0x1000002, 0x400000, CRC(74b1719d) SHA1(fe2325259117598ad7c23217426ac9c28440e3a0) )
+	/* 0x1800000 - 0x1ffffff empty */
 
 	ROM_REGION( 0x008000, REGION_CPU2, 0 ) /* QDSP ('51) Code */
 	ROM_LOAD( "hc_u107.bin", 0x0000, 0x8000, CRC(afd5263d) SHA1(71ace1b749d8a6b84d08b97185e7e512d04e4b8d) )
@@ -227,7 +263,264 @@ ROM_START( hidnctch )
 
 	ROM_REGION( 0x080000, REGION_SOUND2, 0 ) /* QDSP samples (SFX) */
 	ROM_LOAD( "hc_u97.bin", 0x00000, 0x80000, CRC(ebf9f77b) SHA1(5d472aeb84fc011e19b9e61d34aeddfe7d6ac216) )
+
+	ROM_REGION( 0x080000, REGION_SOUND3, 0 ) /* QDSP wavetable rom */
+	ROM_LOAD( "qs1001a.u96",  0x000000, 0x80000, CRC(d13c6407) SHA1(57b14f97c7d4f9b5d9745d3571a0b7115fbe3176) )
 ROM_END
+
+/*
+
+New Hidden Catch
+Eolith, 1999
+
+PCB Layout
+----------
+
+GRADATION J.VER 3.02
+|-------------------------------------------------|
+|    TDA1519 VOL    KM6161002 KM6161002  IS61C1024|
+|            VOL                                  |
+|                   KM6161002 KM6161002  IS61C1024|
+|     24MHz       QS1001A  DSW(4)                 |
+|          QS1000              DSW(4)    IS61C1024|
+|            U107   U97  EV0514-001               |
+|J                                       IC61C1024|
+|A                     14.31818MHz                |
+|M  SERVICE_SW                        E1-32N      |
+|M  TEST_SW                                       |
+|A     93C66                        45MHz         |
+|                                                 |
+|                                                 |
+|            GMS80C301                            |
+|       12MHz                                     |
+|                                                 |
+|           U108    U41   U39   U37   U35    U43  |
+|      U111      U42   U40   U38   U36   U34      |
+|                                                 |
+|-------------------------------------------------|
+Notes:
+      E1-32N       - Hyperstone E1-32N CPU, clock 45.000MHz (QFP160)
+      80C301 clock - 12.000MHz
+      IS61C1024    - ISSI 128k x8 High Speed CMOS Static RAM (SOJ32)
+      KM6161002    - Samsung 64k x16 Ultra High Speed CMOS Video Static RAM (SOJ44)
+      TDA1519      - Audio Power AMP
+      QS1000       - QDSP QS1000 AdMOS 9638R, Wavetable Audio chip, clock input of 24.000MHz (QFP100)
+                     see http://www.hwass.co.kr/product.htm for more info on QS100x chips.
+      QS1001A      - QDSP QS1001A 512k x8 MaskROM (SOP32)
+      EV0514-001   - Custom Eolith IC (QFP100)
+      VSync        - 60Hz
+      HSync        - 15.64kHz
+*/
+
+ROM_START( nhidctch )
+	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* Hyperstone CPU Code */
+	ROM_LOAD( "u43",        0x00000, 0x80000, CRC(44296fdb) SHA1(1faf7061342d4c86f6ca416d922cb98ffb72f250) )
+
+	ROM_REGION32_BE( 0x2000000, REGION_USER1, ROMREGION_ERASE00 ) /* Game Data - banked ROM, swapping necessary */
+	ROM_LOAD32_WORD_SWAP( "hc000.u39",   0x0000000, 0x400000, CRC(eefb6add) SHA1(a0f6f2cf86699a666be0647274d8c9381782640d) )
+	ROM_LOAD32_WORD_SWAP( "hc001.u34",   0x0000002, 0x400000, CRC(482f3e52) SHA1(7a527c6af4c80e10cc25219a04ccf7c7ea1b23af) )
+	ROM_LOAD32_WORD_SWAP( "hc002.u40",   0x0800000, 0x400000, CRC(914a1544) SHA1(683cb007ace50d1ba88253da6ad71dc3a395299d) )
+	ROM_LOAD32_WORD_SWAP( "hc003.u35",   0x0800002, 0x400000, CRC(80c59133) SHA1(66ca4c2c014c4a1c87c46a3971732f0a2be95408) )
+	ROM_LOAD32_WORD_SWAP( "hc004.u41",   0x1000000, 0x400000, CRC(9a9e2203) SHA1(a90f5842b63696753e6c16114b1893bbeb91e45c) )
+	ROM_LOAD32_WORD_SWAP( "hc005.u36",   0x1000002, 0x400000, CRC(74b1719d) SHA1(fe2325259117598ad7c23217426ac9c28440e3a0) )
+	ROM_LOAD32_WORD_SWAP( "hc006.u42",   0x1800000, 0x400000, CRC(2ec58049) SHA1(2a95d615f397cc4befdf92fcfca64a2726f6a791) )
+	ROM_LOAD32_WORD_SWAP( "hc007.u37",   0x1800002, 0x400000, CRC(07e25def) SHA1(6e52a897cb2894625721010b8468ff237930b19b) )
+
+	ROM_REGION( 0x008000, REGION_CPU2, 0 ) /* QDSP ('51) Code */
+	ROM_LOAD( "u107",        0x0000, 0x8000, CRC(afd5263d) SHA1(71ace1b749d8a6b84d08b97185e7e512d04e4b8d) )
+
+	ROM_REGION( 0x008000, REGION_CPU3, 0 )  /* Sound (80c301) CPU Code */
+	ROM_LOAD( "u111",        0x0000, 0x8000, CRC(79012474) SHA1(09a2d5705d7bc52cc2d1644c87c1e31ee44813ef) )
+
+	ROM_REGION( 0x080000, REGION_SOUND1, 0 ) /* Music data */
+	ROM_LOAD( "u108",        0x00000, 0x80000, CRC(2bae46cb) SHA1(7c43f1002dfc20b9c1bb1647f7261dfa7ed2b4f9) )
+
+	ROM_REGION( 0x080000, REGION_SOUND2, 0 ) /* QDSP samples (SFX) */
+	ROM_LOAD( "u97",        0x00000, 0x80000, CRC(ebf9f77b) SHA1(5d472aeb84fc011e19b9e61d34aeddfe7d6ac216) )
+
+	ROM_REGION( 0x080000, REGION_SOUND3, 0 ) /* QDSP wavetable rom */
+	ROM_LOAD( "qs1001a.u96",  0x000000, 0x80000, CRC(d13c6407) SHA1(57b14f97c7d4f9b5d9745d3571a0b7115fbe3176) )
+ROM_END
+
+/*
+Hidden Catch 2
+Eolith, 1999
+
+PCB Layout
+----------
+
+GRADATION VER 3.03M
+|-------------------------------------------------|
+|    TDA1519 VOL    KM6161002 KM6161002  IS61C1024|
+|            VOL                                  |
+|         DA1311    KM6161002 KM6161002  IS61C1024|
+|     24MHz       QS1001A  DSW(4)                 |
+|          QS1000              DSW(4)    IS61C1024|
+|            U107   U97  EV0514-001               |
+|J                                       IC61C1024|
+|A                     14.31818MHz                |
+|M  SERVICE_SW                        E1-32N      |
+|M  TEST_SW                                       |
+|A     93C66                        50MHz         |
+|                                                 |
+|              |---------Sub Board (above)--------|
+|            AT89C52                         7705 |
+|       12MHz  |                                  |
+|              |                                  |
+|           U108    U41   U39   U37   U35    U43  |
+|      U111    | U42   U40   U38   U36   U34      |
+|              |                                  |
+|--------------|----------------------------------|
+Notes:
+      E1-32N       - Hyperstone E1-32N CPU, clock 50.000MHz (QFP160)
+      AT89C52      - Atmel AT89C52 Microcontroller w/8k internal FlashROM, clock 12.000MHz
+      IS61C1024    - ISSI 128k x8 High Speed CMOS Static RAM (SOJ32)
+      KM6161002    - Samsung 64k x16 Ultra High Speed CMOS Video Static RAM (SOJ44)
+      TDA1519      - Audio Power AMP
+      QS1000       - QDSP QS1000 AdMOS 9638R, Wavetable Audio chip, clock input of 24.000MHz (QFP100)
+                     see http://www.hwass.co.kr/product.htm for more info on QS100x chips.
+      QS1001A      - QDSP QS1001A 512k x8 MaskROM (SOP32)
+      EV0514-001   - Custom Eolith IC (QFP100)
+      VSync        - 60Hz
+      HSync        - 15.64kHz
+
+      Main board has ROMs populated at U108, U43, U107 & U97 ONLY
+      Sub Board contains 16x MX29F1610 16M FlashROMs. The filename is the location stamped on the PCB (SOP44)
+*/
+
+ROM_START( hidctch2 )
+	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* Hyperstone CPU Code */
+	ROM_LOAD( "u43",        0x00000, 0x80000, CRC(326d1dbc) SHA1(b33434cd263dc40ee2b6562f72a87a0439a9833e) )
+
+	ROM_REGION32_BE( 0x2000000, REGION_USER1, ROMREGION_ERASE00 ) /* Game Data - banked ROM, swapping necessary */
+	ROM_LOAD32_WORD_SWAP( "00", 0x0000000, 0x200000, CRC(c6b1bc84) SHA1(205d1dc5079562b11cef72fef25a3c570eaecf78) )
+	ROM_LOAD32_WORD_SWAP( "01", 0x0000002, 0x200000, CRC(5a1c1ab3) SHA1(3c07a98f9ea8b30bac5a260403e688314fd12abb) )
+	ROM_LOAD32_WORD_SWAP( "02", 0x0400000, 0x200000, CRC(3f7815aa) SHA1(ed46cbe03fde5cab15e004812036b0aaa00fc628) )
+	ROM_LOAD32_WORD_SWAP( "03", 0x0400002, 0x200000, CRC(d686c59b) SHA1(f82d97f17d9cb10cae4d47f4efdd3ba6c5baace3) )
+	ROM_LOAD32_WORD_SWAP( "04", 0x0800000, 0x200000, CRC(d35cb515) SHA1(75943b6c8052232c8b01ab57b4d32d54a22e7279) )
+	ROM_LOAD32_WORD_SWAP( "05", 0x0800002, 0x200000, CRC(7870e5c6) SHA1(e36a62cb205d396337abdea8e553d70b6da32f8f) )
+	ROM_LOAD32_WORD_SWAP( "06", 0x0c00000, 0x200000, CRC(10184a21) SHA1(fc99bc003ba69b651691ca37a5490beae29e36bc) )
+	ROM_LOAD32_WORD_SWAP( "07", 0x0c00002, 0x200000, CRC(b6c4879f) SHA1(b672d5d7fc3dd1b32cd2f1084a71d1a225594866) )
+	ROM_LOAD32_WORD_SWAP( "08", 0x1000000, 0x200000, CRC(670204d1) SHA1(efdead17ea1d1796f47abf65dc4792a10406b45c) )
+	ROM_LOAD32_WORD_SWAP( "09", 0x1000002, 0x200000, CRC(28c0f55c) SHA1(0390aaf272deb1338293823d9d3a27306b2d9db6) )
+	ROM_LOAD32_WORD_SWAP( "10", 0x1400000, 0x200000, CRC(45f374f4) SHA1(a5cec2fcb58445e0ff74c86b20aba7accd132ea5) )
+	ROM_LOAD32_WORD_SWAP( "11", 0x1400002, 0x200000, CRC(cac54db3) SHA1(c31366e22d242ec0c0bb9f79869352894173db88) )
+	ROM_LOAD32_WORD_SWAP( "12", 0x1800000, 0x200000, CRC(66e681ff) SHA1(8f78dec1dc3e5c6825f559cef69e413c98ed9aab) )
+	ROM_LOAD32_WORD_SWAP( "13", 0x1800002, 0x200000, CRC(14bd38a9) SHA1(a3ff48de8150616a8ca49abf60225455397b938c) )
+	ROM_LOAD32_WORD_SWAP( "14", 0x1c00000, 0x200000, CRC(8eb1b01b) SHA1(e144ba01aa65dc96e22d1d41c3ca87ae19e874d5) )
+	ROM_LOAD32_WORD_SWAP( "15", 0x1c00002, 0x200000, CRC(3b06fe4e) SHA1(35356a116e6b825b8ed93c8ea1e016491ac1863a) )
+
+	ROM_REGION( 0x008000, REGION_CPU2, 0 ) /* QDSP ('51) Code */
+	ROM_LOAD( "u107",        0x0000, 0x8000, CRC(89450a2f) SHA1(d58efa805f497bec179fdbfb8c5860ac5438b4ec) )
+
+	ROM_REGION( 0x000800, REGION_CPU3, 0 ) /* AT89c52 */
+	ROM_LOAD( "hc2.103",     0x0000, 0x0800, NO_DUMP ) /* MCU internal 8K flash */
+
+	ROM_REGION( 0x080000, REGION_SOUND1, 0 ) /* Music data */
+	ROM_LOAD( "u108",        0x00000, 0x80000, CRC(75fc7a65) SHA1(308715ab62d28787ee894ddcf7304464e2543b2e) )
+
+	ROM_REGION( 0x080000, REGION_SOUND2, 0 ) /* QDSP samples (SFX) */
+	ROM_LOAD( "u97",        0x00000, 0x80000, CRC(a7a1627e) SHA1(a93ced858d839daac1fa9a85f4f8c89cb179bad5) )
+
+	ROM_REGION( 0x080000, REGION_SOUND3, 0 ) /* QDSP wavetable rom */
+	ROM_LOAD( "qs1001a.u96",  0x000000, 0x80000, CRC(d13c6407) SHA1(57b14f97c7d4f9b5d9745d3571a0b7115fbe3176) )
+ROM_END
+
+
+/*
+
+Raccoon World
+Eolith, 1998
+
+This game runs on hardware that looks exactly like the Gradation 2D PCB
+but there's no text or labelling on the PCB to say that. However, it is
+an original Eolith PCB.
+
+PCB Layout
+----------
+
+(No PCB number)
+|-------------------------------------------------|
+|    KA22065 VOL    KM6161002 KM6161002  IS61C1024|
+|            VOL                                  |
+|                   KM6161002 KM6161002  IS61C1024|
+|     24MHz       QS1001A  DSW(4)                 |
+|          QS1000                        IS61C1024|
+|            U107   U97  EV0514-001               |
+|J                                       IC61C1024|
+|A                     14.31818MHz                |
+|M                                    E1-32N      |
+|M                                                |
+|A     93C66                        45MHz         |
+|             |-----ROM SUB BOARD------|          |
+|             |                        |          |
+|            GMS80C301                 |          |
+|       12MHz |                        |          |
+|             |                        |          |
+|           U108    U41   U39   U37   U35    U43  |
+|      U111   |  U42   U40   U38   U36 | U34      |
+|             |                        |          |
+|-------------|------------------------|----------|
+Notes:
+      E1-32N       - Hyperstone E1-32N CPU, clock 45.000MHz (QFP160)
+      80C301 clock - 12.000MHz
+      IS61C1024    - ISSI 128k x8 High Speed CMOS Static RAM (SOJ32)
+      KM6161002    - Samsung 64k x16 Ultra High Speed CMOS Video Static RAM (SOJ44)
+      KA22065      - Audio Power AMP
+      QS1000       - QDSP QS1000 AdMOS 9638R, Wavetable Audio chip, clock input of 24.000MHz (QFP100)
+                     see http://www.hwass.co.kr/product.htm for more info on QS100x chips.
+      QS1001A      - QDSP QS1001A 512k x8 MaskROM (SOP32)
+      EV0514-001   - Custom Eolith IC (QFP100)
+      VSync        - 60Hz
+      HSync        - 15.64kHz
+      Note only U111, U108 & U43 are populated with EPROMs
+
+
+ROM SUB BOARD
+|------------------------|
+|   U2    U4    U6    U8 |
+|U1    U3    U5    U7    |
+|                        |
+|                        |
+|U10   U12   U14   U16   |
+|   U11   U13   U15   U17|
+|                        |
+|------------------------|
+Only U1, U2 U5, U10, U11 & U14 populated
+All ROMs 27C160 EPROM
+
+*/
+
+ROM_START( raccoon )
+	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* Hyperstone CPU Code */
+	ROM_LOAD( "racoon-u.43", 0x00000, 0x80000, CRC(711ee026) SHA1(c55dfaa24cbaa7a613657cfb25e7f0085f1e4cbf) )
+
+	ROM_REGION32_BE( 0x2000000, REGION_USER1, ROMREGION_ERASE00 ) /* Game Data - banked ROM, swapping necessary */
+ 	ROM_LOAD32_WORD_SWAP( "racoon.u10", 0x0000000, 0x200000, CRC(f702390e) SHA1(47520ba0e6d3f044136a517ebbec7426a66ce33d) )
+	ROM_LOAD32_WORD_SWAP( "racoon.u1",  0x0000002, 0x200000, CRC(49775125) SHA1(2b8ee9dd767465999c828d65bb02b8aaad94177c) )
+ 	ROM_LOAD32_WORD_SWAP( "racoon.u11", 0x0400000, 0x200000, CRC(3f23f368) SHA1(eb1ea51def2cde5e7e4f334888294b794aa03dfc) )
+ 	ROM_LOAD32_WORD_SWAP( "racoon.u2",  0x0400002, 0x200000, CRC(1eb00529) SHA1(d9af75e116f5237a3c6812538b77155b9c08dd5c) )
+ 	ROM_LOAD32_WORD_SWAP( "racoon.u14", 0x0800000, 0x200000, CRC(870fe45e) SHA1(f8d800b92eb1ee9ef4663319fd3cb1f5e52d0e72) )
+ 	ROM_LOAD32_WORD_SWAP( "racoon.u5",  0x0800002, 0x200000, CRC(5fbac174) SHA1(1d3e3f40a737d61ff688627891dec183af7fa19a) )
+	/* 0x0c00000 - 0x1ffffff empty */
+
+	ROM_REGION( 0x08000, REGION_CPU2, 0 ) /* QDSP ('51) Code */
+	ROM_LOAD( "racoon-u.107", 0x0000, 0x8000, CRC(89450a2f) SHA1(d58efa805f497bec179fdbfb8c5860ac5438b4ec) )
+
+	ROM_REGION( 0x08000, REGION_CPU3, 0 ) /* Sound (80c301) CPU Code */
+	ROM_LOAD( "racoon-u.111", 0x0000, 0x8000, CRC(52f419ea) SHA1(79c9f135b0cf8b1928411faed9b447cd98a83287) )
+
+	ROM_REGION( 0x080000, REGION_SOUND1, 0 ) /* Music data */
+	ROM_LOAD( "racoon-u.108", 0x00000, 0x80000, CRC(fc4f30ee) SHA1(74b9e60cceb03ad572e0e080fbe1de5cffa1b2c3) )
+
+	ROM_REGION( 0x080000, REGION_SOUND2, 0 ) /* QDSP samples (SFX) */
+	ROM_LOAD( "racoon-u.97", 0x00000, 0x80000, CRC(fef828b1) SHA1(38352b67d18300db40113df9426c2aceec12a29b) )
+
+	ROM_REGION( 0x080000, REGION_SOUND3, 0 ) /* QDSP wavetable rom */
+	ROM_LOAD( "qs1001a.u96",  0x000000, 0x80000, CRC(d13c6407) SHA1(57b14f97c7d4f9b5d9745d3571a0b7115fbe3176) )
+ROM_END
+
+/* Land Breaker */
 
 ROM_START( landbrk )
 	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* Hyperstone CPU Code */
@@ -262,30 +555,10 @@ ROM_START( landbrk )
 
 	ROM_REGION( 0x080000, REGION_SOUND2, 0 ) /* QDSP samples (SFX) */
 	ROM_LOAD( "rom4.u97", 0x00000, 0x80000, CRC(5b34dff0) SHA1(1668763e977e272781ddcc74beba97b53477cc9d) )
+
+	ROM_REGION( 0x080000, REGION_SOUND3, 0 ) /* QDSP wavetable rom */
+	ROM_LOAD( "qs1001a.u96",  0x000000, 0x80000, CRC(d13c6407) SHA1(57b14f97c7d4f9b5d9745d3571a0b7115fbe3176) )
 ROM_END
-
-/*
-
-Documentation
--------------------------------------------
-lb_pcb.jpg    614606  0xf041e24c
-
-Name         Size     CRC32       Chip Type
--------------------------------------------
-lb.107         32768  0xafd5263d  AMIC 275308 dumped as 27256
-lb2-000.u39  4194304  0xb37faf7a  C32000 dumped as SGS 27C322
-lb2-001.u34  4194304  0x07e620c9  C32000 dumped as SGS 27C322
-lb2-002.u40  4194304  0x3bb4bca6  C32000 dumped as SGS 27C322
-lb2-003.u35  4194304  0x28ce863a  C32000 dumped as SGS 27C322
-lb2-004.u41  4194304  0xcbe84b06  C32000 dumped as SGS 27C322
-lb2-005.u36  4194304  0x350c77a3  C32000 dumped as SGS 27C322
-lb2-006.u42  4194304  0x22c57cd8  C32000 dumped as SGS 27C322
-lb2-007.u37  4194304  0x31f957b3  C32000 dumped as SGS 27C322
-lb_1.u43      524288  0xf8bbcf44  27C040
-lb_2.108      524288  0xa99182d7  27C040
-lb_3.u97      524288  0x5b34dff0  27C040
-
-*/
 
 ROM_START( landbrka )
 	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* Hyperstone CPU Code */
@@ -312,11 +585,53 @@ ROM_START( landbrka )
 
 	ROM_REGION( 0x080000, REGION_SOUND2, 0 ) /* QDSP samples (SFX) */
 	ROM_LOAD( "lb_3.u97", 0x00000, 0x80000, CRC(5b34dff0) SHA1(1668763e977e272781ddcc74beba97b53477cc9d) )
+
+	ROM_REGION( 0x080000, REGION_SOUND3, 0 ) /* QDSP wavetable rom */
+	ROM_LOAD( "qs1001a.u96",  0x000000, 0x80000, CRC(d13c6407) SHA1(57b14f97c7d4f9b5d9745d3571a0b7115fbe3176) )
 ROM_END
+
 
 /* Fortress 2 Blue */
 
 ROM_START( fort2b )
+	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* Hyperstone CPU Code */
+	ROM_LOAD( "1.u43",        0x00000, 0x80000, CRC(b2279485) SHA1(022591b260be28820f04a1c1fdd61cb9b68d6703) )
+
+	ROM_REGION32_BE( 0x2000000, REGION_USER1, ROMREGION_ERASE00 ) /* Game Data - banked ROM, swapping necessary */
+	ROM_LOAD32_WORD_SWAP( "00.u5", 0x0000000, 0x200000, CRC(4437b595) SHA1(b87518110955947264d93b1f377289f1741ce5dc) )
+	ROM_LOAD32_WORD_SWAP( "01.u1", 0x0000002, 0x200000, CRC(2a410aed) SHA1(def822ead339180aa3e0ebb266b6a6eb1271a2ae) )
+	ROM_LOAD32_WORD_SWAP( "02.u6", 0x0400000, 0x200000, CRC(12f0e4c0) SHA1(fa1e1c3510af61b4058507f1aca801377cafffb4) )
+	ROM_LOAD32_WORD_SWAP( "03.u2", 0x0400002, 0x200000, CRC(aaa7c45a) SHA1(fa06932ab1d41eddd384785f1b2b4dc70046da0f) )
+	ROM_LOAD32_WORD_SWAP( "04.u7", 0x0800000, 0x200000, CRC(428070d2) SHA1(3e25c644be28fd64e8ea60a5b6c675ce2a84ec91) )
+	ROM_LOAD32_WORD_SWAP( "05.u3", 0x0800002, 0x200000, CRC(a66f9ba9) SHA1(3984c42358403b692b7e09b5849c2444578305f0) )
+	ROM_LOAD32_WORD_SWAP( "06.u8", 0x0c00000, 0x200000, CRC(899d318e) SHA1(3bd552eae9985928fe211186f1913c155cbde1a5) )
+	ROM_LOAD32_WORD_SWAP( "07.u4", 0x0c00002, 0x200000, CRC(c4644798) SHA1(3debeef3abc6ce4aea5eb0c6be9f99689a9f111c) )
+	ROM_LOAD32_WORD_SWAP( "08.u15", 0x1000000, 0x200000, CRC(ce0cccfc) SHA1(42cb6698e9168712699616d46ece5a6482825e87) )
+	ROM_LOAD32_WORD_SWAP( "09.u10", 0x1000002, 0x200000, CRC(5b7de0f1) SHA1(f0ee1c6d0766fec95d77d46a9c68b8c3b0d09dde) )
+	ROM_LOAD32_WORD_SWAP( "10.u16", 0x1400000, 0x200000, CRC(b47fc014) SHA1(e1094bc8a3edff635c4abe311a7902a714b9102c) )
+	ROM_LOAD32_WORD_SWAP( "11.u11", 0x1400002, 0x200000, CRC(7113d3f9) SHA1(5c34b2b21bb09c5dec075fabfd426c143a0a8dc2) )
+	ROM_LOAD32_WORD_SWAP( "12.u17", 0x1800000, 0x200000, CRC(8c4b63a6) SHA1(2493c9e9547cb06fbdc6240fb67b15047b66a5fd) )
+	ROM_LOAD32_WORD_SWAP( "13.u12", 0x1800002, 0x200000, CRC(1d9b9995) SHA1(e18b93c244d8e959053dff66e2e5e4341e2b8034) )
+	ROM_LOAD32_WORD_SWAP( "14.u18", 0x1c00000, 0x200000, CRC(450fa784) SHA1(d1244b94be6571f1f8930154778362af5cd4c334) )
+	ROM_LOAD32_WORD_SWAP( "15.u13", 0x1c00002, 0x200000, CRC(c1f02d5c) SHA1(73fe9e654c097cd57863b49545c6aa05996a7645) )
+
+	ROM_REGION( 0x008000, REGION_CPU2, 0 ) /* QDSP ('51) Code */
+	ROM_LOAD( "5.u107",       0x00000, 0x08000, CRC(afd5263d) SHA1(71ace1b749d8a6b84d08b97185e7e512d04e4b8d) )
+
+	ROM_REGION( 0x08000, REGION_CPU3, 0 ) /* Sound (80c301) CPU Code */
+	ROM_LOAD( "4.u111",       0x00000, 0x08000, CRC(79012474) SHA1(09a2d5705d7bc52cc2d1644c87c1e31ee44813ef) )
+
+	ROM_REGION( 0x080000, REGION_SOUND1, 0 ) /* Music data */
+	ROM_LOAD( "3.u108",       0x00000, 0x80000, CRC(9b996b60) SHA1(c4e34601f754ae2908dd6d59ea9da0c5c6f56f2d) )
+
+	ROM_REGION( 0x080000, REGION_SOUND2, 0 ) /* QDSP samples (SFX) */
+	ROM_LOAD( "2.u97",        0x00000, 0x80000, CRC(8a431b14) SHA1(5a9824280f30ef2e7b7f16652b2f9f9559cb764f) )
+
+	ROM_REGION( 0x080000, REGION_SOUND3, 0 ) /* QDSP wavetable rom */
+	ROM_LOAD( "qs1001a.u96",  0x000000, 0x80000, CRC(d13c6407) SHA1(57b14f97c7d4f9b5d9745d3571a0b7115fbe3176) )
+ROM_END
+
+ROM_START( fort2ba )
 	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* Hyperstone CPU Code */
 	ROM_LOAD( "ftii012.u43", 0x00000, 0x80000, CRC(6424e05f) SHA1(2f02f103de180561e372ce897f8410a11c4cb58d) )
 
@@ -333,81 +648,89 @@ ROM_START( fort2b )
 	ROM_REGION( 0x008000, REGION_CPU2, 0 ) /* QDSP ('51) Code */
 	ROM_LOAD( "ftii010.u107", 0x0000, 0x8000, CRC(afd5263d) SHA1(71ace1b749d8a6b84d08b97185e7e512d04e4b8d) )
 
-	ROM_REGION( 0x08000, REGION_CPU3, 0 ) /* AT89c52 */
-	ROM_LOAD( "ftii008.u11", 0x0000, 0x8000, CRC(79012474) SHA1(09a2d5705d7bc52cc2d1644c87c1e31ee44813ef) )
+	ROM_REGION( 0x08000, REGION_CPU3, 0 ) /* Sound (80c301) CPU Code */
+	ROM_LOAD( "ftii008.u111", 0x0000, 0x8000, CRC(79012474) SHA1(09a2d5705d7bc52cc2d1644c87c1e31ee44813ef) )
 
 	ROM_REGION( 0x080000, REGION_SOUND1, 0 ) /* Music data */
-	ROM_LOAD( "ftii009.u108", 0x00000, 0x80000,  CRC(9b996b60) SHA1(c4e34601f754ae2908dd6d59ea9da0c5c6f56f2d) )
+	ROM_LOAD( "ftii009.u108", 0x00000, 0x80000, CRC(9b996b60) SHA1(c4e34601f754ae2908dd6d59ea9da0c5c6f56f2d) )
 
 	ROM_REGION( 0x080000, REGION_SOUND2, 0 ) /* QDSP samples (SFX) */
 	ROM_LOAD( "ftii011.u97", 0x00000, 0x80000, CRC(8a431b14) SHA1(5a9824280f30ef2e7b7f16652b2f9f9559cb764f) )
+
+	ROM_REGION( 0x080000, REGION_SOUND3, 0 ) /* QDSP wavetable rom */
+	ROM_LOAD( "qs1001a.u96",  0x000000, 0x80000, CRC(d13c6407) SHA1(57b14f97c7d4f9b5d9745d3571a0b7115fbe3176) )
 ROM_END
 
+/* Puzzle King */
 
-
-/*
-
-Racoon World by Eolith
-
-U43, u97, u108   are 27c040 devices
-
-u111, u107   are 27c256 devices
-
-On the ROM sub board:
-u1, u2, u5, u10, u11, u14  are all 27c160 devices
---------------------------------------------------------------------------
-Stereo sound?
-24MHz crystal near the sound section
-
-there is a 4 position DIP switch.
-
-Hyperstone E1-32N    45.00000 MHz  near this chip
-QDSP     QS1001A
-QDSP     QS1000
-EOLITH  EV0514-001  custom??   14.31818MHz  xtl near this chip
-12MHz crystal is near the U111
-
-U107 and U97 are mostlikely sound roms but not sure
-
-*/
-
-ROM_START( raccoon )
+ROM_START( puzzlekg )
 	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* Hyperstone CPU Code */
-	ROM_LOAD( "racoon-u.43", 0x00000, 0x80000, CRC(711ee026) SHA1(c55dfaa24cbaa7a613657cfb25e7f0085f1e4cbf) )
+	ROM_LOAD( "u43.bin",      0x00000, 0x80000, CRC(c3db7424) SHA1(5ee2be0f06fddb0c74fc6e82679b275cc4e86bcc) )
 
 	ROM_REGION32_BE( 0x2000000, REGION_USER1, ROMREGION_ERASE00 ) /* Game Data - banked ROM, swapping necessary */
- 	ROM_LOAD32_WORD_SWAP( "racoon.u10", 0x0000000, 0x200000, CRC(f702390e) SHA1(47520ba0e6d3f044136a517ebbec7426a66ce33d) )
-	ROM_LOAD32_WORD_SWAP( "racoon.u1",  0x0000002, 0x200000, CRC(49775125) SHA1(2b8ee9dd767465999c828d65bb02b8aaad94177c) )
- 	ROM_LOAD32_WORD_SWAP( "racoon.u11", 0x0400000, 0x200000, CRC(3f23f368) SHA1(eb1ea51def2cde5e7e4f334888294b794aa03dfc) )
- 	ROM_LOAD32_WORD_SWAP( "racoon.u2",  0x0400002, 0x200000, CRC(1eb00529) SHA1(d9af75e116f5237a3c6812538b77155b9c08dd5c) )
- 	ROM_LOAD32_WORD_SWAP( "racoon.u14", 0x0800000, 0x200000, CRC(870fe45e) SHA1(f8d800b92eb1ee9ef4663319fd3cb1f5e52d0e72) )
- 	ROM_LOAD32_WORD_SWAP( "racoon.u5",  0x0800002, 0x200000, CRC(5fbac174) SHA1(1d3e3f40a737d61ff688627891dec183af7fa19a) )
+	ROM_LOAD32_WORD_SWAP( "u10.bin", 0x0000000, 0x200000, CRC(c9c3064b) SHA1(10a46d4674c1ef64e50dfcb5eb44953206fe6163) )
+	ROM_LOAD32_WORD_SWAP( "u1.bin",  0x0000002, 0x200000, CRC(6b4b369d) SHA1(3f528e557f2846d7c50afa332797e8bc541eeba8) )
+	ROM_LOAD32_WORD_SWAP( "u11.bin", 0x0400000, 0x200000, CRC(92615236) SHA1(dc602cb4c2a3d671cc60b075b399cf3efb67d3d3) )
+	ROM_LOAD32_WORD_SWAP( "u2.bin",  0x0400002, 0x200000, CRC(e76bbd1d) SHA1(6c191e3c4c363132abf5f62882a40a0fbf0fb7ad) )
+	ROM_LOAD32_WORD_SWAP( "u14.bin", 0x0800000, 0x200000, CRC(f5aa39d1) SHA1(6dde4c63cde388313370ed0cbf410965cfdfdaaa) )
+	ROM_LOAD32_WORD_SWAP( "u5.bin",  0x0800002, 0x200000, CRC(88bb70cf) SHA1(9f6e7a97c7ee98d80a362395bcdcde25ceccec09) )
+	ROM_LOAD32_WORD_SWAP( "u15.bin", 0x0c00000, 0x200000, CRC(bcc1f74d) SHA1(b2ee9b3761f77663a8f412fb3d3a724746e77c75) )
+	ROM_LOAD32_WORD_SWAP( "u6.bin",  0x0c00002, 0x200000, CRC(ab2248ff) SHA1(fcef9028973e7e8cc3a0b8bb1f4a261f24f49081) )
+	ROM_LOAD32_WORD_SWAP( "u12.bin", 0x1000000, 0x200000, CRC(1794973d) SHA1(09000781c87fa407a49addd35660517870fc997b) )
+	ROM_LOAD32_WORD_SWAP( "u3.bin",  0x1000002, 0x200000, CRC(0980e877) SHA1(325687d8f9f8bfe55a53d3bd9a857504738a4633) )
+	ROM_LOAD32_WORD_SWAP( "u13.bin", 0x1400000, 0x200000, CRC(31de6d19) SHA1(6d270d83f6c49fa8e0fc5a8ec63d8ba9e6c99105) )
+	ROM_LOAD32_WORD_SWAP( "u4.bin",  0x1400002, 0x200000, CRC(2706f23c) SHA1(a4ade1c243640a26b673e3f9d83de8c0b6927c74) )
+	ROM_LOAD32_WORD_SWAP( "u16.bin", 0x1800000, 0x200000, CRC(c2d09171) SHA1(d74ccc92cd11fef52a13f3bd2c4835131f3262c2) )
+	ROM_LOAD32_WORD_SWAP( "u7.bin",  0x1800002, 0x200000, CRC(52405e69) SHA1(e27648bb1e02c539758bf9223efab13360f6cd55) )
+	ROM_LOAD32_WORD_SWAP( "u17.bin", 0x1c00000, 0x200000, CRC(234b7261) SHA1(6bb95b8258133cc802f076c15e69c5412272e960) )
+	ROM_LOAD32_WORD_SWAP( "u8.bin",  0x1c00002, 0x200000, CRC(8f4e50d7) SHA1(78808f0193a13467b45c84aef7f6a8f1cfe24feb) )
 
-	ROM_REGION( 0x08000, REGION_CPU2, 0 ) /* QDSP ('51) Code */
-	ROM_LOAD( "racoon-u.107", 0x0000, 0x8000, CRC(89450a2f) SHA1(d58efa805f497bec179fdbfb8c5860ac5438b4ec) )
+	ROM_REGION( 0x008000, REGION_CPU2, 0 ) /* QDSP ('51) Code */
+	ROM_LOAD( "u107.bin",    0x0000, 0x8000, CRC(f3add818) SHA1(96e77950154ced9f3234200de2aa29060c00d47f) )
 
 	ROM_REGION( 0x08000, REGION_CPU3, 0 ) /* Sound (80c301) CPU Code */
-	ROM_LOAD( "racoon-u.111", 0x0000, 0x8000, CRC(52f419ea) SHA1(79c9f135b0cf8b1928411faed9b447cd98a83287) )
+	ROM_LOAD( "u111.bin",    0x0000, 0x8000, CRC(79012474) SHA1(09a2d5705d7bc52cc2d1644c87c1e31ee44813ef) )
 
 	ROM_REGION( 0x080000, REGION_SOUND1, 0 ) /* Music data */
-	ROM_LOAD( "racoon-u.108", 0x00000, 0x80000, CRC(fc4f30ee) SHA1(74b9e60cceb03ad572e0e080fbe1de5cffa1b2c3) )
+	ROM_LOAD( "u108.bin",    0x00000, 0x80000, CRC(e4555c6b) SHA1(128196a5b47d13ee7163981043b96f7b4b27204b) )
 
 	ROM_REGION( 0x080000, REGION_SOUND2, 0 ) /* QDSP samples (SFX) */
-	ROM_LOAD( "racoon-u.97", 0x00000, 0x80000, CRC(fef828b1) SHA1(38352b67d18300db40113df9426c2aceec12a29b) )
+	ROM_LOAD( "u97.bin",     0x00000, 0x80000, CRC(f4604ce8) SHA1(e061b203ef5df386120dbf089ece094d16a1b59b) )
+
+	ROM_REGION( 0x080000, REGION_SOUND3, 0 ) /* QDSP wavetable rom */
+	ROM_LOAD( "qs1001a.u96",  0x000000, 0x80000, CRC(d13c6407) SHA1(57b14f97c7d4f9b5d9745d3571a0b7115fbe3176) )
 ROM_END
 
-static DRIVER_INIT(landbrka)
+
+static DRIVER_INIT( landbrk )
 {
-	/*patch to prevent dead loop after (failed) check - eeprom ? */
-	UINT32 *rombase = (UINT32*)memory_region(REGION_CPU1);
-	rombase[0x14f00/4] = (rombase[0x14f00/4] & 0xffff) | 0x03000000; /* Change BR to NOP */
+	coin_counter_bit = 0x1000;
 }
 
-GAME( 1998, raccoon,  0, eolith, eolith, 0, ROT0, "Eolith", "Raccoon World", GAME_NO_SOUND )
-GAME( 1999, landbrk,  0, eolith, eolith, 0, ROT0, "Eolith", "Land Breaker (World) / Miss Tang Ja Ru Gi (Korea) (ver 3.03)",  GAME_NO_SOUND  ) /* or Miss Ttang Jjareugi */
-GAME( 1999, landbrka,  landbrk, eolith, eolith, landbrka, ROT0, "Eolith", "Land Breaker (World) / Miss Tang Ja Ru Gi (Korea) (ver 3.02)",  GAME_NO_SOUND ) /* or Miss Ttang Jjareugi */
+static DRIVER_INIT( landbrka )
+{
+	/*it fails compares with memories: */
+	/*$4002d338 -> $4002d348 .... $4002d33f -> $4002d34f */
+	/*related with bits 0x100 - 0x200 read at startup from input(0) ? */
+	UINT32 *rombase = (UINT32*)memory_region(REGION_CPU1);
+	rombase[0x14f00/4] = (rombase[0x14f00/4] & 0xffff) | 0x03000000; /* Change BR to NOP */
 
-GAME( 1998, hidnctch, 0, eolith, eolith, 0, ROT0, "Eolith", "Hidden Catch (World) / Tul Lin Gu Lim Chat Ki '98 (Korea)",  GAME_NO_SOUND | GAME_NOT_WORKING ) /* or Teurrin Geurim Chajgi '98 */
+	coin_counter_bit = 0x2000;
+}
 
-/* eeprom is broken? (at least credit display / settings are, will crash after inserting a couple of coins), weaspons seem partly broken, locks up in attract after a few loops */
-GAME( 2001, fort2b,  0, eolith, eolith, 0, ROT0, "Eolith", "Fortress 2 Blue Arcade",  GAME_NO_SOUND | GAME_NOT_WORKING  )
+static DRIVER_INIT( hidctch2 )
+{
+	/*it fails compares in memory like in landbrka */
+	UINT32 *rombase = (UINT32*)memory_region(REGION_CPU1);
+	rombase[0xbcc8/4] = (rombase[0xbcc8/4] & 0xffff) | 0x03000000; /* Change BR to NOP */
+}
+
+GAME( 1998, hidnctch, 0,       eolith, hidnctch, 0,        ROT0, "Eolith", "Hidden Catch (World) / Tul Lin Gu Lim Chat Ki '98 (Korea) (pcb ver 3.03)",  GAME_NO_SOUND ) /* or Teurrin Geurim Chajgi '98 */
+GAME( 1998, raccoon,  0,       eolith, raccoon,  0,        ROT0, "Eolith", "Raccoon World", GAME_NO_SOUND )
+GAME( 1998, puzzlekg, 0,       eolith, puzzlekg, 0,        ROT0, "Eolith", "Puzzle King (Dance & Puzzle)",  GAME_NO_SOUND )
+GAME( 1999, hidctch2, 0,       eolith, hidnctch, hidctch2, ROT0, "Eolith", "Hidden Catch 2 (pcb ver 3.03)", GAME_NO_SOUND )
+GAME( 1999, landbrk,  0,       eolith, landbrk,  landbrk,  ROT0, "Eolith", "Land Breaker (World) / Miss Tang Ja Ru Gi (Korea) (pcb ver 3.02)",  GAME_NO_SOUND ) /* or Miss Ttang Jjareugi */
+GAME( 1999, landbrka, landbrk, eolith, landbrk,  landbrka, ROT0, "Eolith", "Land Breaker (World) / Miss Tang Ja Ru Gi (Korea) (pcb ver 3.03)",  GAME_NO_SOUND ) /* or Miss Ttang Jjareugi */
+GAME( 1999, nhidctch, 0,       eolith, hidnctch, 0,        ROT0, "Eolith", "New Hidden Catch (World) / New Tul Lin Gu Lim Chat Ki '98 (Korea) (pcb ver 3.02)", GAME_NO_SOUND ) /* or New Teurrin Geurim Chajgi '98 */
+GAME( 2001, fort2b,   0,       eolith, common,   0,        ROT0, "Eolith", "Fortress 2 Blue Arcade (ver 1.01 / pcb ver 3.05)",  GAME_NO_SOUND )
+GAME( 2001, fort2ba,  fort2b,  eolith, common,   0,        ROT0, "Eolith", "Fortress 2 Blue Arcade (ver 1.00 / pcb ver 3.05)",  GAME_NO_SOUND )

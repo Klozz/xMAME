@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 UINT16 *nmk_bgvideoram,*nmk_fgvideoram,*nmk_txvideoram;
 UINT16 *gunnail_scrollram;
@@ -97,7 +96,7 @@ VIDEO_START( bioship )
 	spriteram_old2 = auto_malloc(spriteram_size);
 	background_bitmap = auto_bitmap_alloc(8192,512);
 
-	if (!bg_tilemap || !spriteram_old || !spriteram_old2 || !background_bitmap)
+	if (!bg_tilemap || !background_bitmap)
 		return 1;
 
 	tilemap_set_transparent_pen(bg_tilemap,15);
@@ -121,7 +120,7 @@ VIDEO_START( strahl )
 	spriteram_old = auto_malloc(spriteram_size);
 	spriteram_old2 = auto_malloc(spriteram_size);
 
-	if (!bg_tilemap || !fg_tilemap || !spriteram_old || !spriteram_old2)
+	if (!bg_tilemap || !fg_tilemap)
 		return 1;
 
 	tilemap_set_transparent_pen(fg_tilemap,15);
@@ -142,7 +141,7 @@ VIDEO_START( macross )
 	spriteram_old = auto_malloc(spriteram_size);
 	spriteram_old2 = auto_malloc(spriteram_size);
 
-	if (!bg_tilemap || !spriteram_old || !spriteram_old2)
+	if (!bg_tilemap)
 		return 1;
 
 	tilemap_set_transparent_pen(tx_tilemap,15);
@@ -163,7 +162,7 @@ VIDEO_START( gunnail )
 	spriteram_old = auto_malloc(spriteram_size);
 	spriteram_old2 = auto_malloc(spriteram_size);
 
-	if (!bg_tilemap || !spriteram_old || !spriteram_old2)
+	if (!bg_tilemap)
 		return 1;
 
 	tilemap_set_transparent_pen(tx_tilemap,15);
@@ -186,7 +185,7 @@ VIDEO_START( macross2 )
 	spriteram_old = auto_malloc(spriteram_size);
 	spriteram_old2 = auto_malloc(spriteram_size);
 
-	if (!bg_tilemap || !spriteram_old || !spriteram_old2)
+	if (!bg_tilemap)
 		return 1;
 
 	tilemap_set_transparent_pen(tx_tilemap,15);
@@ -207,7 +206,7 @@ VIDEO_START( tdragon2 )
 	spriteram_old = auto_malloc(spriteram_size);
 	spriteram_old2 = auto_malloc(spriteram_size);
 
-	if (!bg_tilemap || !spriteram_old || !spriteram_old2)
+	if (!bg_tilemap)
 		return 1;
 
 	tilemap_set_transparent_pen(tx_tilemap,15);
@@ -227,7 +226,7 @@ VIDEO_START( bjtwin )
 	spriteram_old = auto_malloc(spriteram_size);
 	spriteram_old2 = auto_malloc(spriteram_size);
 
-	if (!bg_tilemap || !spriteram_old || !spriteram_old2)
+	if (!bg_tilemap)
 		return 1;
 
 	memset(spriteram_old,0,spriteram_size);
@@ -647,7 +646,7 @@ VIDEO_UPDATE( macross )
 }
 
 extern UINT16 *mcu_shared_ram;
-extern UINT16 *work_ram;
+extern UINT16 *mcu_work_ram;
 
 /*coin setting MCU simulation*/
 static void mcu_run(UINT8 dsw_setting)
@@ -672,7 +671,7 @@ static void mcu_run(UINT8 dsw_setting)
 	old_value = readinputport(0);
 
 	if(dsw_a == 0 || dsw_b == 0)
-		work_ram[0x000/2]|=0x4000; /*free_play */
+		mcu_work_ram[0x000/2]|=0x4000; /*free_play */
 
 	if(read_coin != old_value)
 	{
@@ -749,20 +748,20 @@ static void mcu_run(UINT8 dsw_setting)
 		if(!(readinputport(0) & 0x04))/*SERVICE_COIN */
 			mcu_shared_ram[0xf00/2]++;
 
-		if(mcu_shared_ram[0xf00/2] >= 1 && (work_ram[0x000/2] & 0x8000))/*enable start button*/
+		if(mcu_shared_ram[0xf00/2] >= 1 && (mcu_work_ram[0x000/2] & 0x8000))/*enable start button*/
 		{
 			/*Start a 1-player game,but don't decrement if the player 1 is already playing*/
 			if((!(readinputport(0) & 0x08)) /*START1*/
-			&& (!(work_ram[0x000/2] & 0x0200)) /*PLAYER-1 playing*/
+			&& (!(mcu_work_ram[0x000/2] & 0x0200)) /*PLAYER-1 playing*/
 			)
 				mcu_shared_ram[0xf00/2]--;
 
 			/*Start a 2-players game,but don't decrement if the player 2 is already playing*/
 			if((!(readinputport(0) & 0x10))
-			&& (!(work_ram[0x000/2] & 0x0100))
+			&& (!(mcu_work_ram[0x000/2] & 0x0100))
 			)
 			{
-				if(!(work_ram[0x000/2] & 0x0200) && mcu_shared_ram[0xf00/2] >= 2)
+				if(!(mcu_work_ram[0x000/2] & 0x0200) && mcu_shared_ram[0xf00/2] >= 2)
 					mcu_shared_ram[0xf00/2]-=2;
 				else
 					mcu_shared_ram[0xf00/2]--;

@@ -6,7 +6,6 @@
 ****************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 static tilemap *fg_tilemap, *bg_tilemap;
 static UINT8 vram_bank;
@@ -183,7 +182,7 @@ VIDEO_START( tryout )
 	tryout_vram=auto_malloc(8 * 0x800);
 	tryout_vram_gfx=auto_malloc(0x6000);
 
-	if (!tryout_vram || !tryout_vram_gfx || !fg_tilemap || !bg_tilemap)
+	if (!fg_tilemap || !bg_tilemap)
 		return 1;
 
 	tilemap_set_transparent_pen(fg_tilemap,0);

@@ -62,8 +62,8 @@ TARGET = mame
 # x86-compatible CPUs).
 # X86_VOODOO_DRC = 1
 
-# Uncomment if you'd like to disable effects.  This can considerably speed 
-# up compilation of the blit files.
+# Uncomment to disable effects.  This can considerably speed up compilation of 
+# the blit files.
 # DISABLE_EFFECTS = 1
 
 # Uncomment the line below to enable the MMX assembly-language optimized
@@ -97,19 +97,19 @@ TARGET = mame
 # just as well.  However, stay away from the `cc' Ultrix compiler if 
 # possible.
 
-CC	= gcc
-# CC    = cc
-# CC	= icc
-# CC	= c89
+CC	= @gcc
+# CC    = @cc
+# CC	= @icc
+# CC	= @c89
 
 # Uncomment for Sun Forte 7 and above C/C++ compiler, see below for
 # additional optimizations.
-# CC = sun-forte
+# CC = @sun-forte
 
 # Compiler for host compilations in cross-compiling environments (used 
 # in src/unix/unix.mak for m68k).
 HOST_CC = $(CC)
-# HOST_CC = gcc
+# HOST_CC = @gcc
 
 
 ###########################################################################
@@ -140,18 +140,16 @@ CFLAGS = -O2
 # CFLAGS = -O2 -finline-functions -ffast-math -fstrength-reduce \
 # 	-traditional-cpp
 
-# GCC on OpenStep/PPC or Mac OS X.  If you get immediate errors when you 
-# build on OS X, remove the -traditional-cpp flag; it caused problems for 
-# me on OS X 10.3 with GCC 3.3.
-# CFLAGS = -O2 -funroll-loops -traditional-cpp -fstrength-reduce 
-# 	-fomit-frame-pointer -ffast-math -fsigned-char
+# GCC on OpenStep/PPC or Mac OS X.
+# CFLAGS = -O2 -funroll-loops -fstrength-reduce -fomit-frame-pointer \
+#   -ffast-math -fsigned-char
 
 # IRIX MIPSpro R5+K without IPA
 # CFLAGS = -n32 -mips4 -O3 -OPT:Olimit=0
 
 # IRIX MIPSpro with really serious optimization for R10K O2
 # CFLAGS = -fullwarn -n32 -mips4 -Ofast=ip32_10k -TARG:platform=ip32_10k \
-#  -OPT:Olimit=0 -IPA
+#   -OPT:Olimit=0 -IPA
 
 # IRIX with more general optimization for R5+K MIPS machines
 # CFLAGS = -fullwarn -n32 -mips4 -Ofast -OPT:Olimit=0 -IPA
@@ -173,8 +171,8 @@ ifneq (,$(findstring gcc,$(CC)))
   # Uncomment for a Linux/PowerPC system.
   # CFLAGS += -fsigned-char -mlongcall
 
-  # Uncomment for OpenStep.  This might also apply to some versions of 
-  # Mac OS X, but it definitely breaks things in OS X 10.3 with GCC 3.3.
+  # Uncomment for OpenStep.  This might also apply to some early versions 
+  # of Mac OS X.
   # CFLAGS += -traditional-cpp
 
 
@@ -192,7 +190,7 @@ ifneq (,$(findstring gcc,$(CC)))
   CFLAGS += -Wno-unused
 
   # Warn about declarations after statements.
-  CFLAGS += -Wdeclaration-after-statement
+  # CFLAGS += -Wdeclaration-after-statement
 
   # Don't warn about code that might break strict aliasing rules. 
   # CFLAGS += -Wno-strict-aliasing
@@ -222,11 +220,13 @@ ifneq (,$(findstring gcc,$(CC)))
   
   # Optimization level -- choose one of these.
   # Use -O1 if you suspect that -O2 is producing bad code; use -O3 for a 
-  # possible speedup; use -Os for a smaller executable.
+  # possible speedup, -Os for a smaller executable, and -O0 to aid 
+  # debugging.
   # CFLAGS += -O2
   # CFLAGS += -O1
   # CFLAGS += -O3
   # CFLAGS += -Os
+  # CFLAGS += -O0
 
   # This option should reduce compilation time and disk activity, but at 
   # the expense of using a LOT more memory.  If you have less than 
@@ -389,8 +389,8 @@ ifeq ($(CC),sun-forte)
 
   # uncomment for silence...
   CFLAGS += -erroff
-  # Tell xmame that we really are in fact elf.  If not supplied, SHARED_PREFIX 
-  # is set causing dlopen()'s to fail.
+  # Tell xmame that we really are in fact elf.  If not supplied, 
+  # SHARED_PREFIX is set causing dlopen()'s to fail.
   CFLAGS += -D__ELF__ 
 endif
 endif
@@ -448,6 +448,31 @@ LD	= $(CC) -Wl,-s
 
 
 ###########################################################################
+# Assembler and object file format
+###########################################################################
+
+ASM = @nasm
+
+# Choose ELF or a.out
+# ELF settings: No leading underscores + ELF object format.  Tested with
+# Linux/i386.  Also for Solaris/x86, for example.
+ASM_STRIP = src/unix/contrib/porting/strip_
+ASM_FMT  = -f elf
+# a.out settings: Leading underscores + a.out object format.  Tested with
+# netBSD i386.  Also for older Linux installs, FreeBSD, and others.
+# ASM_STRIP = true  # no strip command
+# ASM_FMT  = -f aoutb
+
+
+###########################################################################
+# Archiver
+###########################################################################
+
+AR = @ar
+AR_OPTS = rc
+
+
+###########################################################################
 # Math library and ranlib
 ###########################################################################
 
@@ -458,8 +483,8 @@ SEPARATE_LIBM = 1
 
 # Does your platform have ranlib?  Leave this untouched unless you are
 # using IRIX, Unixware 7, or the Intel C++ Compiler.
-RANLIB = ranlib
-# RANLIB = true
+RANLIB = @ranlib
+# RANLIB = @true
 
 
 ###########################################################################
@@ -679,6 +704,7 @@ ARCH  = linux
 # Uncomment this to add LIRC support to xmame.
 # LIRC = 1
 
+
 ###########################################################################
 # Sound Devices
 ###########################################################################
@@ -821,7 +847,7 @@ GLCFLAGS += -D_X11_
 # GLLIBS += -lXmu -lXi
 
 ###########################################################################
-# Debug support and object file format
+# Debug support
 ###########################################################################
 
 # Uncomment the next lines to build xmame with a built-in debugger (only
@@ -839,16 +865,6 @@ NAME=x$(TARGET)d
 else
 NAME=x$(TARGET)
 endif
-
-# Choose ELF or a.out
-# ELF settings: No leading underscores + ELF object format.  Tested with
-# Linux/i386.  Also for Solaris/x86, for example.
-ASM_STRIP = src/unix/contrib/porting/strip_
-NASM_FMT  = -f elf
-# a.out settings: Leading underscores + a.out object format.  Tested with
-# netBSD i386.  Also for older Linux installs, FreeBSD, and others.
-# ASM_STRIP = true  # no strip command
-# NASM_FMT  = -f aoutb
 
 
 ###########################################################################

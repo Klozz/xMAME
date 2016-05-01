@@ -9,6 +9,7 @@
 
 #include <math.h>
 #include "vidhrdw/ppu2c03b.h"
+#include "profiler.h"
 
 /* constant definitions */
 #define BOTTOM_VISIBLE_SCANLINE	239		/* The bottommost visible scanline */
@@ -21,7 +22,7 @@
 #define CHARGEN_NUM_CHARS		512		/* max number of characters handled by the chargen */
 
 /* default monochromatic colortable */
-pen_t default_colortable_mono[] =
+static const pen_t default_colortable_mono[] =
 {
 	0,1,2,3,
 	0,1,2,3,
@@ -66,7 +67,7 @@ typedef struct {
 } ppu2c03b_chip;
 
 /* our local copy of the interface */
-static struct ppu2c03b_interface *intf;
+static ppu2c03b_interface *intf;
 
 /* chips state - allocated at init time */
 static ppu2c03b_chip *chips = 0;
@@ -98,14 +99,14 @@ void ppu2c03b_init_palette( int first_entry ) {
 	double hue = 332.0;
 	double bright_adjust = 1.0;
 
-	double brightness[3][4] =
+	static const double brightness[3][4] =
 	{
 		{ 0.50, 0.75, 1.0, 1.0 },
 		{ 0.29, 0.45, 0.73, 0.9 },
 		{ 0, 0.24, 0.47, 0.77 }
 	};
 
-	double angle[16] = { 0, 240, 210, 180, 150, 120, 90, 60, 30, 0, 330, 300, 270, 0, 0, 0 };
+	static const double angle[16] = { 0, 240, 210, 180, 150, 120, 90, 60, 30, 0, 330, 300, 270, 0, 0, 0 };
 
 	/* loop through the 4 intensities */
 	for (i = 0; i < 4; i++)
@@ -188,21 +189,18 @@ static gfx_layout ppu_charlayout =
  *  PPU Initialization and Disposal
  *
  *************************************/
-int ppu2c03b_init( struct ppu2c03b_interface *interface )
+void ppu2c03b_init( const ppu2c03b_interface *interface )
 {
 	int i;
 
 	/* keep a local copy of the interface */
-	intf = interface;
+	intf = auto_malloc(sizeof(*interface));
+	memcpy(intf, interface, sizeof(*interface));
 
 	/* safety check */
-	if ( intf->num <= 0 )
-		return -1;
+	assert_always(intf->num >= 1, "Invalid PPU count\n");
 
 	chips = auto_malloc( intf->num * sizeof( ppu2c03b_chip ) );
-
-	if ( chips == 0 )
-		return -1;
 
 	/* intialize our virtual chips */
 	for( i = 0; i < intf->num; i++ )
@@ -220,8 +218,7 @@ int ppu2c03b_init( struct ppu2c03b_interface *interface )
 		chips[i].colortable_mono = auto_malloc( sizeof( default_colortable_mono ) );
 
 		/* see if it failed */
-		if ( !chips[i].bitmap || !chips[i].videoram || !chips[i].spriteram || !chips[i].dirtychar || !chips[i].colortable_mono )
-			return -1;
+		assert_always(chips[i].bitmap, "auto_bitmap_alloc() failed\n");
 
 		/* clear videoram & spriteram */
 		memset( chips[i].videoram, 0, VIDEORAM_SIZE );
@@ -253,10 +250,10 @@ int ppu2c03b_init( struct ppu2c03b_interface *interface )
 		/* now create the gfx region */
 		{
 			UINT8 *src = chips[i].has_videorom ? memory_region( intf->vrom_region[i] ) : chips[i].videoram;
-			Machine->gfx[intf->gfx_layout_number[i]] = decodegfx( src, &ppu_charlayout );
+			Machine->gfx[intf->gfx_layout_number[i]] = allocgfx( &ppu_charlayout );
+			decodegfx( Machine->gfx[intf->gfx_layout_number[i]], src, 0, Machine->gfx[intf->gfx_layout_number[i]]->total_elements );
 
-			if ( Machine->gfx[intf->gfx_layout_number[i]] == 0 )
-				return -1;
+			assert_always( Machine->gfx[intf->gfx_layout_number[i]] != 0, "Invalid GFX\n" );
 
 			if ( Machine->remapped_colortable )
 				Machine->gfx[intf->gfx_layout_number[i]]->colortable = &Machine->remapped_colortable[intf->color_base[i]];
@@ -267,9 +264,6 @@ int ppu2c03b_init( struct ppu2c03b_interface *interface )
 		/* setup our videoram handlers based on mirroring */
 		ppu2c03b_set_mirroring( i, intf->mirroring[i] );
 	}
-
-	/* success */
-	return 0;
 }
 
 static void draw_background( const int num, UINT8 *line_priority )

@@ -7,26 +7,10 @@ Atari Sprint 4 + Ultra Tank driver
 #include "driver.h"
 #include "sprint4.h"
 
-extern PALETTE_INIT( sprint4 );
-extern PALETTE_INIT( ultratnk );
-
-extern VIDEO_EOF( sprint4 );
-extern VIDEO_EOF( ultratnk );
-extern VIDEO_START( sprint4 );
-extern VIDEO_START( ultratnk );
-extern VIDEO_UPDATE( sprint4 );
-extern VIDEO_UPDATE( ultratnk );
-
-extern WRITE8_HANDLER( sprint4_video_ram_w );
-
-extern int sprint4_collision[4];
-
 static int da_latch;
 static int steer_dir[4];
 static int steer_flag[4];
 static int gear[4];
-
-UINT8* sprint4_videoram;
 
 
 static void input_callback(int dummy)
@@ -87,7 +71,7 @@ static void nmi_callback(int scanline)
 }
 
 
-static MACHINE_INIT( sprint4 )
+static MACHINE_RESET( sprint4 )
 {
 	timer_set(cpu_getscanlinetime(32), 32, nmi_callback);
 
@@ -95,7 +79,7 @@ static MACHINE_INIT( sprint4 )
 }
 
 
-static MACHINE_INIT( ultratnk )
+static MACHINE_RESET( ultratnk )
 {
 	timer_set(cpu_getscanlinetime(32), 32, nmi_callback);
 }
@@ -554,7 +538,7 @@ static MACHINE_DRIVER_START( sprint4 )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(38 * 1000000 / 15750)
 	MDRV_WATCHDOG_VBLANK_INIT(8)
-	MDRV_MACHINE_INIT(sprint4)
+	MDRV_MACHINE_RESET(sprint4)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -589,7 +573,7 @@ static MACHINE_DRIVER_START( ultratnk )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(38 * 1000000 / 15750)
 	MDRV_WATCHDOG_VBLANK_INIT(8)
-	MDRV_MACHINE_INIT(ultratnk)
+	MDRV_MACHINE_RESET(ultratnk)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

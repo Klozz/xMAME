@@ -17,6 +17,7 @@
 #include "machine/7474.h"
 #include "sound/ay8910.h"
 #include "sound/flt_rc.h"
+#include "includes/galaxian.h"
 
 
 /* The timer clock in Scramble which feeds the upper 4 bits of          */
@@ -198,7 +199,8 @@ static void filter_w(int chip, int channel, int data)
 		C += 220000;	/* 220000pF = 0.220uF */
 	if (data & 2)
 		C +=  47000;	/*  47000pF = 0.047uF */
-	filter_rc_set_RC(3*chip + channel,1000,5100,0,C);
+	if (sndti_exists(SOUND_FILTER_RC, 3*chip + channel))
+		filter_rc_set_RC(3*chip + channel,1000,5100,0,C);
 }
 
 WRITE8_HANDLER( scramble_filter_w )
@@ -232,7 +234,7 @@ static const struct TTL7474_interface sfx_sh_7474_intf =
 
 void scramble_sh_init(void)
 {
-	cpu_set_irq_callback(1, scramble_sh_irq_callback);
+	cpunum_set_irq_callback(1, scramble_sh_irq_callback);
 
 	TTL7474_config(2, &scramble_sh_7474_intf);
 
@@ -242,7 +244,7 @@ void scramble_sh_init(void)
 
 void sfx_sh_init(void)
 {
-	cpu_set_irq_callback(2, sfx_sh_irq_callback);
+	cpunum_set_irq_callback(2, sfx_sh_irq_callback);
 
 	TTL7474_config(3, &sfx_sh_7474_intf);
 

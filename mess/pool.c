@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include "osdepend.h"
 #include "pool.h"
 #include "utils.h"
 
@@ -19,7 +20,6 @@
 ***************************************************************************/
 
 #ifdef DEBUG
-#include "osd_cpu.h"
 #define GUARD_BYTES
 #endif
 

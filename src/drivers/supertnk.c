@@ -96,7 +96,6 @@ CRU lines:
 
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "sound/ay8910.h"
 
 static int supertnk_rom_bank;
@@ -126,11 +125,6 @@ PALETTE_INIT( supertnk )
 VIDEO_START( supertnk )
 {
 	supertnk_videoram = auto_malloc(0x6000);	/* allocate physical video RAM */
-
-	if (supertnk_videoram  == NULL)
-	{
-		return 1;
-	}
 
 	memset(supertnk_videoram, 0, 0x6000);
 

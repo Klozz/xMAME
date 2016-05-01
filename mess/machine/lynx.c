@@ -80,6 +80,7 @@ UINT8 *lynx_mem_fc00;
 UINT8 *lynx_mem_fd00;
 UINT8 *lynx_mem_fe00;
 UINT8 *lynx_mem_fffa;
+size_t lynx_mem_fe00_size;
 
 static UINT8 lynx_memory_config;
 
@@ -103,7 +104,7 @@ INLINE void lynx_plot_pixel(const int mode, const int x, const int y, const int 
     UINT8 *screen;
     UINT8 *colbuf;
     
-    blitter.everon=true;
+    blitter.everon=TRUE;
     screen=blitter.mem+blitter.screen+y*80+x/2;
     colbuf=blitter.mem+blitter.colbuf+y*80+x/2;
     switch (mode) {
@@ -369,7 +370,7 @@ static void lynx_blit_lines(void)
 	int ydir=0, xdir=0;
 	int flip=blitter.mem[blitter.cmd+1]&3;
 
-	blitter.everon=false;
+	blitter.everon=FALSE;
 
 	/* flipping sprdemo3 */
 	/* fat bobby 0x10 */
@@ -615,9 +616,9 @@ static void lynx_divide(void)
 	UINT32 left=suzy.u.s.H|(suzy.u.s.G<<8)|(suzy.u.s.F<<16)|(suzy.u.s.E<<24);
 	UINT16 right=suzy.u.s.P|(suzy.u.s.N<<8);
 	UINT32 res, mod;
-	suzy.accumulate_overflow=false;
+	suzy.accumulate_overflow=FALSE;
 	if (right==0) {
-	    suzy.accumulate_overflow=true;
+	    suzy.accumulate_overflow=TRUE;
 	    res=0xffffffff;
 	    mod=0; /*? */
 	} else {
@@ -653,7 +654,7 @@ static void lynx_multiply(void)
 	if (suzy.u.s.SPRSYS&0x40) {
 	    accu=suzy.u.s.M|suzy.u.s.L<<8|suzy.u.s.K<<16|suzy.u.s.J<<24;
 	    accu+=res;
-	    if (accu<res) suzy.accumulate_overflow=true;
+	    if (accu<res) suzy.accumulate_overflow=TRUE;
 	    suzy.u.s.M=accu;
 	    suzy.u.s.L=accu>>8;
 	    suzy.u.s.K=accu>>16;
@@ -733,7 +734,7 @@ WRITE8_HANDLER(suzy_write)
 	    break;
 	case 0x6c:
 	    suzy.u.data[offset+1]=0;
-	    suzy.accumulate_overflow=false;
+	    suzy.accumulate_overflow=FALSE;
 	    break;
 	case 0x55: lynx_multiply();break;
 	case 0x63: lynx_divide();break;
@@ -859,7 +860,7 @@ void lynx_timer_count_down(int nr)
 	    This->counter--;
 	    return;
 	} else if (This->counter==0) {
-	    This->shot=true;
+	    This->shot=TRUE;
 	    lynx_timer_signal_irq(This);
 	    if (This->u.s.cntrl1&0x10) {
 		This->counter=This->u.s.bakup;
@@ -874,7 +875,7 @@ void lynx_timer_count_down(int nr)
 static void lynx_timer_shot(int nr)
 {
     LYNX_TIMER *This=lynx_timer+nr;
-    This->shot=true;
+    This->shot=TRUE;
     lynx_timer_signal_irq(This);
     if (!(This->u.s.cntrl1&0x10))
 		This->timer_active = 0;
@@ -919,7 +920,7 @@ static void lynx_timer_write(LYNX_TIMER *This, int offset, UINT8 data)
 	logerror("timer %d write %x %.2x\n",This-lynx_timer,offset,data);
 	This->u.data[offset]=data;
 
-	if ((offset==1) && (data&0x40)) This->shot=false;
+	if ((offset==1) && (data&0x40)) This->shot=FALSE;
 
 	switch (offset) {
 	case 0:
@@ -967,10 +968,10 @@ static void lynx_uart_timer(int param)
 {
     if (uart.buffer_loaded) {
 	uart.data_to_send=uart.buffer;
-	uart.buffer_loaded=false;
+	uart.buffer_loaded=FALSE;
 	timer_set(1.0e-6*11, 0, lynx_uart_timer);	
     } else {
-	uart.sending=false;
+	uart.sending=FALSE;
     }
 /*    mikey.data[0x80]|=0x10; */
     if (uart.serctl&0x80) {
@@ -1006,9 +1007,9 @@ static WRITE8_HANDLER(lynx_uart_w)
     case 0x8d:
 	if (uart.sending) {
 	    uart.buffer=data;
-	    uart.buffer_loaded=true;
+	    uart.buffer_loaded=TRUE;
 	} else {
-	    uart.sending=true;
+	    uart.sending=TRUE;
 	    uart.data_to_send=data;
 	    timer_set(1.0e-6*11, 0, lynx_uart_timer);
 	}
@@ -1160,7 +1161,7 @@ WRITE8_HANDLER( lynx_memory_config_w )
 	memory_set_bank(4, (data & 8) ? 1 : 0);
 }
 
-MACHINE_INIT( lynx )
+static void lynx_reset(void)
 {
 	int i;
 	lynx_memory_config_w(0, 0);
@@ -1170,12 +1171,12 @@ MACHINE_INIT( lynx )
 	memset(&suzy, 0, sizeof(suzy));
 	memset(&mikey, 0, sizeof(mikey));
 
-	mikey.data[0x80]=0;
-	mikey.data[0x81]=0;
+	mikey.data[0x80] = 0;
+	mikey.data[0x81] = 0;
 
 	lynx_uart_reset();
 
-	for (i=0; i<ARRAY_LENGTH(lynx_timer); i++)
+	for (i = 0; i < (sizeof(lynx_timer) / sizeof(lynx_timer[0])); i++)
 		lynx_timer_init(lynx_timer+i);
 
 	lynx_audio_reset();
@@ -1194,10 +1195,10 @@ static void lynx_postload(void)
 	lynx_memory_config_w(0, lynx_memory_config);
 }
 
-DRIVER_INIT( lynx )
+MACHINE_START( lynx )
 {
-	state_save_register_UINT8("lynx", 0, "lynx_memory_config", &lynx_memory_config, 1);
-	state_save_register_UINT8("lynx", 0, "lynx_fe00", lynx_mem_fe00, 0x200);
+	state_save_register_global(lynx_memory_config);
+	state_save_register_global_pointer(lynx_mem_fe00, lynx_mem_fe00_size);
 	state_save_register_func_postload(lynx_postload);
 
 	memory_configure_bank(3, 0, 1, memory_region(REGION_CPU1) + 0x0000, 0);
@@ -1206,5 +1207,7 @@ DRIVER_INIT( lynx )
 	memory_configure_bank(4, 1, 1, lynx_mem_fffa, 0);
 
 	memset(&suzy, 0, sizeof(suzy));
-}
 
+	add_reset_callback(lynx_reset);
+	return 0;
+}

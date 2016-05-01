@@ -204,7 +204,7 @@ static ppi8255_interface buckrog_8255_intf =
 
 *******************************************/
 
-MACHINE_INIT( turbo )
+MACHINE_RESET( turbo )
 {
 	ppi8255_init(&turbo_8255_intf);
 	segment_address = segment_increment = 0;
@@ -213,7 +213,7 @@ MACHINE_INIT( turbo )
 }
 
 
-MACHINE_INIT( subroc3d )
+MACHINE_RESET( subroc3d )
 {
 	ppi8255_init(&subroc3d_8255_intf);
 	segment_address = segment_increment = 0;
@@ -225,7 +225,7 @@ MACHINE_INIT( subroc3d )
 }
 
 
-MACHINE_INIT( buckrog )
+MACHINE_RESET( buckrog )
 {
 	ppi8255_init(&buckrog_8255_intf);
 	segment_address = segment_increment = 0;
@@ -446,7 +446,7 @@ void turbo_rom_decode(void)
 		  0x6c,0x78,0xe4,0xf0,0x5c,0x48,0xd4,0xc0 }
 	};
 
-	int findtable[]=
+	static const int findtable[]=
 	{
 		0,1,0,1, /* 0x0000-0x0fff */
 		2,1,2,1, /* 0x1000-0x1fff */

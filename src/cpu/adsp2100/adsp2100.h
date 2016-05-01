@@ -1,32 +1,30 @@
-/*###################################################################################################
-**
-**
-**      ADSP2100.h
-**      Interface file for the portable Analog ADSP-2100 emulator.
-**      Written by Aaron Giles
-**
-**
-**#################################################################################################*/
+/***************************************************************************
+
+    ADSP2100.h
+    Interface file for the portable Analog ADSP-2100 emulator.
+    Written by Aaron Giles
+
+***************************************************************************/
 
 #ifndef _ADSP2100_H
 #define _ADSP2100_H
 
-#include "memory.h"
-#include "osd_cpu.h"
+#include "cpuintrf.h"
 
 
-/*###################################################################################################
-**  GLOBAL CONSTANTS
-**#################################################################################################*/
+/***************************************************************************
+    GLOBAL CONSTANTS
+***************************************************************************/
 
 /* transmit and receive data callbacks types */
 typedef INT32 (*RX_CALLBACK)(int port);
 typedef void  (*TX_CALLBACK)(int port, INT32 data);
+typedef void  (*TIMER_CALLBACK)(int enable);
 
 
-/*###################################################################################################
-**  REGISTER ENUMERATION
-**#################################################################################################*/
+/***************************************************************************
+    REGISTER ENUMERATION
+***************************************************************************/
 
 enum
 {
@@ -49,13 +47,14 @@ enum
 enum
 {
 	CPUINFO_PTR_ADSP2100_RX_HANDLER = CPUINFO_PTR_CPU_SPECIFIC,
-	CPUINFO_PTR_ADSP2100_TX_HANDLER
+	CPUINFO_PTR_ADSP2100_TX_HANDLER,
+	CPUINFO_PTR_ADSP2100_TIMER_HANDLER
 };
 
 
-/*###################################################################################################
-**  PUBLIC FUNCTIONS
-**#################################################################################################*/
+/***************************************************************************
+    PUBLIC FUNCTIONS
+***************************************************************************/
 
 #if (HAS_ADSP2100)
 #define ADSP2100_IRQ0		0		/* IRQ0 */
@@ -80,6 +79,7 @@ extern void adsp2100_get_info(UINT32 state, union cpuinfo *info);
 #define ADSP2101_IRQ2		2		/* IRQ2 */
 #define ADSP2101_SPORT0_RX	3		/* SPORT0 receive IRQ */
 #define ADSP2101_SPORT0_TX	4		/* SPORT0 transmit IRQ */
+#define ADSP2101_TIMER		5		/* internal timer IRQ */
 
 extern void adsp2101_get_info(UINT32 state, union cpuinfo *info);
 #endif
@@ -96,6 +96,7 @@ extern void adsp2101_get_info(UINT32 state, union cpuinfo *info);
 #define ADSP2104_IRQ2		2		/* IRQ2 */
 #define ADSP2104_SPORT0_RX	3		/* SPORT0 receive IRQ */
 #define ADSP2104_SPORT0_TX	4		/* SPORT0 transmit IRQ */
+#define ADSP2104_TIMER		5		/* internal timer IRQ */
 
 extern void adsp2104_get_info(UINT32 state, union cpuinfo *info);
 extern void adsp2104_load_boot_data(UINT8 *srcdata, UINT32 *dstdata);
@@ -111,6 +112,7 @@ extern void adsp2104_load_boot_data(UINT8 *srcdata, UINT32 *dstdata);
 #define ADSP2105_IRQ1		1		/* IRQ1 */
 #define ADSP2105_SPORT1_TX	1		/* SPORT1 transmit IRQ */
 #define ADSP2105_IRQ2		2		/* IRQ2 */
+#define ADSP2105_TIMER		5		/* internal timer IRQ */
 
 extern void adsp2105_get_info(UINT32 state, union cpuinfo *info);
 extern void adsp2105_load_boot_data(UINT8 *srcdata, UINT32 *dstdata);
@@ -128,6 +130,7 @@ extern void adsp2105_load_boot_data(UINT8 *srcdata, UINT32 *dstdata);
 #define ADSP2115_IRQ2		2		/* IRQ2 */
 #define ADSP2115_SPORT0_RX	3		/* SPORT0 receive IRQ */
 #define ADSP2115_SPORT0_TX	4		/* SPORT0 transmit IRQ */
+#define ADSP2115_TIMER		5		/* internal timer IRQ */
 
 extern void adsp2115_get_info(UINT32 state, union cpuinfo *info);
 extern void adsp2115_load_boot_data(UINT8 *srcdata, UINT32 *dstdata);
@@ -145,9 +148,10 @@ extern void adsp2115_load_boot_data(UINT8 *srcdata, UINT32 *dstdata);
 #define ADSP2181_IRQ2		2		/* IRQ2 */
 #define ADSP2181_SPORT0_RX	3		/* SPORT0 receive IRQ */
 #define ADSP2181_SPORT0_TX	4		/* SPORT0 transmit IRQ */
-#define ADSP2181_IRQE		5		/* IRQE */
-#define ADSP2181_IRQL1		6		/* IRQL1 */
-#define ADSP2181_IRQL2		7		/* IRQL2 */
+#define ADSP2181_TIMER		5		/* internal timer IRQ */
+#define ADSP2181_IRQE		6		/* IRQE */
+#define ADSP2181_IRQL1		7		/* IRQL1 */
+#define ADSP2181_IRQL2		8		/* IRQL2 */
 
 extern void adsp2181_get_info(UINT32 state, union cpuinfo *info);
 extern void adsp2181_load_boot_data(UINT8 *srcdata, UINT32 *dstdata);

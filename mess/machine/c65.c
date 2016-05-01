@@ -9,10 +9,10 @@
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/sid6581.h"
+#include "machine/6526cia.h"
 
 #define VERBOSE_DBG 1
 #include "includes/cbm.h"
-#include "includes/cia6526.h"
 #include "includes/cbmserb.h"
 #include "includes/vc1541.h"
 #include "includes/vic4567.h"
@@ -496,10 +496,10 @@ static WRITE8_HANDLER ( c65_write_io_dc00 )
 {
 	switch(offset&0xf00) {
 	case 0x000:
-		cia6526_0_port_w (offset & 0xff, data);
+		cia_0_w(offset, data);
 		break;
 	case 0x100:
-		cia6526_1_port_w (offset & 0xff, data);
+		cia_1_w(offset, data);
 		break;
 	case 0x200:
 	case 0x300:
@@ -547,9 +547,9 @@ static READ8_HANDLER ( c65_read_io_dc00 )
 {
 	switch(offset&0x300) {
 	case 0x000:
-		return cia6526_0_port_r (offset & 0xff);
+		return cia_0_r(offset);
 	case 0x100:
-		return cia6526_1_port_r (offset & 0xff);
+		return cia_1_r(offset);
 	case 0x200:
 	case 0x300:
 		DBG_LOG (1, "io read", ("%.3x\n", offset+0xc00));
@@ -773,11 +773,17 @@ static void c65_common_driver_init (void)
 	c64_tape_on = 0;
 	/*memset(c64_memory+0x40000, 0, 0x800000-0x40000); */
 
-	cia6526_init();
+	{
+		cia6526_interface cia_intf[2];
+		cia_intf[0] = c64_cia0;
+		cia_intf[1] = c64_cia1;
+		cia_intf[0].tod_clock = c64_pal ? 50 : 60;
+		cia_intf[1].tod_clock = c64_pal ? 50 : 60;
 
-	c64_cia0.todin50hz = c64_cia1.todin50hz = c64_pal;
-	cia6526_config (0, &c64_cia0);
-	cia6526_config (1, &c64_cia1);
+		cia_config(0, &cia_intf[0]);
+		cia_config(1, &cia_intf[1]);
+	}
+
 	vic4567_init (c64_pal, c65_dma_read, c65_dma_read_color,
 				  c64_vic_interrupt, c65_bankswitch_interface);
 }
@@ -802,18 +808,15 @@ void c65pal_driver_init (void)
 	c65_common_driver_init ();
 }
 
-MACHINE_INIT( c65 )
+MACHINE_START( c65 )
 {
 	/* clear upper memory */
 	memset(mess_ram + 128*1024, 0xff, mess_ram_size -  128*1024);
 
-	sndti_reset(SOUND_SID8580, 0);
-	sndti_reset(SOUND_SID8580, 1);
-
 	cbm_serial_reset_write (0);
-	cbm_drive_0_config (SERIAL8ON ? SERIAL : 0, 10);
-	cbm_drive_1_config (SERIAL9ON ? SERIAL : 0, 11);
-	cia6526_reset ();
+	cbm_drive_0_config (SERIAL, 10);
+	cbm_drive_1_config (SERIAL, 11);
+	cia_reset();
 	c64_vicaddr = c64_memory;
 
 	c64mode = 0;
@@ -823,4 +826,5 @@ MACHINE_INIT( c65 )
 
 	c65_bankswitch_interface(0xff);
 	c65_bankswitch ();
+	return 0;
 }

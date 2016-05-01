@@ -1,14 +1,14 @@
 /*  Video hardware for Taito Grand Champion */
 
 /* updated by Hans Andersson, dec 2005     */
-#include "math.h"
+#include <math.h>
 #include "driver.h"
-#include "vidhrdw/generic.h"
+#include "includes/grchamp.h"
 
 #define FOG_SIZE 70
 
 UINT8 grchamp_videoreg0;
-UINT8 grchamp_player_xpos;
+static UINT8 grchamp_player_xpos;
 UINT8 grchamp_player_ypos;
 int  grchamp_collision;
 
@@ -23,7 +23,7 @@ UINT8 grchamp_vreg1[0x10];	/* background control registers */
 UINT8 *grchamp_videoram;	/* background tilemaps */
 UINT8 *grchamp_radar;		/* bitmap for radar */
 
-tilemap *bg_tilemap[3];
+static tilemap *bg_tilemap[3];
 
 WRITE8_HANDLER( grchamp_player_xpos_w )
 {
@@ -65,8 +65,8 @@ PALETTE_INIT( grchamp )
 {
 	int i,j;
 	UINT8 r,g,b;
-	UINT8 rg_bits[8] = {0,42,67,92,126,139,148,156}; /* Calculated values as below */
-	UINT8 b_bits[4]  = {0,67,126,148}; /* Calculated values as below */
+	static const UINT8 rg_bits[8] = {0,42,67,92,126,139,148,156}; /* Calculated values as below */
+	static const UINT8 b_bits[4]  = {0,67,126,148}; /* Calculated values as below */
 
 	/* for r & g DAC is 100, 270, 470 Ohm wired together, connected to 100 Ohm pull-up and finally 100 Ohm in series */
     /* for b DAC is 100, 270 Ohm wired together, connected to 100 Ohm pull-up and finally 100 Ohm in series */

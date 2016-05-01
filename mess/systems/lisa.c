@@ -6,36 +6,30 @@
 
 #include "driver.h"
 #include "vidhrdw/generic.h"
-#include "machine/sonydriv.h"
+#include "devices/sonydriv.h"
 /*#include "machine/6522via.h"*/
 #include "machine/lisa.h"
 
 
 static ADDRESS_MAP_START(lisa_map, ADDRESS_SPACE_PROGRAM, 16)
-
-	AM_RANGE(0x000000, 0xffffff) AM_READWRITE(lisa_r, lisa_w)	/* no fixed map, we use an MMU */
-
+	AM_RANGE(0x000000, 0xffffff) AM_READWRITE(lisa_r, lisa_w)			/* no fixed map, we use an MMU */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(lisa_fdc_map, ADDRESS_SPACE_PROGRAM, 8)
-
-	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(MRA8_RAM, MWA8_RAM)			/* RAM (shared with 68000) */
+	AM_RANGE(0x0000, 0x03ff) AM_RAM	AM_BASE(&lisa_fdc_ram)				/* RAM (shared with 68000) */
 	AM_RANGE(0x0400, 0x07ff) AM_READWRITE(lisa_fdc_io_r, lisa_fdc_io_w)	/* disk controller (IWM and TTL logic) */
-	AM_RANGE(0x0800, 0x0fff) AM_READWRITE(MRA8_NOP, MWA8_NOP)
-	AM_RANGE(0x1000, 0x1fff) AM_READWRITE(MRA8_ROM, MWA8_ROM)			/* ROM */
+	AM_RANGE(0x0800, 0x0fff) AM_NOP
+	AM_RANGE(0x1000, 0x1fff) AM_ROM	AM_BASE(&lisa_fdc_rom)				/* ROM */
 	AM_RANGE(0x2000, 0xffff) AM_READWRITE(lisa_fdc_r, lisa_fdc_w)		/* handler for wrap-around */
-
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(lisa210_fdc_map, ADDRESS_SPACE_PROGRAM, 8)
-
-	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(MRA8_RAM, MWA8_RAM)			/* RAM (shared with 68000) */
-	AM_RANGE(0x0400, 0x07ff) AM_READWRITE(MRA8_NOP, MWA8_NOP)			/* nothing, or RAM wrap-around ??? */
+	AM_RANGE(0x0000, 0x03ff) AM_RAM	AM_BASE(&lisa_fdc_ram)				/* RAM (shared with 68000) */
+	AM_RANGE(0x0400, 0x07ff) AM_NOP										/* nothing, or RAM wrap-around ??? */
 	AM_RANGE(0x0800, 0x0bff) AM_READWRITE(lisa_fdc_io_r, lisa_fdc_io_w)	/* disk controller (IWM and TTL logic) */
-	AM_RANGE(0x0c00, 0x0fff) AM_READWRITE(MRA8_NOP, MWA8_NOP)			/* nothing, or IO port wrap-around ??? */
-	AM_RANGE(0x1000, 0x1fff) AM_READWRITE(MRA8_ROM, MWA8_ROM)			/* ROM */
+	AM_RANGE(0x0c00, 0x0fff) AM_NOP										/* nothing, or IO port wrap-around ??? */
+	AM_RANGE(0x1000, 0x1fff) AM_ROM	AM_BASE(&lisa_fdc_rom)				/* ROM */
 	AM_RANGE(0x2000, 0xffff) AM_READWRITE(lisa_fdc_r, lisa_fdc_w)		/* handler for wrap-around */
-
 ADDRESS_MAP_END
 
 /* init with simple, fixed, B/W palette */
@@ -60,7 +54,7 @@ static MACHINE_DRIVER_START( lisa )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
-	MDRV_MACHINE_INIT( lisa )
+	MDRV_MACHINE_RESET( lisa )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
 	MDRV_SCREEN_SIZE(880, 380)
@@ -268,10 +262,16 @@ ROM_START( macxl )
 
 ROM_END
 
-static void lisa_floppy_getinfo(struct IODevice *dev)
+static void lisa_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	sonydriv_device_getinfo(dev, SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_ALLOW800K);
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_SONYDRIV_ALLOWABLE_SIZES:		info->i = SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_ALLOW800K; break;
+
+		default:										sonydriv_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(lisa)

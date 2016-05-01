@@ -38,7 +38,6 @@ PROMs : NEC B406 (1kx4) x2
 ***********************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/i8039/i8039.h"
 #include "vidhrdw/res_net.h"
 #include "sound/ay8910.h"
@@ -293,8 +292,8 @@ static PALETTE_INIT( sbowling )
 {
 	int i;
 
-	const int resistances_rg[3] = { 470, 270, 100 };
-	const int resistances_b[2]  = { 270, 100 };
+	static const int resistances_rg[3] = { 470, 270, 100 };
+	static const int resistances_b[2]  = { 270, 100 };
 	double outputs_r[1<<3], outputs_g[1<<3], outputs_b[1<<2];
 
 	/* the game uses output collector PROMs type: NEC B406  */

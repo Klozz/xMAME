@@ -268,6 +268,17 @@ ROM_START( famicom )
     ROM_REGION( 0x10000, REGION_USER1,0 ) /* WRAM */
 ROM_END
 
+ROM_START( famitwin )
+    ROM_REGION( 0x10000, REGION_CPU1,0 )  /* Main RAM + program banks */
+    ROM_LOAD_OPTIONAL ("disksys.rom", 0xe000, 0x2000, CRC(4df24a6c) SHA1(e4e41472c454f928e53eb10e0509bf7d1146ecc1))
+
+    ROM_REGION( 0x2000,  REGION_GFX1,0 )  /* VROM */
+
+    ROM_REGION( 0x2000,  REGION_GFX2,0 )  /* VRAM */
+
+    ROM_REGION( 0x10000, REGION_USER1,0 ) /* WRAM */
+ROM_END
+
 
 
 static MACHINE_DRIVER_START( nes )
@@ -277,14 +288,13 @@ static MACHINE_DRIVER_START( nes )
 	MDRV_FRAMES_PER_SECOND(60/1.001)
 	MDRV_VBLANK_DURATION((113.75/(NTSC_CLOCK/1000000)) * (NTSC_SCANLINES_PER_FRAME-(BOTTOM_VISIBLE_SCANLINE+1)))
 
-	MDRV_MACHINE_INIT( nes )
-	MDRV_MACHINE_STOP( nes )
+	MDRV_MACHINE_START( nes )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_SIZE(32*8, 30*8)
 	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
 	MDRV_PALETTE_INIT(nes)
-	MDRV_VIDEO_START(nes)
+	MDRV_VIDEO_START(nes_ntsc)
 	MDRV_VIDEO_UPDATE(nes)
 
 	MDRV_PALETTE_LENGTH(4*16*8)
@@ -304,6 +314,7 @@ static MACHINE_DRIVER_START( nespal )
 	MDRV_CPU_REPLACE("main", N2A03, PAL_CLOCK)
 	MDRV_FRAMES_PER_SECOND(50)
 	MDRV_VBLANK_DURATION((113.75/(PAL_CLOCK/1000000)) * (PAL_SCANLINES_PER_FRAME-(BOTTOM_VISIBLE_SCANLINE+1)))
+	MDRV_VIDEO_START(nes_pal)
 
     /* sound hardware */
 	MDRV_SOUND_REPLACE("nessound", NES, PAL_CLOCK)
@@ -311,42 +322,68 @@ static MACHINE_DRIVER_START( nespal )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
-static void nes_cartslot_getinfo(struct IODevice *dev)
+static void nes_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 1;
-	dev->file_extensions = "nes\0";
-	dev->must_be_loaded = 1;
-	dev->load = device_load_nes_cart;
-	dev->partialhash = nes_partialhash;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_nes_cart; break;
+		case DEVINFO_PTR_PARTIAL_HASH:					info->partialhash = nes_partialhash; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "nes"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(nes)
 	CONFIG_DEVICE(nes_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
-static void famicom_cartslot_getinfo(struct IODevice *dev)
+static void famicom_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 1;
-	dev->file_extensions = "nes\0";
-	dev->load = device_load_nes_cart;
-	dev->partialhash = nes_partialhash;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_nes_cart; break;
+		case DEVINFO_PTR_PARTIAL_HASH:					info->partialhash = nes_partialhash; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "nes"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void famicom_floppy_getinfo(struct IODevice *dev)
+static void famicom_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	dev->type = IO_FLOPPY;
-	dev->count = 1;
-	dev->file_extensions = "dsk\0fds\0";
-	dev->readable = 1;
-	dev->writeable = 0;
-	dev->creatable = 0;
-	dev->load = device_load_nes_disk;
-	dev->unload = device_unload_nes_disk;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_FLOPPY; break;
+		case DEVINFO_INT_READABLE:						info->i = 1; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 0; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_nes_disk; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_nes_disk; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk,fds"); break;
+	}
 }
 
 SYSTEM_CONFIG_START(famicom)
@@ -361,7 +398,8 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*     YEAR  NAME      PARENT    COMPAT	MACHINE   INPUT     INIT      CONFIG	COMPANY   FULLNAME */
-CONS( 1983, famicom,   0,        0,		nes,      famicom,  nes,      famicom,	"Nintendo", "Famicom" , 0)
-CONS( 1985, nes,       0,        0,		nes,      nes,      nes,      nes,		"Nintendo", "Nintendo Entertainment System (NTSC)" , 0)
-CONS( 1987, nespal,    nes,      0,		nespal,   nes,      nespal,   nes,		"Nintendo", "Nintendo Entertainment System (PAL)" , 0)
+CONS( 1983, famicom,   0,        0,		nes,      famicom,  0,	      famicom,	"Nintendo", "Famicom" , GAME_NOT_WORKING)
+CONS( 1986, famitwin,  famicom,  0,		nes,      famicom,  0,	      famicom,	"Sharp", "Famicom Twin" , GAME_NOT_WORKING)
+CONS( 1985, nes,       0,        0,		nes,      nes,      0,        nes,		"Nintendo", "Nintendo Entertainment System (NTSC)" , 0)
+CONS( 1987, nespal,    nes,      0,		nespal,   nes,      0,	      nes,		"Nintendo", "Nintendo Entertainment System (PAL)" , 0)
 

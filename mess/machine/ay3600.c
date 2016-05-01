@@ -27,6 +27,9 @@
 
 static void AY3600_poll(int dummy);
 
+static int AY3600_keyboard_queue_chars(const unicode_char_t *text, size_t text_len);
+static int AY3600_keyboard_accept_char(unicode_char_t ch);
+
 static const unsigned char ay3600_key_remap_2[7*8][4] =
 {
 /*		  norm ctrl shft both */
@@ -300,8 +303,6 @@ int AY3600_init()
 {
 	/* Init the key remapping table */
 	ay3600_keys = auto_malloc(AY3600_KEYS_LENGTH * sizeof(*ay3600_keys));
-	if (!ay3600_keys)
-		return 1;
 	memset(ay3600_keys, 0, AY3600_KEYS_LENGTH * sizeof(*ay3600_keys));
 
 	/* We poll the keyboard periodically to scan the keys.  This is
@@ -314,6 +315,13 @@ int AY3600_init()
 	keywaiting = 0;
 	keycode = 0;
 	keystilldown = 0;
+
+#ifdef MESS
+	inputx_setup_natural_keyboard(AY3600_keyboard_queue_chars,
+		AY3600_keyboard_accept_char,
+		NULL);
+#endif
+
 	return 0;
 }
 
@@ -376,10 +384,11 @@ static void AY3600_poll(int dummy)
 			}
 			return;
 	}
-	if (reset_flag) {
+	if (reset_flag)
+	{
 		reset_flag = 0;
 		cpunum_set_input_line(0, INPUT_LINE_RESET, CLEAR_LINE);
-		machine_reset();
+		mame_schedule_soft_reset();
 	}
 
 	/* run through real keys and see what's being pressed */
@@ -513,7 +522,7 @@ static UINT8 AY3600_get_keycode(unicode_char_t ch)
 
 
 
-QUEUE_CHARS( AY3600 )
+static int AY3600_keyboard_queue_chars(const unicode_char_t *text, size_t text_len)
 {
 	if (keywaiting)
 		return 0;
@@ -524,7 +533,8 @@ QUEUE_CHARS( AY3600 )
 
 
 
-ACCEPT_CHAR( AY3600 )
+static int AY3600_keyboard_accept_char(unicode_char_t ch)
 {
 	return AY3600_get_keycode(ch) != 0;
 }
+

@@ -8,8 +8,6 @@
 
 #include "driver.h"
 
-#include "cia6526.h"
-
 #define C64_DIPS \
      PORT_START \
      PORT_BIT( 0x800, IP_ACTIVE_HIGH, IPT_BUTTON1) \
@@ -231,7 +229,7 @@ void cbm600hu_driver_init (void);
 void cbm700_driver_init (void);
 void cbmb_common_init_machine (void);
 void cbmb_frame_interrupt (int param);
-MACHINE_INIT( cbmb );
+MACHINE_RESET( cbmb );
 
 void cbmb_rom_load(void);
 

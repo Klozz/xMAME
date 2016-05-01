@@ -71,7 +71,7 @@ INLINE void verboselog( int n_level, const char *s_fmt, ... )
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror( "%08x: %s", activecpu_get_pc(), buf );
+		logerror( "%08x: %s", safe_activecpu_get_pc(), buf );
 	}
 }
 
@@ -300,7 +300,7 @@ static WRITE32_HANDLER( hpc3_pbus6_w )
 		cChar = data & 0x000000ff;
 		if( cChar >= 0x20 || cChar == 0x0d || cChar == 0x0a )
 		{
-			printf( "%c", cChar );
+/*			printf( "%c", cChar ); */
 		}
 		break;
 	case 0x034/4:
@@ -315,7 +315,7 @@ static WRITE32_HANDLER( hpc3_pbus6_w )
 		cChar = data & 0x000000ff;
 		if( cChar >= 0x20 || cChar == 0x0d || cChar == 0x0a )
 		{
-			printf( "%c", cChar );
+/*			printf( "%c", cChar ); */
 		}
 		break;
 	case 0x40/4:
@@ -1225,7 +1225,7 @@ static void ip22_timer(int refcon)
 	timer_set(TIME_IN_MSEC(1), 0, ip22_timer);
 }
 
-static MACHINE_INIT( ip225015 )
+static MACHINE_RESET( ip225015 )
 {
 	mc_init();
 	nHPC3_enetr_nbdp = 0x80000000;
@@ -1532,54 +1532,28 @@ static struct mips3_config config =
 	32768	/* data cache size */
 };
 
-static DEVICE_INIT( ip22_chdcd )
-{
-	return device_init_mess_cd(image);
-}
-
-static DEVICE_LOAD( ip22_chdcd )
-{
-	return device_load_mess_cd(image, file);
-}
-
-static DEVICE_UNLOAD( ip22_chdcd )
-{
-	device_unload_mess_cd(image);
-}
-
-static const char *ip22_cdrom_getname(const struct IODevice *dev, int id, char *buf, size_t bufsize)
-{
-	snprintf(buf, bufsize, "CD-ROM #%d", id + 1);
-	return buf;
-}
-
-static void ip22_chdcd_getinfo(struct IODevice *dev)
+static void ip22_chdcd_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* CHD CD-ROM */
-	dev->type = IO_CDROM;
-	dev->name = ip22_cdrom_getname;
-	dev->count = 4;
-	dev->file_extensions = "chd\0";
-	dev->readable = 1;
-	dev->writeable = 0;
-	dev->creatable = 0;
-	dev->init = device_init_ip22_chdcd;
-	dev->load = device_load_ip22_chdcd;
-	dev->unload = device_unload_ip22_chdcd;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 4; break;
+
+		default: cdrom_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void ip22_harddisk_getinfo(struct IODevice *dev)
+static void ip22_harddisk_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* harddisk */
-	dev->type = IO_HARDDISK;
-	dev->count = 2;
-	dev->file_extensions = "chd\0";
-	dev->readable = 1;
-	dev->writeable = 1;
-	dev->creatable = 0;
-	dev->init = device_init_mess_hd;
-	dev->load = device_load_mess_hd;
-	dev->unload = device_unload_mess_hd;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 2; break;
+
+		default: harddisk_device_getinfo(devclass, state, info); break;
+	}
 }
 
 MACHINE_DRIVER_START( ip225015 )
@@ -1591,7 +1565,7 @@ MACHINE_DRIVER_START( ip225015 )
 	MDRV_FRAMES_PER_SECOND( 60 )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT( ip225015 )
+	MDRV_MACHINE_RESET( ip225015 )
 	MDRV_NVRAM_HANDLER( ip22 )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_RGB_DIRECT)
@@ -1636,9 +1610,6 @@ ROM_END
 SYSTEM_CONFIG_START( ip225015 )
 	CONFIG_DEVICE(ip22_chdcd_getinfo)
 	CONFIG_DEVICE(ip22_harddisk_getinfo)
-	CONFIG_QUEUE_CHARS( at_keyboard )
-	CONFIG_ACCEPT_CHAR( at_keyboard )
-	CONFIG_CHARQUEUE_EMPTY( at_keyboard )
 SYSTEM_CONFIG_END
 
 /*     YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */

@@ -25,7 +25,7 @@ Note:   if MAME_DEBUG is defined, pressing Z with:
 
 ***************************************************************************/
 
-#include "vidhrdw/generic.h"
+#include "driver.h"
 #include "paradise.h"
 
 /* Variables that driver has access to: */
@@ -180,7 +180,7 @@ VIDEO_START( paradise )
 	paletteram	=	auto_malloc(0x1800);
 	videoram	=	auto_malloc(0x8000);
 
-	if (!tilemap_0 || !tilemap_1 || !tilemap_2 || !tmpbitmap || !paletteram || !videoram)
+	if (!tilemap_0 || !tilemap_1 || !tilemap_2 || !tmpbitmap )
 		return 1;
 
 	tilemap_set_transparent_pen(tilemap_0,0x0f);

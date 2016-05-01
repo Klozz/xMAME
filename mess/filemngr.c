@@ -272,7 +272,7 @@ static int fs_alloc(void)
 		{
 			fs_chunk = 512;
 			logerror("fs_alloc() first chunk %d\n", fs_chunk);
-			fs_item = malloc(fs_chunk * sizeof(char **));
+			fs_item = malloc(fs_chunk * sizeof(*fs_item));
 			fs_types = malloc(fs_chunk * sizeof(int));
 			fs_order = malloc(fs_chunk * sizeof(int));
 		}
@@ -457,7 +457,7 @@ static int fileselect(int selected, const char *default_selection)
 		fs_generate_filelist();
 	}
 
-	total = fs_total - 1;
+	total = fs_total;
 
 	if (total > 0)
 	{

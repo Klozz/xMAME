@@ -46,7 +46,7 @@ TODO:
 #endif
 #include "devices/mflopimg.h"
 
-static void machine_init_ti990_4(void)
+static MACHINE_RESET(ti990_4)
 {
 	ti990_hold_load();
 
@@ -228,7 +228,7 @@ static MACHINE_DRIVER_START(ti990_4)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	/*MDRV_INTERLEAVE(interleave)*/
 
-	MDRV_MACHINE_INIT( ti990_4 )
+	MDRV_MACHINE_RESET( ti990_4 )
 	/*MDRV_NVRAM_HANDLER( NULL )*/
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -257,7 +257,6 @@ static MACHINE_DRIVER_START(ti990_4)
 	MDRV_PALETTE_INIT(asr733)
 #endif
 	MDRV_VIDEO_START(ti990_4)
-	/*MDRV_VIDEO_STOP(ti990_4)*/
 	/*MDRV_VIDEO_EOF(name)*/
 	MDRV_VIDEO_UPDATE(ti990_4)
 
@@ -298,7 +297,7 @@ ROM_START(ti990_4)
 	/* ROM set 945121-4(?): "Floppy disc loader with self test" (cf 945401-9701
 	pp. 1-19) */
 
-	ROM_LOAD16_WORD("ti9904.rom", 0xFC00, 0x400, CRC(691e7d19))
+	ROM_LOAD16_WORD("ti9904.rom", 0xFC00, 0x400, CRC(691e7d19) SHA1(58d9bed80490fdf71c743bfd3077c70840b7df8c))
 
 #endif
 
@@ -328,11 +327,19 @@ INPUT_PORTS_START(ti990_4)
 #endif
 INPUT_PORTS_END
 
-static void ti990_4_floppy_getinfo(struct IODevice *dev)
+static void ti990_4_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	floppy_device_getinfo(dev, floppyoptions_fd800);
-	dev->count = 4;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 4; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_fd800; break;
+
+		default:										floppy_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(ti990_4)

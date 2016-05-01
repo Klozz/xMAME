@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "konamiic.h"
 
 
@@ -61,8 +60,7 @@ VIDEO_START( tail2nos )
 	if (K051316_vh_start_0(REGION_GFX3,4,TILEMAP_OPAQUE,0,zoom_callback))
 		return 1;
 
-	if (!(dirtychar = auto_malloc(TOTAL_CHARS)))
-		return 1;
+	dirtychar = auto_malloc(TOTAL_CHARS);
 	memset(dirtychar,1,TOTAL_CHARS);
 
 	tilemap_set_transparent_pen(bg_tilemap,15);

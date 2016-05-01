@@ -115,7 +115,7 @@ static ADDRESS_MAP_START(bbca_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfec0, 0xfedf) AM_NOP													/*    fec0-fedf  uPD7002		1 Analogue to digital converter	*/
 	AM_RANGE(0xfee0, 0xfeff) AM_READ     (return8_FE    	                	)	/*    fee0-feff  Tube ULA 	 	1 Tube system interface			*/
 
-	AM_RANGE(0xff00, 0xffff) AM_READWRITE(MRA8_BANK9    	, MWA8_ROM      	)	/*    ff00-ffff 			 	OS Rom (continued)				*/
+	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION(REGION_USER1, 0x13f00)				/*    ff00-ffff 			 	OS Rom (continued)				*/
 ADDRESS_MAP_END
 
 
@@ -148,7 +148,7 @@ static ADDRESS_MAP_START(bbcb_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfec0, 0xfedf) AM_READWRITE(uPD7002_r			, uPD7002_w		 	)	/*    fec0-fedf  uPD7002		Analogue to digital converter	*/
 	AM_RANGE(0xfee0, 0xfeff) AM_READ	 (return8_FE						 	)	/*    fee0-feff  Tube ULA 	 	Tube system interface			*/
 
-	AM_RANGE(0xff00, 0xffff) AM_READWRITE(MRA8_BANK9		, MWA8_ROM		 	)	/*    ff00-ffff 			 	OS Rom (continued)				*/
+	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION(REGION_USER1, 0x43f00)				/*    ff00-ffff 			 	OS Rom (continued)				*/
 ADDRESS_MAP_END
 
 
@@ -182,7 +182,7 @@ static ADDRESS_MAP_START(bbcbp_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfec0, 0xfedf) AM_READWRITE(uPD7002_r			, uPD7002_w			)	/*    fec0-fedf  uPD7002		Analogue to digital converter	*/
 	AM_RANGE(0xfee0, 0xfeff) AM_READ	 (return8_FE							)	/*    fee0-feff  Tube ULA		Tube system interface			*/
 
-	AM_RANGE(0xff00, 0xffff) AM_READWRITE(MRA8_BANK9		, MWA8_ROM			)	/*    ff00-ffff 			 	OS Rom (continued)				*/
+	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION(REGION_USER1, 0x43f00)				/*    ff00-ffff 			 	OS Rom (continued)				*/
 ADDRESS_MAP_END
 
 
@@ -218,7 +218,7 @@ static ADDRESS_MAP_START(bbcbp128_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfec0, 0xfedf) AM_READWRITE(uPD7002_r			, uPD7002_w			)	/*    fec0-fedf  uPD7002		Analogue to digital converter	*/
 	AM_RANGE(0xfee0, 0xfeff) AM_READ	 (return8_FE							)	/*    fee0-feff  Tube ULA		Tube system interface			*/
 
-	AM_RANGE(0xff00, 0xffff) AM_READWRITE(MRA8_BANK9		, MWA8_ROM			)	/*    ff00-ffff 			 	OS Rom (continued)				*/
+	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION(REGION_USER1, 0x43f00)				/*    ff00-ffff 			 	OS Rom (continued)				*/
 ADDRESS_MAP_END
 
 
@@ -257,7 +257,7 @@ static ADDRESS_MAP_START(bbcm_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x9000, 0xbfff) AM_READWRITE(MRA8_BANK5		, memorybm5_w		)	/*    9000-bfff					Rest of paged ROM/RAM area		*/
 
 	AM_RANGE(0xc000, 0xdfff) AM_READWRITE(MRA8_BANK7		, memorybm7_w		)	/*    c000-dfff					OS ROM or 8K of RAM		  HAZEL	*/
-	AM_RANGE(0xe000, 0xfbff) AM_READWRITE(MRA8_BANK8		, MWA8_ROM			)	/*    e000-fbff					OS ROM							*/
+	AM_RANGE(0xe000, 0xfbff) AM_ROM AM_REGION(REGION_USER1, 0x42000)				/*    e000-fbff					OS ROM							*/
 
 	AM_RANGE(0xfc00, 0xfeff) AM_READWRITE(bbcm_r			, bbcm_w			)   /*    this is now processed directly because it can be ROM or hardware */
 	/*
@@ -282,7 +282,7 @@ static ADDRESS_MAP_START(bbcm_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfee0, 0xfeff) AM_READ	 (return8_FE							)	      fee0-feff  Tube ULA		Tube system interface
 	*/
 
-	AM_RANGE(0xff00, 0xffff) AM_READWRITE(MRA8_BANK9		, MWA8_ROM			)	/*    ff00-ffff 			 	OS Rom (continued)				*/
+	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION(REGION_USER1, 0x43f00)				/*    ff00-ffff 			 	OS Rom (continued)				*/
 ADDRESS_MAP_END
 
 
@@ -465,6 +465,8 @@ INPUT_PORTS_START(bbca)
 	PORT_START
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_MINMAX(0x0,0xff ) PORT_PLAYER(2)
 
+/*
+	This does not work anymore. :(
 
 	PORT_START_TAG("BBCCONFIG")
 	PORT_DIPNAME( 0x07, 0x00, "DFS SELECT" )
@@ -487,7 +489,7 @@ INPUT_PORTS_START(bbca)
 	PORT_DIPNAME( 0x20, 0x20, "Main Ram Size" )
 	PORT_DIPSETTING(    0x00, "16K" )
 	PORT_DIPSETTING(    0x20, "32K" )
-
+*/
 
 INPUT_PORTS_END
 
@@ -549,15 +551,15 @@ ROM_START(bbcb)
 
 	ROM_REGION(0x20000,REGION_USER2,0) /* DFS ROMS */
 
-	ROM_LOAD("dfs09.rom",    0x00000, 0x2000, CRC(3ce609cf) )
+	ROM_LOAD("dfs09.rom",    0x00000, 0x2000, CRC(3ce609cf) SHA1(5cc0f14b8f46855c70eaa653cca4ad079b458732))
 	ROM_RELOAD(              0x02000, 0x2000                )
 
-	ROM_LOAD("dnfs.rom",     0x04000, 0x4000, CRC(8ccd2157) )
+	ROM_LOAD("dnfs.rom",     0x04000, 0x4000, CRC(8ccd2157) SHA1(7e3c536baeae84d6498a14e8405319e01ee78232))
 	ROM_LOAD("dfs144.rom",   0x08000, 0x4000, CRC(9fb8d13f) SHA1(387d2468c6e1360f5b531784ce95d5f71a50c2b5))
-	ROM_LOAD("zdfs-0.90.rom",0x0C000, 0x2000, CRC(ea579d4d) )
+	ROM_LOAD("zdfs-0.90.rom",0x0C000, 0x2000, CRC(ea579d4d) SHA1(59ad2a8994f4bddad6687891f1a2bc29f2fd32b8))
 	ROM_LOAD("ddfs223.rom",  0x10000, 0x4000, CRC(7891f9b7) SHA1(0d7ed0b0b3852cb61970ada1993244f2896896aa))
-	ROM_LOAD("ddfs-1.53.rom",0x14000, 0x4000, CRC(e1be4ee4) )
-	ROM_LOAD("ch103.rom",    0x18000, 0x4000, CRC(98367cf4) )
+	ROM_LOAD("ddfs-1.53.rom",0x14000, 0x4000, CRC(e1be4ee4) SHA1(6719dc958f2631e6dc8f045429797b289bfe649a))
+	ROM_LOAD("ch103.rom",    0x18000, 0x4000, CRC(98367cf4) SHA1(eca3631aa420691f96b72bfdf2e9c2b613e1bf33))
    /*NONE*/
 
 	ROM_REGION(0x80000,REGION_DISKS,0) /* Opus Ram Disc Space */
@@ -626,7 +628,7 @@ ROM_START(bbcm)
 	ROM_REGION(0x10000,REGION_CPU1,0) /* ROM MEMORY */
 
 	ROM_REGION(0x44000,REGION_USER1,0) /* ROM */
-	ROM_LOAD("mos+3.50.rom",0x40000, 0x4000, CRC(141027b9))
+	ROM_LOAD("mos+3.50.rom",0x40000, 0x4000, CRC(141027b9) SHA1(85211b5bc7c7a269952d2b063b7ec0e1f0196803))
 	ROM_CONTINUE(           0x24000, 0x1c000)
 
 	/* 00000 rom 0   Cartridge */
@@ -677,7 +679,8 @@ static MACHINE_DRIVER_START( bbca )
 	MDRV_VBLANK_DURATION(128)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( bbca )
+	MDRV_MACHINE_START( bbca )
+	MDRV_MACHINE_RESET( bbca )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -702,7 +705,8 @@ static MACHINE_DRIVER_START( bbcb )
 	MDRV_IMPORT_FROM( bbca )
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_PROGRAM_MAP( bbcb_mem, 0 )
-	MDRV_MACHINE_INIT( bbcb )
+	MDRV_MACHINE_START( bbcb )
+	MDRV_MACHINE_RESET( bbcb )
 	MDRV_VIDEO_START( bbcb )
 MACHINE_DRIVER_END
 
@@ -711,7 +715,8 @@ static MACHINE_DRIVER_START( bbcbp )
 	MDRV_IMPORT_FROM( bbca )
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_PROGRAM_MAP( bbcbp_mem, 0 )
-	MDRV_MACHINE_INIT( bbcbp )
+	MDRV_MACHINE_START( bbcbp )
+	MDRV_MACHINE_RESET( bbcbp )
 	MDRV_VIDEO_START( bbcbp )
 MACHINE_DRIVER_END
 
@@ -720,7 +725,8 @@ static MACHINE_DRIVER_START( bbcbp128 )
 	MDRV_IMPORT_FROM( bbca )
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_PROGRAM_MAP( bbcbp128_mem, 0 )
-	MDRV_MACHINE_INIT( bbcbp )
+	MDRV_MACHINE_START( bbcbp )
+	MDRV_MACHINE_RESET( bbcbp )
 	MDRV_VIDEO_START( bbcbp )
 MACHINE_DRIVER_END
 
@@ -736,7 +742,8 @@ static MACHINE_DRIVER_START( bbcm )
 	MDRV_VBLANK_DURATION(128)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( bbcm )
+	MDRV_MACHINE_START( bbcm )
+	MDRV_MACHINE_RESET( bbcm )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -757,37 +764,70 @@ static MACHINE_DRIVER_START( bbcm )
 	MDRV_NVRAM_HANDLER( mc146818 )
 MACHINE_DRIVER_END
 
-static void bbc_cartslot_getinfo(struct IODevice *dev)
+static void bbc_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 4;
-	dev->file_extensions = "rom\0";
-	dev->load = device_load_bbcb_cart;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 4; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_bbcb_cart; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void bbc_floppy_getinfo(struct IODevice *dev)
+static void bbc_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	legacybasicdsk_device_getinfo(dev);
-	dev->count = 2;
-	dev->file_extensions = "ssd\0bbc\0img\0";
-	dev->load = device_load_bbc_floppy;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 2; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_bbc_floppy; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "ssd,bbc,img"); break;
+
+		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void bbc_cassette_getinfo(struct IODevice *dev)
+static void bbc_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
-	cassette_device_getinfo(dev, NULL, NULL,CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_MUTED);
-	dev->count = 1;
-	dev->file_extensions="wav\0";
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "wav"); break;
+
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_MUTED; break;
+
+		default:										cassette_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void bbc_printer_getinfo(struct IODevice *dev)
+static void bbc_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
-	printer_device_getinfo(dev);
-	dev->count = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		default:										printer_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(bbca)

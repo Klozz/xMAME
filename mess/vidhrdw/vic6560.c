@@ -4,9 +4,9 @@
   PeT mess@utanet.at
 
 ***************************************************************************/
+
 #include <math.h>
 #include <stdio.h>
-#include "osd_cpu.h"
 #include "driver.h"
 #include "utils.h"
 #include "sound/custom.h"
@@ -140,7 +140,7 @@ static void vic656x_init (void)
 
 void vic6560_init (int (*dma_read) (int), int (*dma_read_color) (int))
 {
-	vic6560_pal = false;
+	vic6560_pal = FALSE;
 	vic_dma_read = dma_read;
 	vic_dma_read_color = dma_read_color;
 	vic656x_init ();
@@ -148,28 +148,30 @@ void vic6560_init (int (*dma_read) (int), int (*dma_read_color) (int))
 
 void vic6561_init (int (*dma_read) (int), int (*dma_read_color) (int))
 {
-	vic6560_pal = true;
+	vic6560_pal = TRUE;
 	vic_dma_read = dma_read;
 	vic_dma_read_color = dma_read_color;
 	vic656x_init ();
+}
+
+static void vic6560_video_stop(void)
+{
+	freegfx(pointerelement);
 }
 
 VIDEO_START( vic6560 )
 {
 	black = Machine->pens[0];
 	white = Machine->pens[1];
-	pointerelement = decodegfx (pointermask, &pointerlayout);
+	pointerelement = allocgfx(&pointerlayout);
+	decodegfx(pointerelement, pointermask, 0, 1);
 	pointerelement->colortable = pointercolortable;
 	pointercolortable[1] = Machine->pens[1];
 	pointercolortable[2] = Machine->pens[0];
 	pointerelement->total_colors = 3;
 	vic6560_bitmap = auto_bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height);
+	add_exit_callback(vic6560_video_stop);
 	return 0;
-}
-
-VIDEO_STOP( vic6560 )
-{
-	freegfx (pointerelement);
 }
 
 WRITE8_HANDLER ( vic6560_port_w )

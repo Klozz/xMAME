@@ -177,7 +177,6 @@ The games seem to use them to mark platforms, kill zones and no-go areas.
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m68000/m68kmame.h"
 #include "cps1.h"
 
@@ -283,6 +282,7 @@ static struct CPS1config cps1_config_table[]=
 	{"willowje",CPS_B_03, 0,1,0, 0x0000,0xffff,0x0000,0xffff },
 	{"ffight",  CPS_B_04, 0,0,0, 0x0001,0xffff,0x0001,0xffff },
 	{"ffightu", CPS_B_01, 0,0,0, 0x0001,0xffff,0x0001,0xffff },
+	{"ffightua",CPS_B_05, 0,0,0, 0x0001,0xffff,0x0001,0xffff }, /* I think */
 	{"ffightj", CPS_B_04, 0,0,0, 0x0001,0xffff,0x0001,0xffff },
 	{"ffightj1",CPS_B_02, 0,0,0, 0x0001,0xffff,0x0001,0xffff },
 	{"1941",    CPS_B_05, 0,0,0, 0x0000,0xffff,0x0400,0x07ff },
@@ -302,6 +302,7 @@ static struct CPS1config cps1_config_table[]=
 	{"nemo",    CPS_B_15, 0,0,0, 0x0000,0xffff,0x0000,0xffff },
 	{"nemoj",   CPS_B_15, 0,0,0, 0x0000,0xffff,0x0000,0xffff },
 	{"cawing",  CPS_B_16, 0,0,0, 0x0000,0xffff,0x0000,0xffff },
+	{"cawingr1",CPS_B_16, 0,0,0, 0x0000,0xffff,0x0000,0xffff },
 	{"cawingu", CPS_B_16, 0,0,0, 0x0000,0xffff,0x0000,0xffff },
 	{"cawingj", CPS_B_16, 0,0,0, 0x0000,0xffff,0x0000,0xffff },
 	{"sf2",     CPS_B_11, 2,2,2, 0x0000,0xffff,0x0000,0xffff },
@@ -422,7 +423,7 @@ void cps_setversion(int v)
 }
 
 
-static MACHINE_INIT( cps )
+static MACHINE_RESET( cps )
 {
 	const char *gamename = Machine->gamedrv->name;
 	struct CPS1config *pCFG=&cps1_config_table[0];
@@ -618,8 +619,10 @@ static int cps1_stars_enabled[2];          /* Layer enabled [Y/N] */
 tilemap *cps1_bg_tilemap[3];
 
 
-int scroll1x, scroll1y, scroll2x, scroll2y, scroll3x, scroll3y;
-int stars1x, stars1y, stars2x, stars2y;
+int cps1_scroll1x, cps1_scroll1y;
+int cps1_scroll2x, cps1_scroll2y;
+int cps1_scroll3x, cps1_scroll3y;
+static int stars1x, stars1y, stars2x, stars2y;
 
 
 /* Output ports */
@@ -719,7 +722,7 @@ static void unshuffle(UINT64 *buf,int len)
 
 	if (len == 2) return;
 
-	if (len % 4) exit(1);   /* must not happen */
+	assert(len % 4 == 0);   /* must not happen */
 
 	len /= 2;
 
@@ -772,9 +775,6 @@ DRIVER_INIT( cps2 )
 	scanline2 = 262;
 	scancalls = 0;
 }
-
-
-
 
 
 #if CPS1_DUMP_VIDEO
@@ -898,12 +898,12 @@ void cps1_get_video_base(void )
 	cps1_other=cps1_base(CPS1_OTHER_BASE,cps1_other_size);
 
 	/* Get scroll values */
-	scroll1x=cps1_port(CPS1_SCROLL1_SCROLLX) + scroll1xoff;
-	scroll1y=cps1_port(CPS1_SCROLL1_SCROLLY);
-	scroll2x=cps1_port(CPS1_SCROLL2_SCROLLX) + scroll2xoff;
-	scroll2y=cps1_port(CPS1_SCROLL2_SCROLLY);
-	scroll3x=cps1_port(CPS1_SCROLL3_SCROLLX) + scroll3xoff;
-	scroll3y=cps1_port(CPS1_SCROLL3_SCROLLY);
+	cps1_scroll1x=cps1_port(CPS1_SCROLL1_SCROLLX) + scroll1xoff;
+	cps1_scroll1y=cps1_port(CPS1_SCROLL1_SCROLLY);
+	cps1_scroll2x=cps1_port(CPS1_SCROLL2_SCROLLX) + scroll2xoff;
+	cps1_scroll2y=cps1_port(CPS1_SCROLL2_SCROLLY);
+	cps1_scroll3x=cps1_port(CPS1_SCROLL3_SCROLLX) + scroll3xoff;
+	cps1_scroll3y=cps1_port(CPS1_SCROLL3_SCROLLY);
 	stars1x =cps1_port(CPS1_STARS1_SCROLLX);
 	stars1y =cps1_port(CPS1_STARS1_SCROLLY);
 	stars2x =cps1_port(CPS1_STARS2_SCROLLX);
@@ -1020,26 +1020,26 @@ static void get_tile0_info(int tile_index)
 	int base = cps1_game_config->bank_scroll1 * 0x08000;
 	int code = cps1_scroll1[2*tile_index];
 	int attr = cps1_scroll1[2*tile_index+1];
+	int gfxset;
 
+	/* allows us to reproduce a problem seen with a ffight board where USA and Japanese
+       roms have been mixed to be reproduced (ffightua) -- it looks like each column
+       should alternate between the left and right side of the 16x16 tiles */
+	if (tile_index&0x20) gfxset = 1;
+	else gfxset = 0;
 
 	/* knights & msword */
 	if (cps1_game_config->kludge == 3)
-		if (code == 0xf020) code = 0x0020;
+		if (code == 0xf020) { gfxset = 4; code = 0; } /* use a blank tile (see startup text..) */
+
+	/* 0x0020 appears to never be drawn for CPS1 games (it is drawn for CPS2 games though, see gigawing '0' in score for example) */
+	if (cps_version == 1 && code == 0x0020) { gfxset = 4; code = 0; tile_info.pen_usage = 0x8000; }
 
 	SET_TILE_INFO(
-			0,
+			gfxset,
 			code + base,
 			(attr & 0x1f) + palette_basecolor[1],
 			TILE_FLIPYX((attr & 0x60) >> 5) | TILE_SPLIT((attr & 0x0180) >> 7))
-	tile_info.skip = 8;
-
-	/* 0x0020 appears to never be drawn for CPS1 games (it is drawn for CPS2 games though, see gigawing '0' in score for example) */
-
-	if (cps_version == 1 && code == 0x0020)
-	{
-		tile_info.pen_data = empty_tile;
-		tile_info.pen_usage = 0x8000;
-	}
 }
 
 static void get_tile1_info(int tile_index)
@@ -1051,7 +1051,7 @@ static void get_tile1_info(int tile_index)
 	int attr = cps1_scroll2[2*tile_index+1];
 
 	SET_TILE_INFO(
-			1,
+			2,
 			code + base,
 			(attr & 0x1f) + palette_basecolor[2],
 			TILE_FLIPYX((attr & 0x60) >> 5) | TILE_SPLIT((attr & 0x0180) >> 7))
@@ -1090,7 +1090,7 @@ static void get_tile2_info(int tile_index)
 	}
 
 	SET_TILE_INFO(
-			2,
+			3,
 			code + base,
 			(attr & 0x1f) + palette_basecolor[3],
 			TILE_FLIPYX((attr & 0x60) >> 5) | TILE_SPLIT((attr & 0x0180) >> 7))
@@ -1123,11 +1123,32 @@ void cps1_update_transmasks(void)
 	}
 }
 
+void cps1_create_empty_8x8_tile(void)
+{
+	/* for the 8x8 layer we can't use GFX_RAW so we need to create an empty tile
+       so that the 'don't draw tile' kludges work */
+	static const gfx_layout empty_layout8x8 =
+	{
+		8,8,
+		1,
+		4,
+		{ 0, 1, 2, 3 },
+		{ 1*4, 0*4, 3*4, 2*4, 5*4, 4*4, 7*4, 6*4 },
+		{ 0*64, 1*64, 2*64, 3*64, 4*64, 5*64, 6*64, 7*64 },
+		64*8
+	};
+
+	Machine->gfx[4] = allocgfx(&empty_layout8x8);
+	decodechar(Machine->gfx[4], 0, (UINT8 *)empty_tile, &empty_layout8x8);
+	Machine->gfx[4]->total_colors = 0x100;
+
+}
+
 VIDEO_START( cps )
 {
 	int i;
 
-    machine_init_cps();
+    machine_reset_cps();
 
 	cps1_bg_tilemap[0] = tilemap_create(get_tile0_info,tilemap0_scan,TILEMAP_SPLIT, 8, 8,64,64);
 	cps1_bg_tilemap[1] = tilemap_create(get_tile1_info,tilemap1_scan,TILEMAP_SPLIT,16,16,64,64);
@@ -1140,9 +1161,9 @@ VIDEO_START( cps )
 	cps1_update_transmasks();
 	memset(empty_tile,0xff,sizeof(empty_tile));
 
+	cps1_create_empty_8x8_tile();
+
 	cps1_old_palette=auto_malloc(cps1_palette_size);
-	if (!cps1_old_palette)
-		return 1;
 	memset(cps1_old_palette, 0x00, cps1_palette_size);
 	for (i = 0;i < cps1_palette_entries*16;i++)
 	{
@@ -1150,14 +1171,10 @@ VIDEO_START( cps )
 	}
 
     cps1_buffered_obj = auto_malloc (cps1_obj_size);
-    if (!cps1_buffered_obj)
-		return 1;
     memset(cps1_buffered_obj, 0x00, cps1_obj_size);
 
     if (cps_version==2) {
 	cps2_buffered_obj = auto_malloc (cps2_obj_size);
-	if (!cps2_buffered_obj)
-	    return 1;
 	memset(cps2_buffered_obj, 0x00, cps2_obj_size);
     }
 
@@ -1320,14 +1337,14 @@ void cps1_render_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 #define DRAWSPRITE(CODE,COLOR,FLIPX,FLIPY,SX,SY)					\
 {																	\
 	if (flip_screen)												\
-		pdrawgfx(bitmap,Machine->gfx[1],							\
+		pdrawgfx(bitmap,Machine->gfx[2],							\
 				CODE,												\
 				COLOR,												\
 				!(FLIPX),!(FLIPY),									\
 				511-16-(SX),255-16-(SY),							\
 				cliprect,TRANSPARENCY_PEN,15,0x02);					\
 	else															\
-		pdrawgfx(bitmap,Machine->gfx[1],							\
+		pdrawgfx(bitmap,Machine->gfx[2],							\
 				CODE,												\
 				COLOR,												\
 				FLIPX,FLIPY,										\
@@ -1563,14 +1580,14 @@ void cps2_render_sprites(mame_bitmap *bitmap,const rectangle *cliprect,int *prim
 #define DRAWSPRITE(CODE,COLOR,FLIPX,FLIPY,SX,SY)									\
 {																					\
 	if (flip_screen)																\
-		pdrawgfx(bitmap,Machine->gfx[1],											\
+		pdrawgfx(bitmap,Machine->gfx[2],											\
 				CODE,																\
 				COLOR,																\
 				!(FLIPX),!(FLIPY),													\
 				511-16-(SX),255-16-(SY),											\
 				cliprect,TRANSPARENCY_PEN,15,primasks[priority]);					\
 	else																			\
-		pdrawgfx(bitmap,Machine->gfx[1],											\
+		pdrawgfx(bitmap,Machine->gfx[2],											\
 				CODE,																\
 				COLOR,																\
 				FLIPX,FLIPY,														\
@@ -1833,11 +1850,11 @@ VIDEO_UPDATE( cps1 )
 
 	cps1_update_transmasks();
 
-	tilemap_set_scrollx(cps1_bg_tilemap[0],0,scroll1x);
-	tilemap_set_scrolly(cps1_bg_tilemap[0],0,scroll1y);
+	tilemap_set_scrollx(cps1_bg_tilemap[0],0,cps1_scroll1x);
+	tilemap_set_scrolly(cps1_bg_tilemap[0],0,cps1_scroll1y);
 	if (videocontrol & 0x01)	/* linescroll enable */
 	{
-		int scrly=-scroll2y;
+		int scrly=-cps1_scroll2y;
 		int i;
 		int otheroffs;
 
@@ -1846,16 +1863,16 @@ VIDEO_UPDATE( cps1 )
 		otheroffs = cps1_port(CPS1_ROWSCROLL_OFFS);
 
 		for (i = 0;i < 256;i++)
-			tilemap_set_scrollx(cps1_bg_tilemap[1],(i - scrly) & 0x3ff,scroll2x + cps1_other[(i + otheroffs) & 0x3ff]);
+			tilemap_set_scrollx(cps1_bg_tilemap[1],(i - scrly) & 0x3ff,cps1_scroll2x + cps1_other[(i + otheroffs) & 0x3ff]);
 	}
 	else
 	{
 		tilemap_set_scroll_rows(cps1_bg_tilemap[1],1);
-		tilemap_set_scrollx(cps1_bg_tilemap[1],0,scroll2x);
+		tilemap_set_scrollx(cps1_bg_tilemap[1],0,cps1_scroll2x);
 	}
-	tilemap_set_scrolly(cps1_bg_tilemap[1],0,scroll2y);
-	tilemap_set_scrollx(cps1_bg_tilemap[2],0,scroll3x);
-	tilemap_set_scrolly(cps1_bg_tilemap[2],0,scroll3y);
+	tilemap_set_scrolly(cps1_bg_tilemap[1],0,cps1_scroll2y);
+	tilemap_set_scrollx(cps1_bg_tilemap[2],0,cps1_scroll3x);
+	tilemap_set_scrolly(cps1_bg_tilemap[2],0,cps1_scroll3y);
 
 
 	/* Blank screen */
@@ -1965,3 +1982,4 @@ void cps2_objram_latch(void)
 	cps2_set_sprite_priorities();
 	memcpy(cps2_buffered_obj, cps2_objbase(), cps2_obj_size);
 }
+

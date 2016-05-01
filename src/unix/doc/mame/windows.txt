@@ -61,6 +61,12 @@ Configuration options
 	information. It can be very helpful in tracking down problems. The
 	default is off (-noverbose)
 
+-validate / -valid
+
+	Performs internal validation on every driver in the system. Run this
+	before submitting changes to ensure that you haven't violated any of
+	the core system "rules".
+
 
 Windows path and directory options
 ----------------------------------
@@ -175,8 +181,10 @@ Windows video options
 	is not noticeable on all games, and some people hate it more than
 	others. However, if you turn this option on, you will waste more of
 	your CPU cycles waiting for the proper time to draw, so you will see a
-	performance hit. The default is OFF (-nowaitvsync). This option
-	requires -ddraw.
+	performance hit. You should only need to turn this on in windowed mode.
+	In full screen mode, it is only needed if -triplebuffer does not
+	remove the tearing.  In which case you should use -notb -waitvsync.
+	The default is OFF (-nowaitvsync). This option requires -ddraw.
 
 -[no]triplebuffer / -[no]tb
 
@@ -187,8 +195,9 @@ Windows video options
 	buffer is currently displayed, the second buffer is waiting to be
 	displayed, and the third buffer is being drawn to. Unfortunately, due
 	to some DirectDraw issues, this doesn't always work out as well as it
-	should. This is still being investigated. The default is OFF
-	(-notriplebuffer). This option required -ddraw and -nowindow.
+	should. This is still being investigated. -triplebuffer will override
+	-waitvsync, if the buffer is sucessfully created. The default is OFF.
+	(-notriplebuffer). This option requires -ddraw and -nowindow.
 
 -[no]window
 
@@ -223,6 +232,16 @@ Windows video options
 	the scaling in software, which is probably slower, though. The default
 	is ON (-hwstretch). Note: Vector games may actually look better with
 	"-nohws".
+
+-screen [n]
+
+	Specify which screen to use. The screen name is usually something like
+	\\.\DISPLAYn, where \\.\DISPLAY1 is the primary screen. If no screen is
+	specified the primary is used. To make additional screens available to
+	MAME, as well as to any other application, they should be enabled at
+	first: from "Control Panel -> Display -> Settings", select the desired
+	screen icon and check "Extend my Windows desktop onto this monitor".
+	To get the full list of available screens start MAME with -verbose.
 
 -cleanstretch [option] / -cs [option]
 
@@ -333,17 +352,17 @@ Windows video options
 	throttling is off, MAME runs the game as fast as it can. The default is
 	ON (-throttle).
 
--full_screen_brightness / -fsb
+-full_screen_gamma / -fsg
 
-	Some video cards adjust the brightness/gamma when they switch into full
-	screen mode. To counteract this, you can specify the
-	-full_screen_brightness value, which is a number between 0.1 and 2. 0.1
-	means 1/10th as bright as the default, and 2 means twice as bright.
+	Some video cards adjust the gamma when they switch into full screen
+	mode. To counteract this, you can specify the -full_screen_gamma value,
+	which is a number between 0.1 and 4. 0.1 means 1/10th as bright as the
+	default, and 4 means four times as bright.
 	Note that the hardware support for this option is not present on all
-	video cards. If you set a non-zero value, you may get a warning if MAME
-	was unable to set the brightness on your card. The default is 0, which
-	means that MAME will not attempt to adjust the brightness on your video
-	card at all. This option requires -ddraw and -nowindow.
+	video cards. You may get a warning if MAME was unable to set the gamma
+	on your card. The default is 1.0, which means that MAME will not attempt
+	to adjust the gamma on your video card at all. This option requires
+	-ddraw and -nowindow.
 
 -frames_to_run / -ftr
 
@@ -380,6 +399,11 @@ Windows video options
 	on computer monitors, 5:4 for the 1280x1024 resolution or 3:4 for
 	turnable LCD's in the turned position. The default is 4:3.
 
+-mngwrite <filename>
+
+	Writes each video frame to a MNG file, producing an animation of the
+	game.
+
 
 Windows video options (Direct3D)
 --------------------------------
@@ -399,15 +423,11 @@ Windows video options (Direct3D)
 	performance that may occur with some graphics cards when using
 	-direct3d. This option requires -direct3d.
 
--d3dfilter [f] / -flt [f]
+-[no]d3dfilter / -[no]flt
 
-	Select the type of filtering to apply to the image when stretching. 0
-	is point filtering, 1 is bi-linear filtering, 2 is bi-cubic filtering
-	(flat kernel), 3 is bi-cubic filtering gaussian kernel), 4 is
-	anisotropic filtering. Note that very few graphics cards support
-	bi-cubic filtering, and that older graphics cards may not support
-	anisotropic filtering. The default is bi-linear filtering (-d3dfilter
-	1). This option requires -direct3d.
+	Enable bilinear filtering when stretching the image. When disabled
+	point filtering is applied. The default is -d3dfilter. This option
+	requires -direct3d.
 
 -d3dfeedback [i]
 
@@ -518,10 +538,11 @@ Windows misc options
 	operate smoothly (and you are sure you have enough CPU power for
 	the emulation), try toggling this.
 
--[no]high_priority
+-priority <priority>
 
-	Increases the thread priority so MAME runs better. The default is OFF
-	(-nohigh_priority).
+	Sets the thread priority for the main MAME thread. Default is 0, which
+	is NORMAL priority, guaranteeing proper cooperation with other apps. The
+	valid range is -15 to 1, with 1 being the highest priority.
 
 
 Windows sound options
@@ -553,6 +574,9 @@ Input device options
 	you will need to pause the game, or quit. The default is OFF
 	(-nomouse).
 
+	WinXP: -mouse is also used to enable lightguns.  This allows for multiple
+	independently tracking lightguns.
+
 -[no]joystick / -[no]joy
 
 	Controls whether or not MAME looks for joystick/gamepad controllers.
@@ -566,18 +590,28 @@ Input device options
 	-mouse together may produce strange results. The default is OFF
 	(-nolightgun).
 
+	WinXP: -lightgun is ignored.  Use -mouse instead.
+
 -[no]dual_lightgun / -[no]dual
 
 	Controls whether or not MAME attempts to track two lightguns connected
 	at the same time. This option requires -lightgun. The default is OFF
 	(-nodual_lightgun).
 
+	WinXP: -dual_lightgun is ignored.  Using -mouse will enable 2 or more
+	lightguns.
+
 -[no]offscreen_reload / -[no]reload
 
 	Controls whether or not MAME treats a second button input from a
 	lightgun as a reload signal. In this case, MAME will report the gun's
 	position as (0,0) with the trigger held, which is equivalent to an
-	offscreen reload. The default is OFF (-nooffscreen_reload).
+	offscreen reload. This is not needed for all lightgun games. Only
+	games that required you to shoot off screen need this.  And then only
+	if your gun does not support off screen reloads.
+	The default is OFF (-nooffscreen_reload).
+
+	WinXP: -offscreen_reload is valid to use.
 
 -[no]steadykey / -[no]steady
 
@@ -822,11 +856,6 @@ MAME core misc options
 	Outputs error.log data to the Windows debugger instead of to a file.
 	Default is OFF (-nooslog).
 
--[no]skip_disclaimer
-
-	Forces MAME to skip displaying the disclaimer screen. The default is
-	OFF (-noskip_disclaimer).
-
 -[no]skip_gameinfo
 
 	Forces MAME to skip displaying the game info screen. The default is OFF
@@ -904,11 +933,18 @@ command:
 
 	Attempts to identify ROM files, if they are known to MAME, in the
 	specified .zip file. Can be used to try and identify ROM sets taken
-	from unknown boards.
+	from unknown boards. On exit, the errorlevel is returned as one of
+	the following:
+	
+		0: means all files were identified
+		1: means all files were identified except for 1 or more "non-ROM"
+			files
+		2: means some files were identified
+		3: means no files were identified
 
 -isknown
 
-	Very terse romident.
+	Very terse romident. The errorlevel is set the same as for -romident.
 
 
 Keys

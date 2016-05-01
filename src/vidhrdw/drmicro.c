@@ -8,7 +8,6 @@ Video hardware
 *******************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 static int flipscreen;
 
@@ -107,7 +106,7 @@ VIDEO_START( drmicro)
 	drmicro_bg1 = tilemap_create(get_bg1_tile_info, tilemap_scan_rows,TILEMAP_OPAQUE, 8,8,32,32);
 	drmicro_bg2 = tilemap_create(get_bg2_tile_info, tilemap_scan_rows,TILEMAP_TRANSPARENT, 8,8,32,32);
 
-	if (!drmicro_videoram || !drmicro_bg1 || !drmicro_bg2)
+	if (!drmicro_bg1 || !drmicro_bg2)
 		return 1;
 
 	tilemap_set_transparent_pen(drmicro_bg2,0);

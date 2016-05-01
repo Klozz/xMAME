@@ -295,10 +295,10 @@ U102 23256 (read compatible 27256?) 32kB 1571 system rom
 
 #include "driver.h"
 #include "sound/sid6581.h"
+#include "machine/6526cia.h"
 
 #define VERBOSE_DBG 0
 #include "includes/cbm.h"
-#include "includes/cia6526.h"
 #include "includes/vic6567.h"
 #include "includes/vdc8563.h"
 #include "includes/cbmserb.h"
@@ -364,8 +364,8 @@ static ADDRESS_MAP_START( c128_z80_io , ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0xd400, 0xd4ff) AM_READWRITE(sid6581_0_port_r, sid6581_0_port_w)
 	AM_RANGE(0xd500, 0xd5ff) AM_READWRITE(c128_mmu8722_port_r, c128_mmu8722_port_w)
 	AM_RANGE(0xd600, 0xd7ff) AM_READWRITE(vdc8563_port_r, vdc8563_port_w)
-	AM_RANGE(0xdc00, 0xdcff) AM_READWRITE(cia6526_0_port_r, cia6526_0_port_w)
-	AM_RANGE(0xdd00, 0xddff) AM_READWRITE(cia6526_1_port_r, cia6526_1_port_w)
+	AM_RANGE(0xdc00, 0xdcff) AM_READWRITE(cia_0_r, cia_0_w)
+	AM_RANGE(0xdd00, 0xddff) AM_READWRITE(cia_1_r, cia_1_w)
 /*	AM_RANGE(0xdf00, 0xdfff) AM_READWRITE(dma_port_r, dma_port_w) */
 ADDRESS_MAP_END
 
@@ -423,12 +423,6 @@ ADDRESS_MAP_END
 	 /*PORT_DIPSETTING (0x10, "C64 CBM Supergames")*/\
 	 /*PORT_DIPSETTING (0x14, "C64 Ocean Robocop2")*/\
 	 /*PORT_DIPSETTING (0x1c, "C128")*/\
-	 PORT_DIPNAME (0x02, 0x02, "Serial Bus/Device 8")\
-	 PORT_DIPSETTING (0, DEF_STR( None ))\
-	 PORT_DIPSETTING (2, "VC1541 Floppy Drive")\
-	 PORT_DIPNAME (0x01, 0x01, "Serial Bus/Device 9")\
-	 PORT_DIPSETTING (0, DEF_STR( None ))\
-	 PORT_DIPSETTING (1, "VC1541 Floppy Drive")
 
 #define DIPS_KEYS_BOTH \
 	PORT_START \
@@ -1112,8 +1106,8 @@ ROM_END
 
 ROM_START (c128d)
 	ROM_REGION (0x132800, REGION_CPU1, 0)
-	ROM_LOAD ("318022.02", 0x100000, 0x8000, CRC(af1ae1e8))
-	ROM_LOAD ("318023.02", 0x108000, 0x8000, CRC(eedc120a))
+	ROM_LOAD ("318022.02", 0x100000, 0x8000, CRC(af1ae1e8) SHA1(953dcdf5784a6b39ef84dd6fd968c7a03d8d6816))
+	ROM_LOAD ("318023.02", 0x108000, 0x8000, CRC(eedc120a) SHA1(f98c5a986b532c78bb68df9ec6dbcf876913b99f))
 	ROM_LOAD ("390059.01", 0x120000, 0x2000, CRC(6aaaafe6) SHA1(29ed066d513f2d5c09ff26d9166ba23c2afb2b3f))
 	ROM_REGION (0x10000, REGION_CPU2, 0)
 	C1571_ROM(REGION_CPU3)
@@ -1124,7 +1118,7 @@ ROM_END
 /* submitted as cost reduced set! */
 ROM_START (c128dita)
 	ROM_REGION (0x132800, REGION_CPU1, 0)
-	ROM_LOAD ("318022.02", 0x100000, 0x8000, CRC(af1ae1e8))
+	ROM_LOAD ("318022.02", 0x100000, 0x8000, CRC(af1ae1e8) SHA1(953dcdf5784a6b39ef84dd6fd968c7a03d8d6816))
 
     /* in a cost reduced set this should be 1 rom */
 	ROM_LOAD ("251913.01", 0x108000, 0x4000, CRC(0010ec31))
@@ -1233,7 +1227,7 @@ static MACHINE_DRIVER_START( c128 )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(0)
 
-	MDRV_MACHINE_INIT( c128 )
+	MDRV_MACHINE_RESET( c128 )
 
     /* video hardware */
 	/*MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)	//when it is supported in vic6567 */
@@ -1275,16 +1269,32 @@ static MACHINE_DRIVER_START( c128pal )
 	MDRV_SOUND_CONFIG(c128_sound_interface)
 MACHINE_DRIVER_END
 
-static void c128_cbmcartslot_getinfo(struct IODevice *dev)
+static void c128_cbmcartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
-	cbmcartslot_device_getinfo(dev);
-	dev->file_extensions = "crt\080\0";
+	switch(state)
+	{
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crt,80"); break;
+
+		default:										cbmcartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void c64_quickload_getinfo(struct IODevice *dev)
+static void c64_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
-	quickload_device_getinfo(dev, quickload_load_cbm_c64, CBM_QUICKLOAD_DELAY);
-	dev->file_extensions = "p00\0prg\0";
+	switch(state)
+	{
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm_c64; break;
+
+		/* --- the following bits of info are returned as doubles --- */
+		case DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
+
+		default:										quickload_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(c128)

@@ -4,12 +4,7 @@
  */
 
 #include "driver.h"
-#include "state.h"
 #include "namcoic.h"
-
-#ifdef MAME_DEBUG
-extern int debug_key_pressed;
-#endif
 
 #define TX_TILE_OFFSET_CENTER	(32 * 2)
 #define TX_TILE_OFFSET_RIGHT	(32 * 0 + 2)
@@ -33,8 +28,8 @@ static tilemap *tx_tilemap;
 static tilemap *bg1_tilemap;
 static tilemap *bg2_tilemap;
 
-static int bg1_scroll_x, bg1_scroll_y;
-static int bg2_scroll_x, bg2_scroll_y;
+static INT32 bg1_scroll_x, bg1_scroll_y;
+static INT32 bg2_scroll_x, bg2_scroll_y;
 
 static mame_bitmap *temp_bitmap;
 
@@ -298,9 +293,10 @@ static int decode_bg(int region)
 	free(buffer);
 
 	/* decode the graphics */
-	Machine->gfx[gfx_index] = decodegfx(memory_region(region), &bg_layout);
+	Machine->gfx[gfx_index] = allocgfx(&bg_layout);
 	if (!Machine->gfx[gfx_index])
 		return 1;
+	decodegfx(Machine->gfx[gfx_index], memory_region(region), 0, Machine->gfx[gfx_index]->total_elements);
 
 	/* set the color information */
 	Machine->gfx[gfx_index]->colortable = &Machine->remapped_colortable[2048];
@@ -312,9 +308,10 @@ static int decode_bg(int region)
 static int decode_sprite(int gfx_index, const gfx_layout *layout, const void *data)
 {
 	/* decode the graphics */
-	Machine->gfx[gfx_index] = decodegfx(data, layout);
+	Machine->gfx[gfx_index] = allocgfx(layout);
 	if (!Machine->gfx[gfx_index])
 		return 1;
+	decodegfx(Machine->gfx[gfx_index], data, 0, Machine->gfx[gfx_index]->total_elements);
 
 	/* set the color information */
 	Machine->gfx[gfx_index]->colortable = &Machine->remapped_colortable[1024];
@@ -489,10 +486,10 @@ VIDEO_START( tceptor )
 	tilemap_set_transparent_pen(bg1_tilemap, 0);
 	tilemap_set_transparent_pen(bg2_tilemap, 0);
 
-	state_save_register_int   ("tceptor", 0, "bg1_scroll_x",      &bg1_scroll_x);
-	state_save_register_int   ("tceptor", 0, "bg1_scroll_y",      &bg1_scroll_y);
-	state_save_register_int   ("tceptor", 0, "bg2_scroll_x",      &bg2_scroll_x);
-	state_save_register_int   ("tceptor", 0, "bg2_scroll_y",      &bg2_scroll_y);
+	state_save_register_global(bg1_scroll_x);
+	state_save_register_global(bg1_scroll_y);
+	state_save_register_global(bg2_scroll_x);
+	state_save_register_global(bg2_scroll_y);
 
 	state_save_register_func_postload(mark_all_tiles_dirty);
 

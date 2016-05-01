@@ -7,8 +7,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
-
+#include "includes/galaga.h"
 
 
 #define MAX_STARS 252
@@ -17,14 +16,9 @@
 UINT8 *galaga_videoram;
 UINT8 *galaga_ram1,*galaga_ram2,*galaga_ram3;
 UINT8 galaga_starcontrol[6];
-static unsigned int stars_scrollx,stars_scrolly;
+static UINT32 stars_scrollx,stars_scrolly;
 
-struct star
-{
-	int x,y,col,set;
-};
-
-static int galaga_gfxbank; /* used by catsbee */
+static INT32 galaga_gfxbank; /* used by catsbee */
 
 static tilemap *tx_tilemap;
 
@@ -379,7 +373,7 @@ PALETTE_INIT( galaga )
 	for (i = 0;i < 64;i++)
 	{
 		int bits,r,g,b;
-		int map[4] = { 0x00, 0x47, 0x97 ,0xde };
+		static const int map[4] = { 0x00, 0x47, 0x97 ,0xde };
 
 		bits = (i >> 0) & 0x03;
 		r = map[bits];
@@ -454,6 +448,11 @@ VIDEO_START( galaga )
 	spriteram_2 = galaga_ram2 + 0x380;
 	spriteram_3 = galaga_ram3 + 0x380;
 
+
+	state_save_register_global_array(galaga_starcontrol);
+	state_save_register_global(stars_scrollx);
+	state_save_register_global(stars_scrolly);
+	state_save_register_global(galaga_gfxbank);
 
 	return 0;
 }
@@ -604,7 +603,7 @@ VIDEO_EOF( galaga )
 {
 	/* this function is called by galaga_interrupt_1() */
 	int s0,s1,s2;
-	int speeds[8] = { -1, -2, -3, 0, 3, 2, 1, 0 };
+	static const int speeds[8] = { -1, -2, -3, 0, 3, 2, 1, 0 };
 
 
 	s0 = galaga_starcontrol[0];

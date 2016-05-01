@@ -39,9 +39,7 @@
 #define DDenCtrl			0x40		/* PA6 on PIA */
 
 	
-DRIVER_INIT( dgnbeta );
-MACHINE_INIT( dgnbeta );
-MACHINE_STOP( dgnbeta );
+MACHINE_START( dgnbeta );
 
 /* Page IO at FE00 */
 READ8_HANDLER( dgn_beta_page_r );

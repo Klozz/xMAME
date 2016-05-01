@@ -8,8 +8,6 @@
 */
 
 #include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 
 /* TTL text plane stuff */
@@ -78,7 +76,8 @@ VIDEO_START(polygonet_vh_start)
 		return 1;
 
 	/* decode the ttl layer's gfx */
-	Machine->gfx[ttl_gfx_index] = decodegfx(memory_region(REGION_GFX1), &charlayout);
+	Machine->gfx[ttl_gfx_index] = allocgfx(&charlayout);
+	decodegfx(Machine->gfx[ttl_gfx_index], memory_region(REGION_GFX1), 0, Machine->gfx[ttl_gfx_index]->total_elements);
 
 	if (Machine->drv->color_table_len)
 	{
@@ -96,7 +95,7 @@ VIDEO_START(polygonet_vh_start)
 
 	tilemap_set_transparent_pen(ttl_tilemap, 0);
 
-	state_save_register_UINT16("PolygonetTTL", 0, "VRAM", ttl_vram, 0x800);
+	state_save_register_global_array(ttl_vram);
 
 	return 0;
 }

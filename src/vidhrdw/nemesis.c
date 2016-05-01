@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include <math.h>
 
 UINT16 *nemesis_videoram1b;
@@ -126,21 +125,18 @@ WRITE16_HANDLER( nemesis_palette_word_w )
 	bit4=(data >>  3)&1;
 	bit5=(data >>  4)&1;
 	r = MULTIPLIER;
-	r = pow (r/255.0, 2)*255;
 	bit1=(data >>  5)&1;
 	bit2=(data >>  6)&1;
 	bit3=(data >>  7)&1;
 	bit4=(data >>  8)&1;
 	bit5=(data >>  9)&1;
 	g = MULTIPLIER;
-	g = pow (g/255.0, 2)*255;
 	bit1=(data >>  10)&1;
 	bit2=(data >>  11)&1;
 	bit3=(data >>  12)&1;
 	bit4=(data >>  13)&1;
 	bit5=(data >>  14)&1;
 	b = MULTIPLIER;
-	b = pow (b/255.0, 2)*255;
 
 	palette_set_color(offset,r,g,b);
 }
@@ -229,51 +225,33 @@ VIDEO_START( nemesis )
 	tilemap_set_scroll_rows( foreground, 256 );
 
 	char_dirty = auto_malloc(2048);
-	if (!char_dirty)
-		return 1;
 	memset(char_dirty,1,2048);
 
 	sprite_dirty = auto_malloc(512);
-	if (!sprite_dirty)
-		return 1;
 	memset(sprite_dirty,1,512);
 
 	sprite3216_dirty = auto_malloc(256);
-	if (!sprite3216_dirty)
-		return 1;
 	memset(sprite3216_dirty,1,256);
 
 	sprite1632_dirty = auto_malloc(256);
-	if (!sprite1632_dirty)
-		return 1;
 	memset(sprite1632_dirty,1,256);
 
 	sprite3232_dirty = auto_malloc(128);
-	if (!sprite3232_dirty)
-		return 1;
 	memset(sprite3232_dirty,1,128);
 
 	sprite168_dirty = auto_malloc(1024);
-	if (!sprite168_dirty)
-		return 1;
 	memset(sprite168_dirty,1,1024);
 
 	sprite816_dirty = auto_malloc(1024);
-	if (!sprite816_dirty)
-		return 1;
 	memset(sprite816_dirty,1,1024);
 
 	sprite6464_dirty = auto_malloc(32);
-	if (!sprite6464_dirty)
-		return 1;
 	memset(sprite6464_dirty,1,32);
 
 	memset(nemesis_characterram,0,nemesis_characterram_size);
 
 
 	blank_characterdata = auto_malloc(32*8/8*(2048+1));
-	if (!blank_characterdata)
-		return 1;
 	memset(blank_characterdata,0x00,32*8/8*(2048+1));
 	decodechar(Machine->gfx[0],0x800,(UINT8 *)blank_characterdata,
 					Machine->drv->gfxdecodeinfo[0].gfxlayout);

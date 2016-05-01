@@ -10,7 +10,6 @@ ask.  - Mike Balfour (mab22@po.cwru.edu)
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/6821pia.h"
 #include "sound/ay8910.h"
 
@@ -398,17 +397,21 @@ MACHINE_DRIVER_END
 
 
 /* PIA 0, sound CPU */
-static struct pia6821_interface pia_0_intf =
+static const pia6821_interface pia_0_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ 0, 0, 0, 0,
 	/*irqs   : A/B             */ 0, 0
 };
 
-MACHINE_INIT( demoneye )
+MACHINE_START( demoneye )
 {
-	pia_unconfig();
 	pia_config(0, PIA_STANDARD_ORDERING, &pia_0_intf);
+	return 0;
+}
+
+MACHINE_RESET( demoneye )
+{
 	pia_reset();
 }
 
@@ -426,7 +429,8 @@ static MACHINE_DRIVER_START( demoneye )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(demoneye)
+	MDRV_MACHINE_START(demoneye)
+	MDRV_MACHINE_RESET(demoneye)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

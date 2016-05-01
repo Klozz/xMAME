@@ -7,7 +7,6 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "balsente.h"
 
 
@@ -36,6 +35,12 @@ static UINT8 palettebank_vis;
  *
  *************************************/
 
+static void balsente_postload(void)
+{
+	memset(scanline_dirty, 1, 256);
+}
+
+
 VIDEO_START( balsente )
 {
 	/* reset the system */
@@ -50,18 +55,12 @@ VIDEO_START( balsente )
 
 	/* allocate a local copy of video RAM */
 	local_videoram = auto_malloc(256 * 256);
-	if (!local_videoram)
-		return 1;
 
 	/* allocate a scanline dirty array */
 	scanline_dirty = auto_malloc(256);
-	if (!scanline_dirty)
-		return 1;
 
 	/* allocate a scanline palette array */
 	scanline_palette = auto_malloc(256);
-	if (!scanline_palette)
-		return 1;
 
 	/* mark everything dirty to start */
 	memset(scanline_dirty, 1, 256);
@@ -73,6 +72,14 @@ VIDEO_START( balsente )
 	/* determine sprite size */
 	sprite_data = memory_region(REGION_GFX1);
 	sprite_mask = memory_region_length(REGION_GFX1) - 1;
+
+	/* register for saving */
+	state_save_register_global_pointer(local_videoram, 256 * 256);
+	state_save_register_global_pointer(scanline_palette, 256);
+	state_save_register_global(last_scanline_palette);
+	state_save_register_global(screen_refresh_counter);
+	state_save_register_global(palettebank_vis);
+	state_save_register_func_postload(balsente_postload);
 
 	return 0;
 }
@@ -300,7 +307,7 @@ VIDEO_UPDATE( balsente )
 	palette_set_color(1024, 0xff, 0xff, 0xff);
 
 	/* draw any dirty scanlines from the VRAM directly */
-	for (y = 0; y < 240; y++)
+	for (y = cliprect->min_y; y <= cliprect->max_y; y++)
 		if (scanline_dirty[y] || update_all)
 		{
 			pen_t *pens = &Machine->pens[scanline_palette[y] * 256];

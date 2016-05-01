@@ -19,22 +19,23 @@ unsigned char *system1_scrollx_ram;
 size_t system1_videoram_size;
 size_t system1_backgroundram_size;
 
-static unsigned char *sprite_onscreen_map;
+static UINT8 *sprite_onscreen_map;
 static int background_scrollx=0,background_scrolly=0;
-static unsigned char *bg_dirtybuffer;
+static UINT8 *bg_dirtybuffer;
 
 static int scrollx_row[32];
 static mame_bitmap *tmp_bitmap;
 
 /*static int system1_pixel_mode = 0 */
-static int system1_background_memory,system1_video_mode=0;
+static UINT8 system1_background_memory,system1_video_mode=0;
 
 static const unsigned char *system1_color_prom;
 
-static unsigned char *wbml_paged_videoram;
-static unsigned char wbml_videoram_bank=0,wbml_videoram_bank_latch=0;
+static UINT8 *wbml_paged_videoram;
+static UINT8 wbml_videoram_bank=0,wbml_videoram_bank_latch=0;
 
 static int blockgal_kludgeoffset;
+static int system1_sprite_xoffset = 0;
 
 /***************************************************************************
 
@@ -111,22 +112,54 @@ WRITE8_HANDLER( system1_paletteram_w )
 	palette_set_color(offset,r,g,b);
 }
 
-
+void system1_postload(void)
+{
+	memset(sprite_onscreen_map, 255, 256*256);
+	memset(bg_dirtybuffer, 1, 1024);
+}
 
 VIDEO_START( system1 )
 {
-	if ((sprite_onscreen_map = auto_malloc(256*256)) == 0)
-		return 1;
+	sprite_onscreen_map = auto_malloc(256*256);
 	memset(sprite_onscreen_map,255,256*256);
 
-	if ((bg_dirtybuffer = auto_malloc(1024)) == 0)
-		return 1;
+	bg_dirtybuffer = auto_malloc(1024);
 	memset(bg_dirtybuffer,1,1024);
-	if ((wbml_paged_videoram = auto_malloc(0x4000)) == 0)			/* Allocate 16k for background banked ram */
-		return 1;
-	memset(wbml_paged_videoram,0,0x4000);
+
 	if ((tmp_bitmap = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height)) == 0)
 		return 1;
+
+	state_save_register_func_postload(system1_postload);
+	state_save_register_global(system1_background_memory);
+	state_save_register_global(system1_video_mode);
+
+	system1_sprite_xoffset = 1;
+
+	return 0;
+}
+
+VIDEO_START( wbml )
+{
+	sprite_onscreen_map = auto_malloc(256*256);
+	memset(sprite_onscreen_map,255,256*256);
+
+	bg_dirtybuffer = auto_malloc(1024);
+	memset(bg_dirtybuffer,1,1024);
+	wbml_paged_videoram = auto_malloc(0x4000);	/* Allocate 16k for background banked ram */
+	memset(wbml_paged_videoram,0,0x4000);
+
+	if ((tmp_bitmap = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height)) == 0)
+		return 1;
+
+	system1_sprite_xoffset = 1+7*2;
+
+	state_save_register_func_postload(system1_postload);
+	state_save_register_global(system1_background_memory);
+	state_save_register_global(system1_video_mode);
+
+	state_save_register_global_pointer(wbml_paged_videoram, 0x4000);
+	state_save_register_global(wbml_videoram_bank);
+	state_save_register_global(wbml_videoram_bank_latch);
 
 	return 0;
 }
@@ -229,11 +262,6 @@ WRITE8_HANDLER( system1_sprites_collisionram_w )
 	system1_sprites_collisionram[offset] = 0x7e;
 }
 
-
-
-extern game_driver driver_wbml;
-extern game_driver driver_ufosensi;
-
 static void draw_sprite(mame_bitmap *bitmap,int spr_number)
 {
 	int sy,row,height,src,bank;
@@ -266,13 +294,7 @@ static void draw_sprite(mame_bitmap *bitmap,int spr_number)
 
 		src = src2 = src + skip;
 
-		/* the +1 prevents sprite lag in Wonder Boy */
-		x = sprite_base[SPR_X_LO] + ((sprite_base[SPR_X_HI] & 0x01) << 8) + 1;
-		if (Machine->gamedrv == &driver_wbml || Machine->gamedrv->clone_of == &driver_wbml ||
-			Machine->gamedrv == &driver_ufosensi || Machine->gamedrv->clone_of == &driver_ufosensi)
-		{
-			x += 7*2;
-		}
+		x = sprite_base[SPR_X_LO] + ((sprite_base[SPR_X_HI] & 0x01) << 8) + system1_sprite_xoffset;
 		x_flipped = x;
 		y = y_flipped = sy+row;
 

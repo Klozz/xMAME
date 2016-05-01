@@ -457,7 +457,6 @@
 #include "machine/6821pia.h"
 #include "machine/6522via.h"
 #include "machine/ticket.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/tms34061.h"
 #include "vidhrdw/tlc34076.h"
 #include "itech8.h"
@@ -505,7 +504,7 @@ static const rectangle *visarea;
 static WRITE8_HANDLER( pia_porta_out );
 static WRITE8_HANDLER( pia_portb_out );
 
-static struct pia6821_interface pia_interface =
+static const pia6821_interface pia_interface =
 {
 	0, ticket_dispenser_r, 0, 0, 0, 0,		/* PIA inputs: A, B, CA1, CB1, CA2, CB2 */
 	pia_porta_out, pia_portb_out, 0, 0,		/* PIA outputs: A, B, CA2, CB2 */
@@ -610,15 +609,19 @@ static void generate_sound_irq(int state)
  *
  *************************************/
 
-static MACHINE_INIT( itech8 )
+static MACHINE_START( itech8 )
+{
+	pia_config(0, PIA_STANDARD_ORDERING, &pia_interface);
+	return 0;
+}
+
+static MACHINE_RESET( itech8 )
 {
 	/* make sure bank 0 is selected */
 	if (Machine->drv->cpu[0].cpu_type == CPU_M6809)
 		memory_set_bankptr(1, &memory_region(REGION_CPU1)[0x4000]);
 
 	/* reset the PIA (if used) */
-	pia_unconfig();
-	pia_config(0, PIA_STANDARD_ORDERING, &pia_interface);
 	pia_reset();
 
 	/* reset the VIA chip (if used) */
@@ -1756,7 +1759,8 @@ static MACHINE_DRIVER_START( itech8_core_lo )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION((int)(((263. - 240.) / 263.) * 1000000. / 60.))
 
-	MDRV_MACHINE_INIT(itech8)
+	MDRV_MACHINE_START(itech8)
+	MDRV_MACHINE_RESET(itech8)
 	MDRV_NVRAM_HANDLER(itech8)
 
 	/* video hardware */

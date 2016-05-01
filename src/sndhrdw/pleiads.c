@@ -7,8 +7,10 @@
  *
  ****************************************************************************/
 #include "driver.h"
+#include "streams.h"
 #include "sound/custom.h"
 #include "sound/tms36xx.h"
+#include "includes/phoenix.h"
 
 #define VMIN	0
 #define VMAX	32767

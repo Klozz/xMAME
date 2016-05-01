@@ -15,6 +15,7 @@
 #include "devices/cartslot.h"
 #include "includes/lynx.h"
 #include "vidhrdw/generic.h"
+#include "hash.h"
 
 static int rotate=0;
 int lynx_rotate;
@@ -25,7 +26,7 @@ static ADDRESS_MAP_START( lynx_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0xfbff) AM_RAM AM_BASE(&lynx_mem_0000)
 	AM_RANGE(0xfc00, 0xfcff) AM_RAM AM_BASE(&lynx_mem_fc00)
 	AM_RANGE(0xfd00, 0xfdff) AM_RAM AM_BASE(&lynx_mem_fd00)
-	AM_RANGE(0xfe00, 0xfff7) AM_READWRITE( MRA8_BANK3, MWA8_RAM ) AM_BASE(&lynx_mem_fe00)
+	AM_RANGE(0xfe00, 0xfff7) AM_READWRITE( MRA8_BANK3, MWA8_RAM ) AM_BASE(&lynx_mem_fe00) AM_SIZE(&lynx_mem_fe00_size)
 	AM_RANGE(0xfff8, 0xfff8) AM_RAM
 	AM_RANGE(0xfff9, 0xfff9) AM_READWRITE( lynx_memory_config_r, lynx_memory_config_w )
 	AM_RANGE(0xfffa, 0xffff) AM_READWRITE( MRA8_BANK4, MWA8_RAM ) AM_BASE(&lynx_mem_fffa)
@@ -93,7 +94,7 @@ void lynx_draw_lines(int newline)
 	UINT8 byte;
 	UINT16 *line;
 
-	if (osd_skip_this_frame()) newline=-1;
+	if (skip_this_frame()) newline=-1;
 
 	if (newline==-1)
 		yend = 102;
@@ -221,7 +222,7 @@ static MACHINE_DRIVER_START( lynx )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( lynx )
+	MDRV_MACHINE_START( lynx )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -322,7 +323,7 @@ static void lynx_crc_keyword(mess_image *image)
     }
 }
 
-static DEVICE_LOAD( lynx_cart )
+static int device_load_lynx_cart(mess_image *image, mame_file *file)
 {
 	UINT8 *rom = memory_region(REGION_USER1);
 	int size;
@@ -388,21 +389,38 @@ static QUICKLOAD_LOAD( lynx )
 	return 0;
 }
 
-static void lynx_cartslot_getinfo(struct IODevice *dev)
+static void lynx_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 1;
-	dev->file_extensions = "lnx\0";
-	dev->load = device_load_lynx_cart;
-	dev->partialhash = lynx_partialhash;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_lynx_cart; break;
+		case DEVINFO_PTR_PARTIAL_HASH:					info->partialhash = lynx_partialhash; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "lnx"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void lynx_quickload_getinfo(struct IODevice *dev)
+static void lynx_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* quickload */
-	quickload_device_getinfo(dev, quickload_load_lynx, 0.0);
-	dev->file_extensions = "o\0";
+	switch(state)
+	{
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "o"); break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_lynx; break;
+
+		default:										quickload_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(lynx)
@@ -417,6 +435,6 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*    YEAR  NAME      PARENT    COMPAT	MACHINE	INPUT	INIT	CONFIG	MONITOR	COMPANY   FULLNAME */
-CONS( 1989, lynx,	  0, 		0,		lynx,	lynx,	lynx,	lynx,	"Atari",  "Lynx", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-CONS( 1989, lynxa,	  lynx, 	0,		lynx,	lynx,	lynx,	lynx,	"Atari",  "Lynx (alternate rom save!)", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-CONS( 1991, lynx2,	  lynx, 	0,		lynx2,	lynx,	lynx,	lynx,	"Atari",  "Lynx II", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+CONS( 1989, lynx,	  0, 		0,		lynx,	lynx,	0,		lynx,	"Atari",  "Lynx", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+CONS( 1989, lynxa,	  lynx, 	0,		lynx,	lynx,	0,		lynx,	"Atari",  "Lynx (alternate rom save!)", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+CONS( 1991, lynx2,	  lynx, 	0,		lynx2,	lynx,	0,		lynx,	"Atari",  "Lynx II", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)

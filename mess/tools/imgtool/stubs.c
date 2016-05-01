@@ -5,7 +5,7 @@
 /* Variables to hold the status of various game options */
 static FILE *errorlog;
 
-const game_driver *drivers[1];
+const game_driver *const drivers[1];
 int rompath_extra;
 int cheatfile;
 const char *db_filename;
@@ -47,7 +47,7 @@ void mame_fclose(mame_file *file)
 	fclose((FILE *) file);
 }
 
-void CLIB_DECL osd_die(const char *text,...)
+void CLIB_DECL fatalerror(const char *text,...)
 {
 	va_list va;
 	va_start(va, text);

@@ -19,12 +19,9 @@
 /** TODO: Check cycle counts when leaving HALT state        **/
 /**                                                         **/
 /*************************************************************/
-#include <stdio.h>
-#include <string.h>
 #include "z80gb.h"
 #include "daa_tab.h"
-#include "mamedbg.h"
-#include "state.h"
+#include "debugger.h"
 
 #define FLAG_Z	0x80
 #define FLAG_N  0x40
@@ -60,6 +57,7 @@ typedef struct {
 	int (*irq_callback)(int irqline);
 	int leavingHALT;
 	int doHALTbug;
+	const UINT16 *config;
 } z80gb_16BitRegs;
 
 #ifdef LSB_FIRST
@@ -143,9 +141,10 @@ static int CyclesCB[256] =
 	 8, 8, 8, 8, 8, 8,16, 8, 8, 8, 8, 8, 8, 8,16, 8
 };
 
-static void z80gb_init(void)
+static void z80gb_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	return;
+	Regs.w.config = (const UINT16 *) config;
+	Regs.w.irq_callback = irqcallback;
 }
 
 /*** Reset Z80 registers: *********************************/
@@ -153,22 +152,25 @@ static void z80gb_init(void)
 /*** file before starting execution with z80gb_execute()***/
 /*** It sets the registers to their initial values.     ***/
 /**********************************************************/
-static void z80gb_reset (void *param)
+static void z80gb_reset(void)
 {
-	if( param != NULL ) {
-		Regs.w.AF = ((INT16 *)param)[0];
-		Regs.w.BC = ((INT16 *)param)[1];
-		Regs.w.DE = ((INT16 *)param)[2];
-		Regs.w.HL = ((INT16 *)param)[3];
-		Regs.w.SP = ((INT16 *)param)[4];
-		Regs.w.PC = ((INT16 *)param)[5];
-	} else {
-		Regs.w.AF = 0x01B0;
-		Regs.w.BC = 0x0013;
-		Regs.w.DE = 0x00D8;
-		Regs.w.HL = 0x014D;
-		Regs.w.SP = 0xFFFE;
-		Regs.w.PC = 0x0100;
+	if (Regs.w.config)
+	{
+		Regs.w.AF = Regs.w.config[0];
+		Regs.w.BC = Regs.w.config[1];
+		Regs.w.DE = Regs.w.config[2];
+		Regs.w.HL = Regs.w.config[3];
+		Regs.w.SP = Regs.w.config[4];
+		Regs.w.PC = Regs.w.config[5];
+	}
+	else
+	{
+		Regs.w.AF = 0x0000;
+		Regs.w.BC = 0x0000;
+		Regs.w.DE = 0x0000;
+		Regs.w.HL = 0x0000;
+		Regs.w.SP = 0x0000;
+		Regs.w.PC = 0x0000;
 	}
 	Regs.w.enable &= ~IME;
 
@@ -176,10 +178,6 @@ static void z80gb_reset (void *param)
 	CheckInterrupts = 0;
 	Regs.w.leavingHALT = 0;
 	Regs.w.doHALTbug = 0;
-}
-
-static void z80gb_exit(void)
-{
 }
 
 INLINE void z80gb_ProcessInterrupts (void)
@@ -217,7 +215,7 @@ INLINE void z80gb_ProcessInterrupts (void)
 					}
 					Regs.w.enable &= ~IME;
 					IFLAGS &= ~(1 << irqline);
-					ICycles += 10;
+					ICycles += 19; /* RST cycles (16) + irq latency (2/3/4??) */
 					Regs.w.SP -= 2;
 					mem_WriteWord (Regs.w.SP, Regs.w.PC);
 					Regs.w.PC = 0x40 + irqline * 8;
@@ -390,16 +388,6 @@ static const char *z80gb_info(void *context, int regnum)
 	return buffer[which];
 }
 
-static unsigned z80gb_dasm( char *buffer, unsigned pc )
-{
-#ifdef MAME_DEBUG
-	return DasmZ80GB( buffer, pc );
-#else
-	sprintf( buffer, "$%02X", cpu_readop(pc) );
-	return 1;
-#endif
-}
-
 static void z80gb_set_info(UINT32 state, union cpuinfo *info)
 {
 	switch (state)
@@ -420,9 +408,6 @@ static void z80gb_set_info(UINT32 state, union cpuinfo *info)
 	case CPUINFO_INT_REGISTER + Z80GB_BC:		Regs.w.BC = info->i;						break;
 	case CPUINFO_INT_REGISTER + Z80GB_DE:		Regs.w.DE = info->i;						break;
 	case CPUINFO_INT_REGISTER + Z80GB_HL:		Regs.w.HL = info->i;						break;
-
-	/* --- the following bits of info are set as pointers to data or functions --- */
-	case CPUINFO_PTR_IRQ_CALLBACK:				Regs.w.irq_callback = info->irqcallback;	break;
 	}
 }
 
@@ -474,12 +459,12 @@ void z80gb_get_info(UINT32 state, union cpuinfo *info)
 	case CPUINFO_PTR_SET_CONTEXT:					info->setcontext = z80gb_set_context;	break;
 	case CPUINFO_PTR_INIT:							info->init = z80gb_init;				break;
 	case CPUINFO_PTR_RESET:							info->reset = z80gb_reset;				break;
-	case CPUINFO_PTR_EXIT:							info->exit = z80gb_exit;				break;
 	case CPUINFO_PTR_EXECUTE:						info->execute = z80gb_execute;			break;
 	case CPUINFO_PTR_BURN:							info->burn = z80gb_burn;						break;
 
-	case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = z80gb_dasm;			break;
-	case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = Regs.w.irq_callback;break;
+#ifdef MAME_DEBUG
+	case CPUINFO_PTR_DISASSEMBLE_NEW:				info->disassemble_new = z80gb_dasm;	break;
+#endif
 	case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &z80gb_ICount;			break;
 	case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = z80gb_reg_layout;				break;
 	case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = z80gb_win_layout;				break;

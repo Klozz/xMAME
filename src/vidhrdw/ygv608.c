@@ -31,7 +31,6 @@
 
 #include <ctype.h>
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "namcond1.h"   /* only while debugging */
 #include "vidhrdw/ygv608.h"
 
@@ -51,6 +50,11 @@ static tilemap *tilemap_B_cache_16[3];
 static tilemap *tilemap_A = NULL;
 static tilemap *tilemap_B = NULL;
 static mame_bitmap *work_bitmap = NULL;
+
+static void HandleYGV608Reset( void );
+static void HandleRomTransfers( void );
+static void SetPreShortcuts( int reg, int data );
+static void SetPostShortcuts( int reg );
 
 #ifdef MAME_DEBUG
 static void ShowYGV608Registers( void );
@@ -100,6 +104,9 @@ static UINT32 get_tile_offset( UINT32 col, UINT32 row,
 
 	return( ( col << 6 ) | row );
 }
+
+#define layout_total(x) \
+(Machine->drv->gfxdecodeinfo[x].gfxlayout->total)
 
 static void get_tile_info_A_8( int offset )
 {
@@ -169,7 +176,7 @@ static void get_tile_info_A_8( int offset )
 		j += ( (int)ygv608.scroll_data_table[0][0xc0+page] << 10 );
 		j += ( ygv608.base_addr[0][base] << 8 );
 
-		if( j >= Machine->drv->gfxdecodeinfo[set].gfxlayout->total )
+		if( j >= layout_total(set) )
 		{
 			logerror( "A_8X8: tilemap=%d\n", j );
 			j = 0;
@@ -264,7 +271,7 @@ static void get_tile_info_B_8( int offset )
 		j += ( (int)ygv608.scroll_data_table[1][0xc0+page] << 10 );
 		j += ( ygv608.base_addr[1][base] << 8 );
 
-		if( j >= Machine->drv->gfxdecodeinfo[set].gfxlayout->total )
+		if( j >= layout_total(set) )
 		{
 			logerror( "B_8X8: tilemap=%d\n", j );
 			j = 0;
@@ -353,7 +360,7 @@ static void get_tile_info_A_16( int offset )
     j += ( (int)ygv608.scroll_data_table[0][0xc0+page] << 8 );
     j += ( ygv608.base_addr[0][base] << 8 );
 
-    if( j >= Machine->drv->gfxdecodeinfo[set].gfxlayout->total ) {
+    if( j >= layout_total(set) ) {
 	logerror( "A_16X16: tilemap=%d\n", j );
       j = 0;
     }
@@ -443,7 +450,7 @@ static void get_tile_info_B_16( int offset )
     j += ( (int)ygv608.scroll_data_table[1][0xc0+page] << 8 );
     j += ( ygv608.base_addr[1][base] << 8 );
 
-    if( j >= Machine->drv->gfxdecodeinfo[set].gfxlayout->total ) {
+    if( j >= layout_total(set) ) {
 	logerror( "B_16X16: tilemap=%d\n", j );
       j = 0;
     }
@@ -469,6 +476,29 @@ static void get_tile_info_B_16( int offset )
 
 		SET_TILE_INFO( set, j, attr, f );
 	}
+}
+
+static void ygv608_postload(void)
+{
+	int i;
+
+	ygv608.screen_resize = 1;
+	ygv608.tilemap_resize = 1;
+
+	for(i = 0; i < 50; i++)
+		SetPostShortcuts(i);
+}
+
+static void ygv608_register_state_save(void)
+{
+	state_save_register_item_array("ygv608", 0, ygv608.ports.b);
+	state_save_register_item_array("ygv608", 0, ygv608.regs.b);
+	state_save_register_item_array("ygv608", 0, ygv608.pattern_name_table);
+	state_save_register_item_array("ygv608", 0, ygv608.sprite_attribute_table.b);
+	state_save_register_item_2d_array("ygv608", 0, ygv608.scroll_data_table);
+	state_save_register_item_2d_array("ygv608", 0, ygv608.colour_palette);
+
+	state_save_register_func_postload(ygv608_postload);
 }
 
 VIDEO_START( ygv608 )
@@ -497,13 +527,12 @@ VIDEO_START( ygv608 )
 	tilemap_B_cache_16[1] = tilemap_create(get_tile_info_B_16, get_tile_offset, TILEMAP_TRANSPARENT, 16,16, 64,32);
 	tilemap_B_cache_16[2] = tilemap_create(get_tile_info_B_16, get_tile_offset, TILEMAP_TRANSPARENT, 16,16, 32,64);
 
-	return 0;
-}
-
-VIDEO_STOP( ygv608 )
-{
 	tilemap_A = NULL;
 	tilemap_B = NULL;
+
+	ygv608_register_state_save();
+
+	return 0;
 }
 
 static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
@@ -555,7 +584,7 @@ static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
       code = ( (int)ygv608.regs.s.sba << 8 ) | (int)sa->sn;
       if (spf != 0)
 	    color = ( code >> ( (spf - 1) * 2 ) ) & 0x0f;
-      if( code >= Machine->drv->gfxdecodeinfo[GFX_8X8_4BIT].gfxlayout->total ) {
+      if( code >= layout_total(GFX_8X8_4BIT) ) {
 	    logerror( "SZ_8X8: sprite=%d\n", code );
 	    code = 0;
       }
@@ -588,7 +617,7 @@ static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
       code = ( ( (int)ygv608.regs.s.sba & 0xfc ) << 6 ) | (int)sa->sn;
       if (spf != 0)
 	    color = ( code >> (spf * 2) ) & 0x0f;
-      if( code >= Machine->drv->gfxdecodeinfo[GFX_16X16_4BIT].gfxlayout->total ) {
+      if( code >= layout_total(GFX_16X16_4BIT) ) {
 	    logerror( "SZ_8X8: sprite=%d\n", code );
 	    code = 0;
       }
@@ -621,7 +650,7 @@ static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
       code = ( ( (int)ygv608.regs.s.sba & 0xf0 ) << 4 ) | (int)sa->sn;
       if (spf != 0)
 	color = ( code >> ( (spf + 1) * 2 ) ) & 0x0f;
-      if( code >= Machine->drv->gfxdecodeinfo[GFX_32X32_4BIT].gfxlayout->total ) {
+      if( code >= layout_total(GFX_32X32_4BIT) ) {
 	  logerror( "SZ_32X32: sprite=%d\n", code );
 	code = 0;
       }
@@ -654,7 +683,7 @@ static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
       code = ( ( (int)ygv608.regs.s.sba & 0xc0 ) << 2 ) | (int)sa->sn;
       if (spf != 0)
 	    color = ( code >> ( (spf + 1) * 2 ) ) & 0x0f;
-      if( code >= Machine->drv->gfxdecodeinfo[GFX_64X64_4BIT].gfxlayout->total ) {
+      if( code >= layout_total(GFX_64X64_4BIT) ) {
 	    logerror( "SZ_64X64: sprite=%d\n", code );
 	    code = 0;
       }
@@ -739,7 +768,7 @@ VIDEO_UPDATE( ygv608 )
 #ifdef _ENABLE_ROTATE_ZOOM
 		if( work_bitmap )
 			bitmap_free( work_bitmap );
-		work_bitmap = auto_bitmap_alloc_depth( Machine->drv->screen_width,
+		work_bitmap = bitmap_alloc_depth( Machine->drv->screen_width,
 										  Machine->drv->screen_height,
 										  Machine->color_depth );
 #else
@@ -924,11 +953,6 @@ VIDEO_UPDATE( ygv608 )
   ui_draw_text( buffer, 0, 64 );
 #endif
 }
-
-static void HandleYGV608Reset( void );
-static void HandleRomTransfers( void );
-static void SetPreShortcuts( int reg, int data );
-static void SetPostShortcuts( int reg );
 
 READ16_HANDLER( ygv608_r )
 {

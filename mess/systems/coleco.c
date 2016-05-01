@@ -211,7 +211,7 @@ void paddle_callback (int param)
 		cpunum_set_input_line(0, 0, HOLD_LINE);
 }
 
-static MACHINE_INIT(coleco)
+static MACHINE_RESET(coleco)
 {
     cpunum_set_input_line_vector(0, 0, 0xff);
 	memset(&memory_region(REGION_CPU1)[0x6000], 0xff, 0x400);	/* initialize RAM */
@@ -234,7 +234,7 @@ static MACHINE_DRIVER_START( coleco )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(coleco)
+	MDRV_MACHINE_RESET(coleco)
 
     /* video hardware */
 	MDRV_TMS9928A(&tms9928a_interface)
@@ -264,11 +264,16 @@ ROM_START (colecob)
 	ROM_CART_LOAD(0, "rom\0col\0bin\0", 0x8000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
-static void coleco_cartslot_getinfo(struct IODevice *dev)
+static void coleco_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->imgverify = coleco_cart_verify;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_VERIFY:						info->imgverify = coleco_cart_verify; break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(coleco)

@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 UINT16 *gaiden_videoram,*gaiden_videoram2,*gaiden_videoram3;
 int gaiden_sprite_sizey;
@@ -370,7 +369,7 @@ static void blendbitmaps(
 
 static void draw_sprites(mame_bitmap *bitmap_bg, mame_bitmap *bitmap_fg, mame_bitmap *bitmap_sp, const rectangle *cliprect)
 {
-	const UINT8 layout[8][8] =
+	static const UINT8 layout[8][8] =
 	{
 		{ 0, 1, 4, 5,16,17,20,21},
 		{ 2, 3, 6, 7,18,19,22,23},

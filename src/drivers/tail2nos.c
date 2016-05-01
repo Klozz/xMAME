@@ -10,7 +10,6 @@ press F1+F3 to see ROM/RAM tests and the final animation
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 #include "cpu/z80/z80.h"
 #include "sound/2608intf.h"
@@ -26,7 +25,7 @@ VIDEO_START( tail2nos );
 VIDEO_UPDATE( tail2nos );
 
 
-static MACHINE_INIT( tail2nos )
+static MACHINE_RESET( tail2nos )
 {
 	/* point to the extra ROMs */
 	memory_set_bankptr(1,memory_region(REGION_USER1));
@@ -279,7 +278,7 @@ static MACHINE_DRIVER_START( tail2nos )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(tail2nos)
+	MDRV_MACHINE_RESET(tail2nos)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -332,7 +331,7 @@ ROM_START( tail2nos )
 	ROM_LOAD( "oj1",          0x000000, 0x40000, CRC(39c36b35) SHA1(a97480696bf6d81bf415737e03cc5324d439ab84) )
 	ROM_LOAD( "oj2",          0x040000, 0x40000, CRC(77ccaea2) SHA1(e38175859c75c6d0f2f01752fad6e167608c4662) )
 
-	ROM_REGION( 0x20000, REGION_GFX3, 0 )	/* gfx data for the 051316 */
+	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_ERASE00 )	/* gfx data for the 051316 */
 	/* RAM, not ROM - handled at run time */
 
 	ROM_REGION( 0x20000, REGION_SOUND1, 0 ) /* sound samples */
@@ -367,7 +366,7 @@ ROM_START( sformula )
 	ROM_LOAD( "oj1",          0x000000, 0x40000, CRC(39c36b35) SHA1(a97480696bf6d81bf415737e03cc5324d439ab84) )
 	ROM_LOAD( "oj2",          0x040000, 0x40000, CRC(77ccaea2) SHA1(e38175859c75c6d0f2f01752fad6e167608c4662) )
 
-	ROM_REGION( 0x20000, REGION_GFX3, 0 )	/* gfx data for the 051316 */
+	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_ERASE00 )	/* gfx data for the 051316 */
 	/* RAM, not ROM - handled at run time */
 
 	ROM_REGION( 0x20000, REGION_SOUND1, 0 ) /* sound samples */

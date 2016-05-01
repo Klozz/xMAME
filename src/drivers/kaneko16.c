@@ -39,6 +39,7 @@ Year + Game                 PCB         Notes
 ---------------------------------------------------------------------------
 
 Note: gtmr manual shows "Compatible with AX Kaneko System Board"
+Note: Magic Crystals reports "TOYBOX SYSTEM Version 0.93B+"
 
 To Do:
 
@@ -65,14 +66,16 @@ To Do:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "machine/eeprom.h"
-#include "machine/random.h"
-#include "machine/kaneko16.h"
-#include "kaneko16.h"
+#include "includes/kaneko16.h"
 #include "sound/2203intf.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
+
+extern void (*toybox_mcu_run)(void);	/* one of the following */
+void bloodwar_mcu_run(void);
+void bonkadv_mcu_run(void);
+void gtmr_mcu_run(void);
 
 /***************************************************************************
 
@@ -82,7 +85,7 @@ To Do:
 
 ***************************************************************************/
 
-MACHINE_INIT( kaneko16 )
+MACHINE_RESET( kaneko16 )
 {
 	kaneko16_sprite_type  = 0;
 
@@ -104,16 +107,16 @@ MACHINE_INIT( kaneko16 )
 	kaneko16_priority.sprite[3] = 8;	/* above all */
 }
 
-static MACHINE_INIT( berlwall )
+static MACHINE_RESET( berlwall )
 {
-	machine_init_kaneko16();
+	machine_reset_kaneko16();
 
 	kaneko16_sprite_type = 2;	/* like type 0, but using 16 instead of 8 bytes */
 }
 
-static MACHINE_INIT( blazeon )
+static MACHINE_RESET( blazeon )
 {
-	machine_init_kaneko16();
+	machine_reset_kaneko16();
 
 	kaneko16_sprite_xoffs = 0x10000 - 0x680;
 	kaneko16_sprite_yoffs = 0x000;
@@ -133,7 +136,7 @@ static MACHINE_INIT( blazeon )
 	kaneko16_priority.sprite[3] = 8;	/* "" */
 }
 
-static MACHINE_INIT( bloodwar )
+static MACHINE_RESET( bloodwar )
 {
 	kaneko16_priority.sprite[0] = 2;	/* ever used ? */
 	kaneko16_priority.sprite[1] = 3;	/* character selection / vs. portraits */
@@ -144,10 +147,11 @@ static MACHINE_INIT( bloodwar )
 
 	kaneko16_priority.VIEW2_2_pri = 1;
 
+	toybox_mcu_run = bloodwar_mcu_run;
 	toybox_mcu_init();
 }
 
-static MACHINE_INIT( bonkadv )
+static MACHINE_RESET( bonkadv )
 {
 	kaneko16_priority.sprite[0] = 2;	/* ever used ? */
 	kaneko16_priority.sprite[1] = 3;	/* volcano lava on level 2 */
@@ -158,12 +162,13 @@ static MACHINE_INIT( bonkadv )
 
 	kaneko16_priority.VIEW2_2_pri = 1;
 
+	toybox_mcu_run = bonkadv_mcu_run;
 	toybox_mcu_init();
 }
 
-static MACHINE_INIT( bakubrkr )
+static MACHINE_RESET( bakubrkr )
 {
-	machine_init_kaneko16();
+	machine_reset_kaneko16();
 
 	kaneko16_priority.sprite[0] = 8;	/* above all */
 	kaneko16_priority.sprite[1] = 8;	/* above all */
@@ -173,20 +178,21 @@ static MACHINE_INIT( bakubrkr )
 	kaneko16_priority.VIEW2_2_pri = 1;
 }
 
-static MACHINE_INIT( gtmr )
+static MACHINE_RESET( gtmr )
 {
-	machine_init_kaneko16();
+	machine_reset_kaneko16();
 
 	kaneko16_sprite_type = 1;
 
 	kaneko16_priority.VIEW2_2_pri = 1;
 
+	toybox_mcu_run = gtmr_mcu_run;
 	toybox_mcu_init();
 }
 
-static MACHINE_INIT( mgcrystl )
+static MACHINE_RESET( mgcrystl )
 {
-	machine_init_kaneko16();
+	machine_reset_kaneko16();
 /*
     Sx = Sprites with priority x, x = tiles with priority x,
     Sprites - Tiles Order:
@@ -211,18 +217,18 @@ static MACHINE_INIT( mgcrystl )
 	kaneko16_priority.VIEW2_2_pri = 0;
 }
 
-static MACHINE_INIT( sandscrp )
+static MACHINE_RESET( sandscrp )
 {
-	machine_init_kaneko16();
+	machine_reset_kaneko16();
 
 	kaneko16_sprite_type = 3;	/* "different" sprites layout */
 
 	watchdog_reset16_r(0,0);	/* start with an armed watchdog */
 }
 
-static MACHINE_INIT( shogwarr )
+static MACHINE_RESET( shogwarr )
 {
-	machine_init_kaneko16();
+	machine_reset_kaneko16();
 
 	calc3_mcu_init();
 }
@@ -2099,7 +2105,7 @@ static MACHINE_DRIVER_START( berlwall )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(berlwall)
+	MDRV_MACHINE_RESET(berlwall)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)	/* mangled sprites otherwise */
@@ -2143,7 +2149,7 @@ static MACHINE_DRIVER_START( bakubrkr )
 	MDRV_FRAMES_PER_SECOND(59)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(bakubrkr)
+	MDRV_MACHINE_RESET(bakubrkr)
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
@@ -2201,7 +2207,7 @@ static MACHINE_DRIVER_START( blazeon )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(blazeon)
+	MDRV_MACHINE_RESET(blazeon)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
@@ -2247,7 +2253,7 @@ static MACHINE_DRIVER_START( gtmr )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(gtmr)
+	MDRV_MACHINE_RESET(gtmr)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
@@ -2264,13 +2270,13 @@ static MACHINE_DRIVER_START( gtmr )
 
 	MDRV_SOUND_ADD(OKIM6295, 12000)
 	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 
 	MDRV_SOUND_ADD(OKIM6295, 12000)
 	MDRV_SOUND_CONFIG(okim6295_interface_region_2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -2284,7 +2290,7 @@ static MACHINE_DRIVER_START( bloodwar )
 	MDRV_CPU_MODIFY("gtmr")
 	MDRV_CPU_PROGRAM_MAP(bloodwar,0)
 
-	MDRV_MACHINE_INIT( bloodwar )
+	MDRV_MACHINE_RESET( bloodwar )
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -2321,7 +2327,7 @@ static MACHINE_DRIVER_START( bonkadv )
 	MDRV_CPU_PROGRAM_MAP(bonkadv,0)
 	MDRV_CPU_VBLANK_INT(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM + 1 ) /* comment above */
 
-	MDRV_MACHINE_INIT( bonkadv )
+	MDRV_MACHINE_RESET( bonkadv )
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -2338,7 +2344,7 @@ static MACHINE_DRIVER_START( mgcrystl )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(mgcrystl)
+	MDRV_MACHINE_RESET(mgcrystl)
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
@@ -2403,7 +2409,7 @@ static MACHINE_DRIVER_START( sandscrp )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)	/* eof callback */
 
-	MDRV_MACHINE_INIT(sandscrp)
+	MDRV_MACHINE_RESET(sandscrp)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2468,7 +2474,7 @@ static MACHINE_DRIVER_START( shogwarr )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(shogwarr)
+	MDRV_MACHINE_RESET(shogwarr)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2536,7 +2542,7 @@ void kaneko16_expand_sample_banks(int region)
 	int bank;
 
 	if (memory_region_length(region) < 0x40000 * 16)
-		osd_die("gtmr SOUND1 region too small");
+		fatalerror("gtmr SOUND1 region too small");
 
 	/* bank 0 maps to itself, so we just leave it alone */
 	for (bank = 15; bank > 0; bank--)
@@ -3123,7 +3129,7 @@ ROM_START( gtmr )
 	ROM_REGION( 0x400000, REGION_SOUND1, 0 )	/* Samples, plus room for expansion */
 	ROM_LOAD( "mm-100-401-e0.bin",  0x000000, 0x100000, CRC(b9cbfbee) SHA1(051d48a68477ef9c29bd5cc0bb7955d513a0ab94) )	/* 16 x $10000 */
 
-	ROM_REGION( 0x100000, REGION_SOUND2, 0 )	/* Samples */
+	ROM_REGION( 0x100000, REGION_SOUND2, ROMREGION_ERASE00 )	/* Samples */
 	/* Not present on this board */
 ROM_END
 
@@ -3152,7 +3158,7 @@ ROM_START( gtmra )
 	ROM_REGION( 0x400000, REGION_SOUND1, 0 )	/* Samples, plus room for expansion */
 	ROM_LOAD( "mm-100-401-e0.bin",  0x000000, 0x100000, CRC(b9cbfbee) SHA1(051d48a68477ef9c29bd5cc0bb7955d513a0ab94) )	/* 16 x $10000 */
 
-	ROM_REGION( 0x100000, REGION_SOUND2, 0 )	/* Samples */
+	ROM_REGION( 0x100000, REGION_SOUND2, ROMREGION_ERASE00 )	/* Samples */
 	/* Not present on this board */
 ROM_END
 
@@ -3427,18 +3433,20 @@ DIP settings:
 3: Unused
 4: Unused
 
+Yes, one program rom actually is a 27C010 and the other one is a 27C020
+
 ***************************************************************************/
 
-ROM_START( mgcrystl )
+ROM_START( mgcrystl ) /* Master Up: 92/01/10 14:21:30 */
  	ROM_REGION( 0x040000*2, REGION_CPU1, ROMREGION_ERASE )			/* 68000 Code */
-	ROM_LOAD16_BYTE( "magcrstl.u18", 0x000000, 0x020000, CRC(c7456ba7) SHA1(96c25c3432069373fa86d7af3e093e02e39aea34) )
-	ROM_LOAD16_BYTE( "magcrstl.u19", 0x000001, 0x040000, CRC(ea8f9300) SHA1(0cd0d448805aa45986b63befca00b08fe066dbb2) ) /*!! */
+	ROM_LOAD16_BYTE( "mc100e02.u18", 0x000000, 0x020000, CRC(246a1335) SHA1(8333945a92e08a7bff425d2d6602557386016dc5) ) /* Labeled as MC100E/U18-02 */
+	ROM_LOAD16_BYTE( "mc101e02.u19", 0x000001, 0x040000, CRC(708ea1dc) SHA1(ae6eca6620729bc1e815f1bfbd8fe130f0ba943c) ) /* Labeled as MC101E/U19-02 */
 
 	ROM_REGION( 0x280000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprites */
 	ROM_LOAD( "mc000.u38",    0x000000, 0x100000, CRC(28acf6f4) SHA1(6647ad90ea580b65ed28772f9d65352b06833d0c) )
 	ROM_LOAD( "mc001.u37",    0x100000, 0x080000, CRC(005bc43d) SHA1(6f6cd99e8e60562fa86581008455a6d9d646fa95) )
 	ROM_RELOAD(               0x180000, 0x080000             )
-	ROM_LOAD( "magcrstl.u36", 0x200000, 0x020000, CRC(22729037) SHA1(de4e1bdab57aa617411b6327f3db4856970e8953) )
+	ROM_LOAD( "mc002e02.u36", 0x200000, 0x020000, CRC(27ac1056) SHA1(34b07c1a0d403ca45c9849d3d8d311012f787df6) ) /* Labeled as MC002E/U36-02 */
 	ROM_RELOAD(               0x220000, 0x020000             )
 	ROM_RELOAD(               0x240000, 0x020000             )
 	ROM_RELOAD(               0x260000, 0x020000             )
@@ -3453,16 +3461,40 @@ ROM_START( mgcrystl )
 	ROM_LOAD( "mc030.u32",  0x000000, 0x040000, CRC(c165962e) SHA1(f7e130db387ae9dcb7223f7ad6e51270d3033bc9) )
 ROM_END
 
-ROM_START( mgcrystj )
+ROM_START( mgcrysto ) /* Master Up: 91/12/10 01:56:06 */
  	ROM_REGION( 0x040000*2, REGION_CPU1, ROMREGION_ERASE )			/* 68000 Code */
-	ROM_LOAD16_BYTE( "mc100j.u18", 0x000000, 0x020000, CRC(afe5882d) SHA1(176e6e12e3df63c08d7aff781f5e5a9bd83ec293) )
-	ROM_LOAD16_BYTE( "mc101j.u19", 0x000001, 0x040000, CRC(60da5492) SHA1(82b90a617d355825624ce9fb30bddf4714bd0d18) )	/*!! */
+	ROM_LOAD16_BYTE( "mc100h00.u18", 0x000000, 0x020000, CRC(c7456ba7) SHA1(96c25c3432069373fa86d7af3e093e02e39aea34) ) /* Labeled as MC100H/U18-00 */
+	ROM_LOAD16_BYTE( "mc101h00.u19", 0x000001, 0x040000, CRC(ea8f9300) SHA1(0cd0d448805aa45986b63befca00b08fe066dbb2) ) /* Labeled as MC101H/U19-00 */
+
+	ROM_REGION( 0x280000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprites */
+	ROM_LOAD( "mc000.u38",    0x000000, 0x100000, CRC(28acf6f4) SHA1(6647ad90ea580b65ed28772f9d65352b06833d0c) )
+	ROM_LOAD( "mc001.u37",    0x100000, 0x080000, CRC(005bc43d) SHA1(6f6cd99e8e60562fa86581008455a6d9d646fa95) )
+	ROM_RELOAD(               0x180000, 0x080000             )
+	ROM_LOAD( "mc002h00.u36", 0x200000, 0x020000, CRC(22729037) SHA1(de4e1bdab57aa617411b6327f3db4856970e8953) ) /* Labeled as MC002H/U36-00 */
+	ROM_RELOAD(               0x220000, 0x020000             )
+	ROM_RELOAD(               0x240000, 0x020000             )
+	ROM_RELOAD(               0x260000, 0x020000             )
+
+	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_DISPOSE )	/* Tiles (Scrambled) */
+	ROM_LOAD( "mc010.u04",  0x000000, 0x100000, CRC(85072772) SHA1(25e903cc2c893d61db791d1fe60a1205a4395667) )
+
+	ROM_REGION( 0x100000, REGION_GFX3, ROMREGION_DISPOSE )	/* Tiles (Scrambled) */
+	ROM_LOAD( "mc020.u34",  0x000000, 0x100000, CRC(1ea92ff1) SHA1(66ec53e664b2a5a751a280a538aaeceafc187ceb) )
+
+	ROM_REGION( 0x040000, REGION_SOUND1, 0 )	/* Samples */
+	ROM_LOAD( "mc030.u32",  0x000000, 0x040000, CRC(c165962e) SHA1(f7e130db387ae9dcb7223f7ad6e51270d3033bc9) )
+ROM_END
+
+ROM_START( mgcrystj ) /* Master Up: 92/01/13 14:44:20 */
+ 	ROM_REGION( 0x040000*2, REGION_CPU1, ROMREGION_ERASE )			/* 68000 Code */
+	ROM_LOAD16_BYTE( "mc100j02.u18", 0x000000, 0x020000, CRC(afe5882d) SHA1(176e6e12e3df63c08d7aff781f5e5a9bd83ec293) ) /* Labeled as MC100J/U18-02 */
+	ROM_LOAD16_BYTE( "mc101j02.u19", 0x000001, 0x040000, CRC(60da5492) SHA1(82b90a617d355825624ce9fb30bddf4714bd0d18) ) /* Labeled as MC101J/U19-02 */
 
 	ROM_REGION( 0x280000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprites */
 	ROM_LOAD( "mc000.u38",  0x000000, 0x100000, CRC(28acf6f4) SHA1(6647ad90ea580b65ed28772f9d65352b06833d0c) )
 	ROM_LOAD( "mc001.u37",  0x100000, 0x080000, CRC(005bc43d) SHA1(6f6cd99e8e60562fa86581008455a6d9d646fa95) )
 	ROM_RELOAD(             0x180000, 0x080000             )
-	ROM_LOAD( "mc002j.u36", 0x200000, 0x020000, CRC(27ac1056) SHA1(34b07c1a0d403ca45c9849d3d8d311012f787df6) )
+	ROM_LOAD( "mc002e02.u36", 0x200000, 0x020000, CRC(27ac1056) SHA1(34b07c1a0d403ca45c9849d3d8d311012f787df6) ) /* Labeled as MC002J/U36-02, but same as MC002E/U36-02 */
 	ROM_RELOAD(             0x220000, 0x020000             )
 	ROM_RELOAD(             0x240000, 0x020000             )
 	ROM_RELOAD(             0x260000, 0x020000             )
@@ -3945,8 +3977,9 @@ ROM_END
 
 GAME( 1991, berlwall, 0,        berlwall, berlwall, berlwall,   ROT0,  "Kaneko", "The Berlin Wall", 0 )
 GAME( 1991, berlwalt, berlwall, berlwall, berlwalt, berlwall,   ROT0,  "Kaneko", "The Berlin Wall (bootleg ?)", 0 )
-GAME( 1991, mgcrystl, 0,        mgcrystl, mgcrystl, kaneko16,   ROT0,  "Kaneko", "Magical Crystals (World)", 0 )
-GAME( 1991, mgcrystj, mgcrystl, mgcrystl, mgcrystl, kaneko16,   ROT0,  "Kaneko (Atlus license)", "Magical Crystals (Japan)", 0 )
+GAME( 1991, mgcrystl, 0,        mgcrystl, mgcrystl, kaneko16,   ROT0,  "Kaneko", "Magical Crystals (World, 92/01/10)", 0 )
+GAME( 1991, mgcrysto, mgcrystl, mgcrystl, mgcrystl, kaneko16,   ROT0,  "Kaneko", "Magical Crystals (World, 91/12/10)", 0 )
+GAME( 1991, mgcrystj, mgcrystl, mgcrystl, mgcrystl, kaneko16,   ROT0,  "Kaneko (Atlus license)", "Magical Crystals (Japan, 92/01/13)", 0 )
 GAME( 1992, blazeon,  0,        blazeon,  blazeon,  kaneko16,   ROT0,  "Atlus",  "Blaze On (Japan)", 0 )
 GAME( 1992, explbrkr, 0,        bakubrkr, bakubrkr, kaneko16,   ROT90, "Kaneko", "Explosive Breaker", 0 )
 GAME( 1992, bakubrkr, explbrkr, bakubrkr, bakubrkr, kaneko16,   ROT90, "Kaneko", "Bakuretsu Breaker", 0 )

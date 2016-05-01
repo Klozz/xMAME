@@ -4,7 +4,7 @@
 
 /***************************************************************************
 
-    Xexex  (c) 1991 Konami
+    Xexex  (c) 1991 Konami - GX067
 
 
 Change Log
@@ -62,9 +62,7 @@ Unresolved Issues:
 ***************************************************************************/
 
 #include "driver.h"
-#include "state.h"
 
-#include "vidhrdw/generic.h"
 #include "vidhrdw/konamiic.h"
 #include "cpu/z80/z80.h"
 #include "machine/eeprom.h"
@@ -76,12 +74,13 @@ VIDEO_START( xexex );
 VIDEO_UPDATE( xexex );
 void xexex_set_alpha(int on);
 
-MACHINE_INIT( xexex );
+MACHINE_START( xexex );
+MACHINE_RESET( xexex );
 
 static UINT16 *xexex_workram;
 static UINT16 cur_control2;
 static int init_eeprom_count;
-static int cur_sound_region, xexex_strip0x1a;
+static INT32 cur_sound_region, xexex_strip0x1a;
 static int suspension_active, resume_trigger;
 static void *dmadelay_timer;
 
@@ -400,7 +399,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x180000, 0x181fff) AM_WRITE(K056832_ram_word_w) 		/* tilemap RAM */
 	AM_RANGE(0x182000, 0x183fff) AM_WRITE(K056832_ram_word_w) 		/* tilemap RAM mirror */
 	AM_RANGE(0x190000, 0x191fff) AM_WRITE(MWA16_ROM)					/* tile ROM */
-	AM_RANGE(0x1b0000, 0x1b1fff) AM_WRITE(paletteram16_xrgb_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x1b0000, 0x1b1fff) AM_WRITE(paletteram16_xrgb_word_be_w) AM_BASE(&paletteram16)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -489,7 +488,8 @@ static MACHINE_DRIVER_START( xexex )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(xexex)
+	MDRV_MACHINE_START(xexex)
+	MDRV_MACHINE_RESET(xexex)
 	MDRV_NVRAM_HANDLER(xexex)
 
 	/* video hardware */
@@ -529,70 +529,113 @@ static MACHINE_DRIVER_START( xexex )
 MACHINE_DRIVER_END
 
 
-ROM_START( xexex )
+ROM_START( xexex ) /* Europe, Version AA */
 	ROM_REGION( 0x180000, REGION_CPU1, 0 )
-	ROM_LOAD16_BYTE( "xex_a01.rom",  0x000000, 0x40000, CRC(3ebcb066) SHA1(83a20433d9fdcc8b8d7133991f9a8164dddb61f3) )
-	ROM_LOAD16_BYTE( "xex_a02.rom",  0x000001, 0x40000, CRC(36ea7a48) SHA1(34f8046d7ecf5ea66c59c5bc0d7627942c28fd3b) )
-	ROM_LOAD16_BYTE( "xex_b03.rom",  0x100000, 0x40000, CRC(97833086) SHA1(a564f7b1b52c774d78a59f4418c7ecccaf94ad41) )
-	ROM_LOAD16_BYTE( "xex_b04.rom",  0x100001, 0x40000, CRC(26ec5dc8) SHA1(9da62683bfa8f16607cbea2d59a1446ec8588c5b) )
+	ROM_LOAD16_BYTE( "067eaa01.16d", 0x000000, 0x40000, CRC(3ebcb066) SHA1(83a20433d9fdcc8b8d7133991f9a8164dddb61f3) )
+	ROM_LOAD16_BYTE( "067eaa02.16f", 0x000001, 0x40000, CRC(36ea7a48) SHA1(34f8046d7ecf5ea66c59c5bc0d7627942c28fd3b) )
+	ROM_LOAD16_BYTE( "067_b03.rom",  0x100000, 0x40000, CRC(97833086) SHA1(a564f7b1b52c774d78a59f4418c7ecccaf94ad41) )
+	ROM_LOAD16_BYTE( "067_b04.rom",  0x100001, 0x40000, CRC(26ec5dc8) SHA1(9da62683bfa8f16607cbea2d59a1446ec8588c5b) )
 
 	ROM_REGION( 0x030000, REGION_CPU2, 0 )
-	ROM_LOAD( "xex_a05.rom", 0x000000, 0x020000, CRC(0e33d6ec) SHA1(4dd68cb78c779e2d035e43fec35a7672ed1c259b) )
+	ROM_LOAD( "067eaa05.4e", 0x000000, 0x020000, CRC(0e33d6ec) SHA1(4dd68cb78c779e2d035e43fec35a7672ed1c259b) )
 	ROM_RELOAD(              0x010000, 0x020000 )
 
 	ROM_REGION( 0x200000, REGION_GFX1, 0 )
-	ROM_LOAD( "xex_b14.rom", 0x000000, 0x100000, CRC(02a44bfa) SHA1(ad95df4dbf8842820ef20f54407870afb6d0e4a3) )
-	ROM_LOAD( "xex_b13.rom", 0x100000, 0x100000, CRC(633c8eb5) SHA1(a11f78003a1dffe2d8814d368155059719263082) )
+	ROM_LOAD( "067_b14.rom", 0x000000, 0x100000, CRC(02a44bfa) SHA1(ad95df4dbf8842820ef20f54407870afb6d0e4a3) )
+	ROM_LOAD( "067_b13.rom", 0x100000, 0x100000, CRC(633c8eb5) SHA1(a11f78003a1dffe2d8814d368155059719263082) )
 
 	ROM_REGION( 0x400000, REGION_GFX2, 0 )
-	ROM_LOAD( "xex_b12.rom", 0x000000, 0x100000, CRC(08d611b0) SHA1(9cac60131e0411f173acd8ef3f206e5e58a7e5d2) )
-	ROM_LOAD( "xex_b11.rom", 0x100000, 0x100000, CRC(a26f7507) SHA1(6bf717cb9fcad59a2eafda967f14120b9ebbc8c5) )
-	ROM_LOAD( "xex_b10.rom", 0x200000, 0x100000, CRC(ee31db8d) SHA1(c41874fb8b401ea9cdd327ee6239b5925418cf7b) )
-	ROM_LOAD( "xex_b09.rom", 0x300000, 0x100000, CRC(88f072ef) SHA1(7ecc04dbcc29b715117e970cc96e11137a21b83a) )
+	ROM_LOAD( "067_b12.rom", 0x000000, 0x100000, CRC(08d611b0) SHA1(9cac60131e0411f173acd8ef3f206e5e58a7e5d2) )
+	ROM_LOAD( "067_b11.rom", 0x100000, 0x100000, CRC(a26f7507) SHA1(6bf717cb9fcad59a2eafda967f14120b9ebbc8c5) )
+	ROM_LOAD( "067_b10.rom", 0x200000, 0x100000, CRC(ee31db8d) SHA1(c41874fb8b401ea9cdd327ee6239b5925418cf7b) )
+	ROM_LOAD( "067_b09.rom", 0x300000, 0x100000, CRC(88f072ef) SHA1(7ecc04dbcc29b715117e970cc96e11137a21b83a) )
 
 	ROM_REGION( 0x100000, REGION_GFX3, 0 ) /* NOTE: region must be 2xROM size for unpacking */
-	ROM_LOAD( "xex_b08.rom", 0x000000, 0x080000, CRC(ca816b7b) SHA1(769ce3700e41200c34adec98598c0fe371fe1e6d) )
+	ROM_LOAD( "067_b08.rom", 0x000000, 0x080000, CRC(ca816b7b) SHA1(769ce3700e41200c34adec98598c0fe371fe1e6d) )
 
 	ROM_REGION( 0x300000, REGION_SOUND1, 0 )
-	ROM_LOAD( "xex_b06.rom", 0x000000, 0x200000, CRC(3b12fce4) SHA1(c69172d9965b8da8a539812fac92d5f1a3c80d17) )
-	ROM_LOAD( "xex_b07.rom", 0x200000, 0x100000, CRC(ec87fe1b) SHA1(ec9823aea5a1fc5c47c8262e15e10b28be87231c) )
+	ROM_LOAD( "067_b06.rom", 0x000000, 0x200000, CRC(3b12fce4) SHA1(c69172d9965b8da8a539812fac92d5f1a3c80d17) )
+	ROM_LOAD( "067_b07.rom", 0x200000, 0x100000, CRC(ec87fe1b) SHA1(ec9823aea5a1fc5c47c8262e15e10b28be87231c) )
 ROM_END
 
-ROM_START( xexexj )
+ROM_START( xexexa ) /* Asia, Version AA */
+	ROM_REGION( 0x180000, REGION_CPU1, 0 )
+	ROM_LOAD16_BYTE( "067aaa01.16d", 0x000000, 0x40000, CRC(cf557144) SHA1(4ce587580d953b88864652dd66485d49ca719ec5) )
+	ROM_LOAD16_BYTE( "067aaa02.16f", 0x000001, 0x40000, CRC(b7b98d52) SHA1(ca2343bf37f779699b6782772e559ea5662c1742) )
+	ROM_LOAD16_BYTE( "067_b03.rom",  0x100000, 0x40000, CRC(97833086) SHA1(a564f7b1b52c774d78a59f4418c7ecccaf94ad41) )
+	ROM_LOAD16_BYTE( "067_b04.rom",  0x100001, 0x40000, CRC(26ec5dc8) SHA1(9da62683bfa8f16607cbea2d59a1446ec8588c5b) )
+
+	ROM_REGION( 0x030000, REGION_CPU2, 0 )
+	ROM_LOAD( "067eaa05.4e", 0x000000, 0x020000, CRC(0e33d6ec) SHA1(4dd68cb78c779e2d035e43fec35a7672ed1c259b) )
+	ROM_RELOAD(              0x010000, 0x020000 )
+
+	ROM_REGION( 0x200000, REGION_GFX1, 0 )
+	ROM_LOAD( "067_b14.rom", 0x000000, 0x100000, CRC(02a44bfa) SHA1(ad95df4dbf8842820ef20f54407870afb6d0e4a3) )
+	ROM_LOAD( "067_b13.rom", 0x100000, 0x100000, CRC(633c8eb5) SHA1(a11f78003a1dffe2d8814d368155059719263082) )
+
+	ROM_REGION( 0x400000, REGION_GFX2, 0 )
+	ROM_LOAD( "067_b12.rom", 0x000000, 0x100000, CRC(08d611b0) SHA1(9cac60131e0411f173acd8ef3f206e5e58a7e5d2) )
+	ROM_LOAD( "067_b11.rom", 0x100000, 0x100000, CRC(a26f7507) SHA1(6bf717cb9fcad59a2eafda967f14120b9ebbc8c5) )
+	ROM_LOAD( "067_b10.rom", 0x200000, 0x100000, CRC(ee31db8d) SHA1(c41874fb8b401ea9cdd327ee6239b5925418cf7b) )
+	ROM_LOAD( "067_b09.rom", 0x300000, 0x100000, CRC(88f072ef) SHA1(7ecc04dbcc29b715117e970cc96e11137a21b83a) )
+
+	ROM_REGION( 0x100000, REGION_GFX3, 0 ) /* NOTE: region must be 2xROM size for unpacking */
+	ROM_LOAD( "067_b08.rom", 0x000000, 0x080000, CRC(ca816b7b) SHA1(769ce3700e41200c34adec98598c0fe371fe1e6d) )
+
+	ROM_REGION( 0x300000, REGION_SOUND1, 0 )
+	ROM_LOAD( "067_b06.rom", 0x000000, 0x200000, CRC(3b12fce4) SHA1(c69172d9965b8da8a539812fac92d5f1a3c80d17) )
+	ROM_LOAD( "067_b07.rom", 0x200000, 0x100000, CRC(ec87fe1b) SHA1(ec9823aea5a1fc5c47c8262e15e10b28be87231c) )
+ROM_END
+
+ROM_START( xexexj ) /* Japan, Version AA */
 	ROM_REGION( 0x180000, REGION_CPU1, 0 )
 	ROM_LOAD16_BYTE( "067jaa01.16d", 0x000000, 0x40000, CRC(06e99784) SHA1(d53fe3724608992a6938c36aa2719dc545d6b89e) )
 	ROM_LOAD16_BYTE( "067jaa02.16f", 0x000001, 0x40000, CRC(30ae5bc4) SHA1(60491e31eef64a9206d1372afa32d83c6c0968b3) )
-	ROM_LOAD16_BYTE( "xex_b03.rom",  0x100000, 0x40000, CRC(97833086) SHA1(a564f7b1b52c774d78a59f4418c7ecccaf94ad41) )
-	ROM_LOAD16_BYTE( "xex_b04.rom",  0x100001, 0x40000, CRC(26ec5dc8) SHA1(9da62683bfa8f16607cbea2d59a1446ec8588c5b) )
+	ROM_LOAD16_BYTE( "067_b03.rom",  0x100000, 0x40000, CRC(97833086) SHA1(a564f7b1b52c774d78a59f4418c7ecccaf94ad41) )
+	ROM_LOAD16_BYTE( "067_b04.rom",  0x100001, 0x40000, CRC(26ec5dc8) SHA1(9da62683bfa8f16607cbea2d59a1446ec8588c5b) )
 
 	ROM_REGION( 0x030000, REGION_CPU2, 0 )
 	ROM_LOAD( "067jaa05.4e", 0x000000, 0x020000, CRC(2f4dd0a8) SHA1(bfa76c9c968f1beba648a2911510e3d666a8fe3a) )
 	ROM_RELOAD(              0x010000, 0x020000 )
 
 	ROM_REGION( 0x200000, REGION_GFX1, 0 )
-	ROM_LOAD( "xex_b14.rom", 0x000000, 0x100000, CRC(02a44bfa) SHA1(ad95df4dbf8842820ef20f54407870afb6d0e4a3) )
-	ROM_LOAD( "xex_b13.rom", 0x100000, 0x100000, CRC(633c8eb5) SHA1(a11f78003a1dffe2d8814d368155059719263082) )
+	ROM_LOAD( "067_b14.rom", 0x000000, 0x100000, CRC(02a44bfa) SHA1(ad95df4dbf8842820ef20f54407870afb6d0e4a3) )
+	ROM_LOAD( "067_b13.rom", 0x100000, 0x100000, CRC(633c8eb5) SHA1(a11f78003a1dffe2d8814d368155059719263082) )
 
 	ROM_REGION( 0x400000, REGION_GFX2, 0 )
-	ROM_LOAD( "xex_b12.rom", 0x000000, 0x100000, CRC(08d611b0) SHA1(9cac60131e0411f173acd8ef3f206e5e58a7e5d2) )
-	ROM_LOAD( "xex_b11.rom", 0x100000, 0x100000, CRC(a26f7507) SHA1(6bf717cb9fcad59a2eafda967f14120b9ebbc8c5) )
-	ROM_LOAD( "xex_b10.rom", 0x200000, 0x100000, CRC(ee31db8d) SHA1(c41874fb8b401ea9cdd327ee6239b5925418cf7b) )
-	ROM_LOAD( "xex_b09.rom", 0x300000, 0x100000, CRC(88f072ef) SHA1(7ecc04dbcc29b715117e970cc96e11137a21b83a) )
+	ROM_LOAD( "067_b12.rom", 0x000000, 0x100000, CRC(08d611b0) SHA1(9cac60131e0411f173acd8ef3f206e5e58a7e5d2) )
+	ROM_LOAD( "067_b11.rom", 0x100000, 0x100000, CRC(a26f7507) SHA1(6bf717cb9fcad59a2eafda967f14120b9ebbc8c5) )
+	ROM_LOAD( "067_b10.rom", 0x200000, 0x100000, CRC(ee31db8d) SHA1(c41874fb8b401ea9cdd327ee6239b5925418cf7b) )
+	ROM_LOAD( "067_b09.rom", 0x300000, 0x100000, CRC(88f072ef) SHA1(7ecc04dbcc29b715117e970cc96e11137a21b83a) )
 
 	ROM_REGION( 0x100000, REGION_GFX3, 0 ) /* NOTE: region must be 2xROM size for unpacking */
-	ROM_LOAD( "xex_b08.rom", 0x000000, 0x080000, CRC(ca816b7b) SHA1(769ce3700e41200c34adec98598c0fe371fe1e6d) )
+	ROM_LOAD( "067_b08.rom", 0x000000, 0x080000, CRC(ca816b7b) SHA1(769ce3700e41200c34adec98598c0fe371fe1e6d) )
 
 	ROM_REGION( 0x300000, REGION_SOUND1, 0 )
-	ROM_LOAD( "xex_b06.rom", 0x000000, 0x200000, CRC(3b12fce4) SHA1(c69172d9965b8da8a539812fac92d5f1a3c80d17) )
-	ROM_LOAD( "xex_b07.rom", 0x200000, 0x100000, CRC(ec87fe1b) SHA1(ec9823aea5a1fc5c47c8262e15e10b28be87231c) )
+	ROM_LOAD( "067_b06.rom", 0x000000, 0x200000, CRC(3b12fce4) SHA1(c69172d9965b8da8a539812fac92d5f1a3c80d17) )
+	ROM_LOAD( "067_b07.rom", 0x200000, 0x100000, CRC(ec87fe1b) SHA1(ec9823aea5a1fc5c47c8262e15e10b28be87231c) )
 ROM_END
 
-MACHINE_INIT( xexex )
+MACHINE_RESET( xexex )
 {
 	cur_sound_region = 0;
 	suspension_active = 0;
 	K054539_init_flags(0, K054539_REVERSE_STEREO);
 }
+
+MACHINE_START( xexex )
+{
+	state_save_register_global(cur_control2);
+	state_save_register_func_postload(parse_control2);
+	state_save_register_global(cur_sound_region);
+	state_save_register_func_postload(reset_sound_region);
+
+	resume_trigger = 1000;
+
+	dmadelay_timer = timer_alloc(dmaend_callback);
+	return 0;
+}
+
 
 static DRIVER_INIT( xexex )
 {
@@ -607,17 +650,8 @@ static DRIVER_INIT( xexex )
 	konami_rom_deinterleave_2(REGION_GFX1);
 	konami_rom_deinterleave_4(REGION_GFX2);
 	K053250_unpack_pixels(REGION_GFX3);
-
-	state_save_register_UINT16("main", 0, "control2", &cur_control2, 1);
-	state_save_register_func_postload(parse_control2);
-	state_save_register_int("main", 0, "sound region", &cur_sound_region);
-	state_save_register_func_postload(reset_sound_region);
-
-	resume_trigger = 1000;
-
-	dmadelay_timer = timer_alloc(dmaend_callback);
 }
 
-
 GAME( 1991, xexex,  0,     xexex, xexex, xexex, ROT0, "Konami", "Xexex (ver EAA)", 0 )
+GAME( 1991, xexexa, xexex, xexex, xexex, xexex, ROT0, "Konami", "Xexex (ver AAA)", 0 )
 GAME( 1991, xexexj, xexex, xexex, xexex, xexex, ROT0, "Konami", "Xexex (ver JAA)", 0 )

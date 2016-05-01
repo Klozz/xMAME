@@ -9,12 +9,6 @@ Atari Drag Race Driver
 #include "sound/discrete.h"
 
 
-extern VIDEO_START( dragrace );
-extern VIDEO_UPDATE( dragrace );
-
-extern UINT8* dragrace_playfield_ram;
-extern UINT8* dragrace_position_ram;
-
 static unsigned dragrace_misc_flags = 0;
 
 static int dragrace_gear[2];
@@ -40,7 +34,7 @@ static void dragrace_frame_callback(int dummy)
 }
 
 
-static MACHINE_INIT( dragrace )
+static MACHINE_RESET( dragrace )
 {
 	timer_pulse(cpu_getscanlinetime(0), 0, dragrace_frame_callback);
 }
@@ -339,7 +333,7 @@ static MACHINE_DRIVER_START( dragrace )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION((int) ((22. * 1000000) / (262. * 60) + 0.5))
 
-	MDRV_MACHINE_INIT(dragrace)
+	MDRV_MACHINE_RESET(dragrace)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

@@ -69,7 +69,9 @@
 #include "devices/basicdsk.h"
 #include "devices/cassette.h"
 #include "devices/printer.h"
-#include "machine/z80fmly.h"
+#include "machine/z80ctc.h"
+#include "machine/z80pio.h"
+#include "machine/z80sio.h"
 #include "sound/sn76477.h"
 
 static tilemap *bg_tilemap;
@@ -1010,10 +1012,9 @@ static void abc80_pio_interrupt( int state )
 
 static z80pio_interface abc80_pio_interface = 
 {
-	1,
-	{ abc80_pio_interrupt },
-	{ NULL },
-	{ NULL }
+	abc80_pio_interrupt,
+	NULL,
+	NULL
 };
 
 /* Sound Interfaces */
@@ -1060,10 +1061,10 @@ INTERRUPT_GEN( abc80_nmi_interrupt )
 
 /* Machine Initialization */
 
-static MACHINE_INIT( abc80 )
+static MACHINE_START( abc80 )
 {
-	z80pio_init(&abc80_pio_interface);
-	z80pio_reset(0);
+	z80pio_init(0, &abc80_pio_interface);
+	return 0;
 }
 
 /* Machine Drivers */
@@ -1079,7 +1080,7 @@ static MACHINE_DRIVER_START( abc80 )
 	MDRV_FRAMES_PER_SECOND(50)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(abc80)
+	MDRV_MACHINE_START(abc80)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -1157,7 +1158,7 @@ MACHINE_DRIVER_END
 
 /* Devices */
 
-DEVICE_LOAD( abc80_floppy )
+int device_load_abc80_floppy(mess_image *image, mame_file *file)
 {
 	int size, tracks, heads, sectors;
 
@@ -1295,29 +1296,51 @@ ROM_START( abc806 )
 	ROM_LOAD( "char.7c",  0x0000, 0x1000, CRC(b17c51c5) SHA1(e466e80ec989fbd522c89a67d274b8f0bed1ff72) )
 ROM_END
 
-static void abc80_printer_getinfo(struct IODevice *dev)
+static void abc80_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
-	printer_device_getinfo(dev);
-	dev->count = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		default:										printer_device_getinfo(devclass, state, info); break;
+	}
 }
 
-/*
-static void abc80_cassette_getinfo(struct IODevice *dev)
+#if 0
+static void abc80_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
-	// cassette
-	cassette_device_getinfo(dev, abc80_cassette_formats, NULL, (cassette_state) -1);
-	dev->count = 1;
-}
-*/
+	/* cassette */
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
 
-static void abc80_floppy_getinfo(struct IODevice *dev)
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) abc80_cassette_formats; break;
+
+		default:										cassette_device_getinfo(devclass, state, info); break;
+	}
+}
+#endif
+
+static void abc80_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	legacybasicdsk_device_getinfo(dev);
-	dev->count = 2;
-	dev->file_extensions = "dsk\0";
-	dev->load = device_load_abc80_floppy;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 2; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_abc80_floppy; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+
+		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
+	}
 }
 
 /* System Configuration */

@@ -75,7 +75,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
+#include "profiler.h"
 #include "includes/snes.h"
 
 #define MAINSCREEN      0
@@ -1809,7 +1809,7 @@ static void snes_update_offsets(void)
  *
  * Redraw the current line.
  *********************************************/
-void snes_refresh_scanline( mame_bitmap *bitmap, UINT16 curline )
+static void snes_refresh_scanline( mame_bitmap *bitmap, UINT16 curline )
 {
 	UINT16 ii;
 

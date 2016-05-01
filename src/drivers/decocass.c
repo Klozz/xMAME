@@ -54,7 +54,6 @@
 
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
-#include "vidhrdw/generic.h"
 #include "machine/decocass.h"
 #include "sound/ay8910.h"
 
@@ -341,33 +340,44 @@ static const gfx_layout tilelayout =
 	2*16*16 /* every tile takes 64 consecutive bytes */
 };
 
+static const UINT32 objlayout_planes[1] =
+	{ 0 };
+
+static const UINT32 objlayout_xoffset[64] =
+{
+	7*8+0,7*8+1,7*8+2,7*8+3,7*8+4,7*8+5,7*8+6,7*8+7,
+	6*8+0,6*8+1,6*8+2,6*8+3,6*8+4,6*8+5,6*8+6,6*8+7,
+	5*8+0,5*8+1,5*8+2,5*8+3,5*8+4,5*8+5,5*8+6,5*8+7,
+	4*8+0,4*8+1,4*8+2,4*8+3,4*8+4,4*8+5,4*8+6,4*8+7,
+	3*8+0,3*8+1,3*8+2,3*8+3,3*8+4,3*8+5,3*8+6,3*8+7,
+	2*8+0,2*8+1,2*8+2,2*8+3,2*8+4,2*8+5,2*8+6,2*8+7,
+	1*8+0,1*8+1,1*8+2,1*8+3,1*8+4,1*8+5,1*8+6,1*8+7,
+	0*8+0,0*8+1,0*8+2,0*8+3,0*8+4,0*8+5,0*8+6,0*8+7
+};
+
+static const UINT32 objlayout_yoffset[64] =
+{
+	63*2*64,62*2*64,61*2*64,60*2*64,59*2*64,58*2*64,57*2*64,56*2*64,
+	55*2*64,54*2*64,53*2*64,52*2*64,51*2*64,50*2*64,49*2*64,48*2*64,
+	47*2*64,46*2*64,45*2*64,44*2*64,43*2*64,42*2*64,41*2*64,40*2*64,
+	39*2*64,38*2*64,37*2*64,36*2*64,35*2*64,34*2*64,33*2*64,32*2*64,
+	31*2*64,30*2*64,29*2*64,28*2*64,27*2*64,26*2*64,25*2*64,24*2*64,
+	23*2*64,22*2*64,21*2*64,20*2*64,19*2*64,18*2*64,17*2*64,16*2*64,
+	15*2*64,14*2*64,13*2*64,12*2*64,11*2*64,10*2*64, 9*2*64, 8*2*64,
+	 7*2*64, 6*2*64, 5*2*64, 4*2*64, 3*2*64, 2*2*64, 1*2*64, 0*2*64
+};
+
 static const gfx_layout objlayout =
 {
 	64,64,	/* 64x64 object */
 	2,		/* 2 objects */
 	1,		/* 1 bits per pixel */
 	{ 0 },
-	{
-		7*8+0,7*8+1,7*8+2,7*8+3,7*8+4,7*8+5,7*8+6,7*8+7,
-		6*8+0,6*8+1,6*8+2,6*8+3,6*8+4,6*8+5,6*8+6,6*8+7,
-		5*8+0,5*8+1,5*8+2,5*8+3,5*8+4,5*8+5,5*8+6,5*8+7,
-		4*8+0,4*8+1,4*8+2,4*8+3,4*8+4,4*8+5,4*8+6,4*8+7,
-		3*8+0,3*8+1,3*8+2,3*8+3,3*8+4,3*8+5,3*8+6,3*8+7,
-		2*8+0,2*8+1,2*8+2,2*8+3,2*8+4,2*8+5,2*8+6,2*8+7,
-		1*8+0,1*8+1,1*8+2,1*8+3,1*8+4,1*8+5,1*8+6,1*8+7,
-		0*8+0,0*8+1,0*8+2,0*8+3,0*8+4,0*8+5,0*8+6,0*8+7
-	},
-	{
-		63*2*64,62*2*64,61*2*64,60*2*64,59*2*64,58*2*64,57*2*64,56*2*64,
-		55*2*64,54*2*64,53*2*64,52*2*64,51*2*64,50*2*64,49*2*64,48*2*64,
-		47*2*64,46*2*64,45*2*64,44*2*64,43*2*64,42*2*64,41*2*64,40*2*64,
-		39*2*64,38*2*64,37*2*64,36*2*64,35*2*64,34*2*64,33*2*64,32*2*64,
-		31*2*64,30*2*64,29*2*64,28*2*64,27*2*64,26*2*64,25*2*64,24*2*64,
-		23*2*64,22*2*64,21*2*64,20*2*64,19*2*64,18*2*64,17*2*64,16*2*64,
-		15*2*64,14*2*64,13*2*64,12*2*64,11*2*64,10*2*64, 9*2*64, 8*2*64,
-		 7*2*64, 6*2*64, 5*2*64, 4*2*64, 3*2*64, 2*2*64, 1*2*64, 0*2*64
-	},
-	8*8 /* object takes 8 consecutive bytes */
+	EXTENDED_XOFFS,
+	EXTENDED_YOFFS,
+	8*8, /* object takes 8 consecutive bytes */
+	objlayout_xoffset,
+	objlayout_yoffset
 };
 
 static const gfx_layout missilelayout =
@@ -434,7 +444,7 @@ static MACHINE_DRIVER_START( decocass )
 	MDRV_VBLANK_DURATION(3072)		/* frames per second, vblank duration */
 	MDRV_INTERLEAVE(7)				/* interleave CPUs */
 
-	MDRV_MACHINE_INIT(decocass)
+	MDRV_MACHINE_RESET(decocass)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -463,7 +473,7 @@ static MACHINE_DRIVER_START( ctsttape )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(ctsttape)
+	MDRV_MACHINE_RESET(ctsttape)
 MACHINE_DRIVER_END
 
 
@@ -471,7 +481,7 @@ static MACHINE_DRIVER_START( clocknch )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(clocknch)
+	MDRV_MACHINE_RESET(clocknch)
 MACHINE_DRIVER_END
 
 
@@ -479,7 +489,7 @@ static MACHINE_DRIVER_START( ctisland )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(ctisland)
+	MDRV_MACHINE_RESET(ctisland)
 MACHINE_DRIVER_END
 
 
@@ -487,7 +497,7 @@ static MACHINE_DRIVER_START( csuperas )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(csuperas)
+	MDRV_MACHINE_RESET(csuperas)
 MACHINE_DRIVER_END
 
 
@@ -495,7 +505,7 @@ static MACHINE_DRIVER_START( castfant )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(castfant)
+	MDRV_MACHINE_RESET(castfant)
 MACHINE_DRIVER_END
 
 
@@ -503,7 +513,7 @@ static MACHINE_DRIVER_START( cluckypo )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cluckypo)
+	MDRV_MACHINE_RESET(cluckypo)
 MACHINE_DRIVER_END
 
 
@@ -511,7 +521,7 @@ static MACHINE_DRIVER_START( cterrani )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cterrani)
+	MDRV_MACHINE_RESET(cterrani)
 MACHINE_DRIVER_END
 
 
@@ -519,7 +529,7 @@ static MACHINE_DRIVER_START( cexplore )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cexplore)
+	MDRV_MACHINE_RESET(cexplore)
 MACHINE_DRIVER_END
 
 
@@ -527,7 +537,7 @@ static MACHINE_DRIVER_START( cprogolf )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cprogolf)
+	MDRV_MACHINE_RESET(cprogolf)
 MACHINE_DRIVER_END
 
 
@@ -535,7 +545,7 @@ static MACHINE_DRIVER_START( cmissnx )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cmissnx)
+	MDRV_MACHINE_RESET(cmissnx)
 MACHINE_DRIVER_END
 
 
@@ -543,7 +553,7 @@ static MACHINE_DRIVER_START( cdiscon1 )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cdiscon1)
+	MDRV_MACHINE_RESET(cdiscon1)
 MACHINE_DRIVER_END
 
 
@@ -551,7 +561,7 @@ static MACHINE_DRIVER_START( cptennis )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cptennis)
+	MDRV_MACHINE_RESET(cptennis)
 MACHINE_DRIVER_END
 
 
@@ -559,7 +569,7 @@ static MACHINE_DRIVER_START( ctornado )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(ctornado)
+	MDRV_MACHINE_RESET(ctornado)
 MACHINE_DRIVER_END
 
 
@@ -567,7 +577,7 @@ static MACHINE_DRIVER_START( cbnj )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cbnj)
+	MDRV_MACHINE_RESET(cbnj)
 MACHINE_DRIVER_END
 
 
@@ -575,7 +585,7 @@ static MACHINE_DRIVER_START( cburnrub )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cburnrub)
+	MDRV_MACHINE_RESET(cburnrub)
 MACHINE_DRIVER_END
 
 
@@ -583,7 +593,7 @@ static MACHINE_DRIVER_START( cbtime )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cbtime)
+	MDRV_MACHINE_RESET(cbtime)
 MACHINE_DRIVER_END
 
 
@@ -591,7 +601,7 @@ static MACHINE_DRIVER_START( cgraplop )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cgraplop)
+	MDRV_MACHINE_RESET(cgraplop)
 MACHINE_DRIVER_END
 
 
@@ -599,7 +609,7 @@ static MACHINE_DRIVER_START( cgraplp2 )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cgraplp2)
+	MDRV_MACHINE_RESET(cgraplp2)
 MACHINE_DRIVER_END
 
 
@@ -607,7 +617,7 @@ static MACHINE_DRIVER_START( clapapa )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(clapapa)
+	MDRV_MACHINE_RESET(clapapa)
 MACHINE_DRIVER_END
 
 
@@ -615,7 +625,7 @@ static MACHINE_DRIVER_START( cfghtice )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cfghtice)
+	MDRV_MACHINE_RESET(cfghtice)
 MACHINE_DRIVER_END
 
 
@@ -623,7 +633,7 @@ static MACHINE_DRIVER_START( cprobowl )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cprobowl)
+	MDRV_MACHINE_RESET(cprobowl)
 MACHINE_DRIVER_END
 
 
@@ -631,7 +641,7 @@ static MACHINE_DRIVER_START( cnightst )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cnightst)
+	MDRV_MACHINE_RESET(cnightst)
 MACHINE_DRIVER_END
 
 
@@ -639,7 +649,7 @@ static MACHINE_DRIVER_START( cprosocc )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cprosocc)
+	MDRV_MACHINE_RESET(cprosocc)
 MACHINE_DRIVER_END
 
 
@@ -647,7 +657,7 @@ static MACHINE_DRIVER_START( cppicf )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cppicf)
+	MDRV_MACHINE_RESET(cppicf)
 MACHINE_DRIVER_END
 
 
@@ -655,7 +665,7 @@ static MACHINE_DRIVER_START( cbdash )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cbdash)
+	MDRV_MACHINE_RESET(cbdash)
 MACHINE_DRIVER_END
 
 
@@ -663,7 +673,7 @@ static MACHINE_DRIVER_START( cscrtry )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cscrtry)
+	MDRV_MACHINE_RESET(cscrtry)
 MACHINE_DRIVER_END
 
 
@@ -671,7 +681,7 @@ static MACHINE_DRIVER_START( cflyball )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(cflyball)
+	MDRV_MACHINE_RESET(cflyball)
 MACHINE_DRIVER_END
 
 
@@ -679,7 +689,7 @@ static MACHINE_DRIVER_START( czeroize )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
-	MDRV_MACHINE_INIT(czeroize)
+	MDRV_MACHINE_RESET(czeroize)
 	MDRV_VISIBLE_AREA(1*8, 32*8-1, 1*8, 31*8-1)
 MACHINE_DRIVER_END
 
@@ -1122,7 +1132,7 @@ ROM_START( czeroize )
 	DECOCASS_COMMON_ROMS
 
 	ROM_REGION( 0x01000, REGION_USER1, 0 )	  /* dongle data */
-	/* missing dongle data */
+	ROM_LOAD( "czeroize.pro",  0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x10000, REGION_USER2, 0 )	  /* (max) 64k for cassette image */
 	ROM_LOAD( "czeroize.cas",   0x0000, 0x10000, CRC(3ef0a406) SHA1(645b34cd477e0bb5539c8fe937a7a2dbd8369003) )
@@ -1196,11 +1206,11 @@ GAMEB( 1982, csweetht, cdiscon1, decocass, cdiscon1, decocass, decocass, ROT270,
 GAMEB( 1982, cptennis, decocass, decocass, cptennis, decocass, decocass, ROT270, "Data East Corporation", "Pro Tennis (Cassette)", 0 )
 GAMEB( 1982, ctornado, decocass, decocass, ctornado, decocass, decocass, ROT270, "Data East Corporation", "Tornado (Cassette)", 0 )
 GAMEB( 1982, cburnrub, decocass, decocass, cburnrub, decocass, decocass, ROT270, "Data East Corporation", "Burnin' Rubber (Cassette, set 1)", 0 )
-GAMEB( 1982, cburnrb2, cburnrub, decocass, cburnrub, decocass, decocass, ROT270, "Data East Corporation", "Burnin' Rubber (Cassette, set 2)", GAME_NOT_WORKING )
+GAMEB( 1982, cburnrb2, cburnrub, decocass, cburnrub, decocass, decocass, ROT270, "Data East Corporation", "Burnin' Rubber (Cassette, set 2)", 0 )
 GAMEB( 1982, cbnj,     cburnrub, decocass, cbnj,     decocass, decocass, ROT270, "Data East Corporation", "Bump N Jump (Cassette)", 0 )
 GAMEB( 1983, cbtime,   decocass, decocass, cbtime,   dc_btime, decocass, ROT270, "Data East Corporation", "Burger Time (Cassette)", 0 )
 GAMEB( 1983, cgraplop, decocass, decocass, cgraplop, decocass, decocass, ROT270, "Data East Corporation", "Graplop (aka Cluster Buster) (Cassette, set 1)", 0 )
-GAMEB( 1983, cgraplp2, cgraplop, decocass, cgraplp2, decocass, decocass, ROT270, "Data East Corporation", "Graplop (aka Cluster Buster) (Cassette, set 2)", 0 )
+GAMEB( 1983, cgraplp2, cgraplop, decocass, cgraplp2, decocass, decocass, ROT270, "Data East Corporation", "Graplop (aka Cluster Buster) (Cassette, set 2)", GAME_NOT_WORKING )
 GAMEB( 1983, clapapa,  decocass, decocass, clapapa,  decocass, decocass, ROT270, "Data East Corporation", "Rootin' Tootin' (aka La.Pa.Pa) (Cassette)" , 0) /* Displays 'LaPaPa during attract */
 GAMEB( 1983, clapapa2, clapapa,  decocass, clapapa,  decocass, decocass, ROT270, "Data East Corporation", "Rootin' Tootin' (Cassette)" , 0)				/* Displays 'Rootin' Tootin' during attract */
 GAMEB( 1984, cfghtice, decocass, decocass, cfghtice, decocass, decocass, ROT270, "Data East Corporation", "Fighting Ice Hockey (Cassette)", 0 )

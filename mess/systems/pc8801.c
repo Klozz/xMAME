@@ -1,6 +1,6 @@
 /***************************************************************************
 
-  $Id: pc8801.c,v 1.43 2005/12/24 02:53:21 npwoods Exp $
+  $Id: pc8801.c,v 1.47 2006/03/12 17:20:25 wfp Exp $
 
 ***************************************************************************/
 
@@ -464,32 +464,32 @@ ADDRESS_MAP_END
 
 ROM_START (pc88srl)
 	ROM_REGION(0x18000,REGION_CPU1,0)
-	ROM_LOAD ("n80.rom", 0x00000, 0x8000, CRC(27e1857d))
-	ROM_LOAD ("n88.rom", 0x08000, 0x8000, CRC(a0fc0473))
-	ROM_LOAD ("n88_0.rom", 0x10000, 0x2000, CRC(710a63ec))
-	ROM_LOAD ("n88_1.rom", 0x12000, 0x2000, CRC(c0bd2aa6))
-	ROM_LOAD ("n88_2.rom", 0x14000, 0x2000, CRC(af2b6efa))
-	ROM_LOAD ("n88_3.rom", 0x16000, 0x2000, CRC(7713c519))
+	ROM_LOAD ("n80.rom", 0x00000, 0x8000, CRC(27e1857d) SHA1(5b922ed9de07d2a729bdf1da7b57c50ddf08809a))
+	ROM_LOAD ("n88.rom", 0x08000, 0x8000, CRC(a0fc0473) SHA1(3b31fc68fa7f47b21c1a1cb027b86b9e87afbfff))
+	ROM_LOAD ("n88_0.rom", 0x10000, 0x2000, CRC(710a63ec) SHA1(d239c26ad7ac5efac6e947b0e9549b1534aa970d))
+	ROM_LOAD ("n88_1.rom", 0x12000, 0x2000, CRC(c0bd2aa6) SHA1(8528eef7946edf6501a6ccb1f416b60c64efac7c))
+	ROM_LOAD ("n88_2.rom", 0x14000, 0x2000, CRC(af2b6efa) SHA1(b7c8bcea219b77d9cc3ee0efafe343cc307425d1))
+	ROM_LOAD ("n88_3.rom", 0x16000, 0x2000, CRC(7713c519) SHA1(efce0b51cab9f0da6cf68507757f1245a2867a72))
 	ROM_REGION(0x10000,REGION_CPU2,0)
-	ROM_LOAD ("disk.rom", 0x0000, 0x0800, CRC(2158d307))
+	ROM_LOAD ("disk.rom", 0x0000, 0x0800, CRC(2158d307) SHA1(bb7103a0818850a039c67ff666a31ce49a8d516f))
 	ROM_REGION(0x40000,REGION_GFX1,0)
-	ROM_LOAD ("kanji1.rom", 0x00000, 0x20000, CRC(6178bd43))
-	ROM_LOAD ("kanji2.rom", 0x20000, 0x20000, CRC(154803cc))
+	ROM_LOAD ("kanji1.rom", 0x00000, 0x20000, CRC(6178bd43) SHA1(82e11a177af6a5091dd67f50a2f4bafda84d6556))
+	ROM_LOAD ("kanji2.rom", 0x20000, 0x20000, CRC(154803cc) SHA1(7e6591cd465cbb35d6d3446c5a83b46d30fafe95))
 ROM_END
 
 ROM_START (pc88srh)
 	ROM_REGION(0x18000,REGION_CPU1,0)
-	ROM_LOAD ("n80.rom", 0x00000, 0x8000, CRC(27e1857d))
-	ROM_LOAD ("n88.rom", 0x08000, 0x8000, CRC(a0fc0473))
-	ROM_LOAD ("n88_0.rom", 0x10000, 0x2000, CRC(710a63ec))
-	ROM_LOAD ("n88_1.rom", 0x12000, 0x2000, CRC(c0bd2aa6))
-	ROM_LOAD ("n88_2.rom", 0x14000, 0x2000, CRC(af2b6efa))
-	ROM_LOAD ("n88_3.rom", 0x16000, 0x2000, CRC(7713c519))
+	ROM_LOAD ("n80.rom", 0x00000, 0x8000, CRC(27e1857d) SHA1(5b922ed9de07d2a729bdf1da7b57c50ddf08809a))
+	ROM_LOAD ("n88.rom", 0x08000, 0x8000, CRC(a0fc0473) SHA1(3b31fc68fa7f47b21c1a1cb027b86b9e87afbfff))
+	ROM_LOAD ("n88_0.rom", 0x10000, 0x2000, CRC(710a63ec) SHA1(d239c26ad7ac5efac6e947b0e9549b1534aa970d))
+	ROM_LOAD ("n88_1.rom", 0x12000, 0x2000, CRC(c0bd2aa6) SHA1(8528eef7946edf6501a6ccb1f416b60c64efac7c))
+	ROM_LOAD ("n88_2.rom", 0x14000, 0x2000, CRC(af2b6efa) SHA1(b7c8bcea219b77d9cc3ee0efafe343cc307425d1))
+	ROM_LOAD ("n88_3.rom", 0x16000, 0x2000, CRC(7713c519) SHA1(efce0b51cab9f0da6cf68507757f1245a2867a72))
 	ROM_REGION(0x10000,REGION_CPU2,0)
-	ROM_LOAD ("disk.rom", 0x0000, 0x0800, CRC(2158d307))
+	ROM_LOAD ("disk.rom", 0x0000, 0x0800, CRC(2158d307) SHA1(bb7103a0818850a039c67ff666a31ce49a8d516f))
 	ROM_REGION(0x40000,REGION_GFX1,0)
-	ROM_LOAD ("kanji1.rom", 0x00000, 0x20000, CRC(6178bd43))
-	ROM_LOAD ("kanji2.rom", 0x20000, 0x20000, CRC(154803cc))
+	ROM_LOAD ("kanji1.rom", 0x00000, 0x20000, CRC(6178bd43) SHA1(82e11a177af6a5091dd67f50a2f4bafda84d6556))
+	ROM_LOAD ("kanji2.rom", 0x20000, 0x20000, CRC(154803cc) SHA1(7e6591cd465cbb35d6d3446c5a83b46d30fafe95))
 ROM_END
 
 static  READ8_HANDLER(opn_dummy_input){return 0xff;}
@@ -523,7 +523,7 @@ static MACHINE_DRIVER_START( pc88srl )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(5000)
 
-	MDRV_MACHINE_INIT( pc88srl )
+	MDRV_MACHINE_RESET( pc88srl )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER
@@ -554,7 +554,7 @@ static MACHINE_DRIVER_START( pc88srh )
 	MDRV_FRAMES_PER_SECOND(50)
 	MDRV_INTERLEAVE(6000)
 
-	MDRV_MACHINE_INIT( pc88srh )
+	MDRV_MACHINE_RESET( pc88srh )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_ASPECT_RATIO(8, 5)
@@ -562,18 +562,26 @@ static MACHINE_DRIVER_START( pc88srh )
 	MDRV_VISIBLE_AREA(0, 640-1, 0, 400-1)
 MACHINE_DRIVER_END
 
-static void pc88_floppy_getinfo(struct IODevice *dev)
+static void pc88_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	dev->type = IO_FLOPPY;
-	dev->count = 2;
-	dev->file_extensions = "d88\0";
-	dev->readable = 1;
-	dev->writeable = 1;
-	dev->creatable = 0;
-	dev->init = device_init_d88image_floppy;
-	dev->load = device_load_d88image_floppy;
-	/*dev->status = floppy_status;*/
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_FLOPPY; break;
+		case DEVINFO_INT_READABLE:						info->i = 1; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case DEVINFO_INT_COUNT:							info->i = 2; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_INIT:							info->init = device_init_d88image_floppy; break;
+		case DEVINFO_PTR_LOAD:							info->load = device_load_d88image_floppy; break;
+		case DEVINFO_PTR_STATUS:						/* info->status = floppy_status; */ break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "d88"); break;
+	}
 }
 
 SYSTEM_CONFIG_START(pc88)

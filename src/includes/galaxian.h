@@ -11,12 +11,13 @@
 
 ***************************************************************************/
 
-/* defined in drivers/galaxian.c */
-extern gfx_decode galaxian_gfxdecodeinfo[];
+/*----------- defined in drivers/galaxian.c -----------*/
+
 MACHINE_DRIVER_EXTERN(galaxian_base);
 
 
-/* defined in drivers/scobra.c */
+/*----------- defined in drivers/scobra.c -----------*/
+
 extern struct AY8910interface scobra_ay8910_interface_2;
 ADDRESS_MAP_EXTERN(scobra_sound_readmem);
 ADDRESS_MAP_EXTERN(scobra_sound_writemem);
@@ -24,7 +25,8 @@ ADDRESS_MAP_EXTERN(scobra_sound_readport);
 ADDRESS_MAP_EXTERN(scobra_sound_writeport);
 
 
-/* defined in drivers/frogger.c */
+/*----------- defined in drivers/frogger.c -----------*/
+
 extern struct AY8910interface frogger_ay8910_interface;
 ADDRESS_MAP_EXTERN(frogger_sound_readmem);
 ADDRESS_MAP_EXTERN(frogger_sound_writemem);
@@ -32,7 +34,8 @@ ADDRESS_MAP_EXTERN(frogger_sound_readport);
 ADDRESS_MAP_EXTERN(frogger_sound_writeport);
 
 
-/* defined in vidhrdw/galaxian.c */
+/*----------- defined in vidhrdw/galaxian.c -----------*/
+
 extern UINT8 *galaxian_videoram;
 extern UINT8 *galaxian_spriteram;
 extern UINT8 *galaxian_spriteram2;
@@ -114,14 +117,14 @@ VIDEO_START( ad2083 );
 VIDEO_UPDATE( galaxian );
 
 WRITE8_HANDLER( galaxian_gfxbank_w );
-WRITE8_HANDLER( galaxian_nmi_enable_w );
 WRITE8_HANDLER( galaxian_flip_screen_x_w );
 WRITE8_HANDLER( galaxian_flip_screen_y_w );
 WRITE8_HANDLER( gteikob2_flip_screen_x_w );
 WRITE8_HANDLER( gteikob2_flip_screen_y_w );
 
 
-/* defined in machine/scramble.c */
+/*----------- defined in machine/scramble.c -----------*/
+
 DRIVER_INIT( pisces );
 DRIVER_INIT( checkmaj );
 DRIVER_INIT( dingo );
@@ -174,11 +177,11 @@ DRIVER_INIT( scorpion );
 DRIVER_INIT( ad2083 );
 DRIVER_INIT( zigzag );
 
-MACHINE_INIT( scramble );
-MACHINE_INIT( sfx );
-MACHINE_INIT( explorer );
-MACHINE_INIT( galaxian );
-MACHINE_INIT( devilfsg );
+MACHINE_RESET( scramble );
+MACHINE_RESET( sfx );
+MACHINE_RESET( explorer );
+MACHINE_RESET( galaxian );
+MACHINE_RESET( devilfsg );
 
 READ8_HANDLER(scobra_type2_ppi8255_0_r);
 READ8_HANDLER(scobra_type2_ppi8255_1_r);
@@ -214,6 +217,7 @@ WRITE8_HANDLER( galaxian_coin_counter_w );
 WRITE8_HANDLER( galaxian_coin_counter_1_w );
 WRITE8_HANDLER( galaxian_coin_counter_2_w );
 WRITE8_HANDLER( galaxian_leds_w );
+WRITE8_HANDLER( galaxian_nmi_enable_w );
 
 READ8_HANDLER( scramblb_protection_1_r );
 READ8_HANDLER( scramblb_protection_2_r );
@@ -241,7 +245,8 @@ READ8_HANDLER( gmgalax_input_port_1_r );
 READ8_HANDLER( gmgalax_input_port_2_r );
 
 
-/* defined in sndhrdw/galaxian.c */
+/*----------- defined in sndhrdw/galaxian.c -----------*/
+
 extern struct Samplesinterface galaxian_custom_interface;
 WRITE8_HANDLER( galaxian_pitch_w );
 WRITE8_HANDLER( galaxian_vol_w );
@@ -251,7 +256,8 @@ WRITE8_HANDLER( galaxian_shoot_enable_w );
 WRITE8_HANDLER( galaxian_lfo_freq_w );
 
 
-/* defined in sndhrdw/scramble.c */
+/*----------- defined in sndhrdw/scramble.c -----------*/
+
 void scramble_sh_init(void);
 void sfx_sh_init(void);
 

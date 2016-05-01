@@ -4,7 +4,7 @@
 
 ****************************************************************************/
 
-#include "vidhrdw/generic.h"
+#include "driver.h"
 #include "cpu/tms34010/tms34010.h"
 #include "cpu/tms34010/34010ops.h"
 #include "harddriv.h"
@@ -87,8 +87,6 @@ VIDEO_START( harddriv )
 
 	/* allocate the mask table */
 	mask_table = auto_malloc(sizeof(UINT32) * 4 * 65536);
-	if (!mask_table)
-		return 1;
 
 	/* fill in the mask table */
 	destmask = mask_table;

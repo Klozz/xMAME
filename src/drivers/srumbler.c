@@ -9,7 +9,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/2203intf.h"
 
@@ -50,7 +49,7 @@ static WRITE8_HANDLER( srumbler_bankswitch_w )
 	}
 }
 
-static MACHINE_INIT( srumbler )
+static MACHINE_RESET( srumbler )
 {
 	/* initialize banked ROM pointers */
 	srumbler_bankswitch_w(0,0);
@@ -110,7 +109,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x400e, 0x400e) AM_WRITE(soundlatch_w)
 	AM_RANGE(0x5000, 0x5fff) AM_WRITE(srumbler_foreground_w) AM_BASE(&srumbler_foregroundram)
 	AM_RANGE(0x6000, 0x6fff) AM_WRITE(MWA8_RAM) /* Video RAM 2 ??? (not used) */
-	AM_RANGE(0x7000, 0x73ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_swap_w) AM_BASE(&paletteram)
+	AM_RANGE(0x7000, 0x73ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_be_w) AM_BASE(&paletteram)
 	AM_RANGE(0x7400, 0xffff) AM_WRITE(MWA8_ROM)
 ADDRESS_MAP_END
 
@@ -274,7 +273,7 @@ static MACHINE_DRIVER_START( srumbler )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(srumbler)
+	MDRV_MACHINE_RESET(srumbler)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
@@ -312,9 +311,6 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( srumbler )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )  /* 64k for code */
-	/* empty, will be filled later */
-
 	ROM_REGION( 0x40000, REGION_USER1, 0 ) /* Paged ROMs */
 	ROM_LOAD( "14e_sr04.bin", 0x00000, 0x08000, CRC(a68ce89c) SHA1(cb5dd8c47c24f9d8ac9a6135c0b7942d16002d25) )  /* RC4 */
 	ROM_LOAD( "13e_sr03.bin", 0x08000, 0x08000, CRC(87bda812) SHA1(f46dcce21d78c8525a2578b73e05b7cd8a2d8745) )  /* RC3 */
@@ -358,9 +354,6 @@ ROM_START( srumbler )
 ROM_END
 
 ROM_START( srumblr2 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )  /* 64k for code */
-	/* empty, will be filled later */
-
 	ROM_REGION( 0x40000, REGION_USER1, 0 ) /* Paged ROMs */
 	ROM_LOAD( "14e_sr04.bin", 0x00000, 0x08000, CRC(a68ce89c) SHA1(cb5dd8c47c24f9d8ac9a6135c0b7942d16002d25) )  /* RC4 */
 	ROM_LOAD( "rc03.13e",     0x08000, 0x08000, CRC(e82f78d4) SHA1(39cb5d9c18e7635d48aa29221ae99e6a500e2841) )  /* RC3 (different) */
@@ -404,9 +397,6 @@ ROM_START( srumblr2 )
 ROM_END
 
 ROM_START( rushcrsh )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )  /* 64k for code */
-	/* empty, will be filled later */
-
 	ROM_REGION( 0x40000, REGION_USER1, 0 ) /* Paged ROMs */
 	ROM_LOAD( "14e_sr04.bin", 0x00000, 0x08000, CRC(a68ce89c) SHA1(cb5dd8c47c24f9d8ac9a6135c0b7942d16002d25) )  /* RC4 */
 	ROM_LOAD( "rc03.bin",     0x08000, 0x08000, CRC(a49c9be0) SHA1(9aa385063a289e71fef4c2846c8c960a8adafcc0) )  /* RC3 (different) */

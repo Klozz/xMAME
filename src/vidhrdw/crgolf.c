@@ -203,6 +203,11 @@ VIDEO_START( crgolf )
 	fillbitmap(screenb, 8, NULL);
 	fillbitmap(highbit, 16, NULL);
 
+	/* register for save states */
+	state_save_register_bitmap("video", 0, "screena", screena);
+	state_save_register_bitmap("video", 0, "screenb", screenb);
+	state_save_register_bitmap("video", 0, "highbit", highbit);
+
 	return 0;
 }
 

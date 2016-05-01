@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 
 UINT16 *galspnbl_bgvideoram,*galspnbl_videoram,*galspnbl_colorram;
@@ -69,7 +68,7 @@ WRITE16_HANDLER( galspnbl_scroll_w )
 static void draw_sprites(mame_bitmap *bitmap,int priority)
 {
 	int offs;
-	const UINT8 layout[8][8] =
+	static const UINT8 layout[8][8] =
 	{
 		{0,1,4,5,16,17,20,21},
 		{2,3,6,7,18,19,22,23},

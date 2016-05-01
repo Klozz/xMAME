@@ -59,18 +59,15 @@ Sound Board 1b11107
 
 #include "driver.h"
 #include "cpu/s2650/s2650.h"
-#include "vidhrdw/generic.h"
 #include "cpu/i8039/i8039.h"
 #include "sound/dac.h"
+#include "vidhrdw/s2636.h"
 
 PALETTE_INIT( quasar );
 VIDEO_UPDATE( quasar );
 VIDEO_START( quasar );
 
 extern unsigned char *bullet_ram;
-extern unsigned char *s2636_1_ram;
-extern unsigned char *s2636_2_ram;
-extern unsigned char *s2636_3_ram;
 
 extern unsigned char *effectram;
 extern unsigned char *effectdirty;

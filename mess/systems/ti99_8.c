@@ -156,11 +156,13 @@ Keyboard interface:
 #include "machine/99_peb.h"
 #include "machine/994x_ser.h"
 #include "machine/99_dsk.h"
+#include "machine/99_ide.h"
 #include "cpu/tms9900/tms9900.h"
 #include "devices/mflopimg.h"
 #include "devices/cassette.h"
 #include "machine/smartmed.h"
 #include "sound/5220intf.h"
+#include "devices/harddriv.h"
 
 /*
 	Memory map - see description above
@@ -399,9 +401,7 @@ static MACHINE_DRIVER_START(ti99_8_60hz)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	/*MDRV_INTERLEAVE(interleave)*/
 
-	MDRV_MACHINE_INIT( ti99 )
-	MDRV_MACHINE_STOP( ti99 )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
+	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
 	MDRV_TMS9928A( &tms9118_interface )
@@ -432,9 +432,7 @@ static MACHINE_DRIVER_START(ti99_8_50hz)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	/*MDRV_INTERLEAVE(interleave)*/
 
-	MDRV_MACHINE_INIT( ti99 )
-	MDRV_MACHINE_STOP( ti99 )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
+	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
 	MDRV_TMS9928A( &tms9129_interface )
@@ -465,13 +463,13 @@ ROM_START(ti99_8)
 
 	/*DSR ROM space*/
 	ROM_REGION(region_dsr_len, region_dsr, 0)
-	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, CRC(8f7df93f)) /* TI disk DSR ROM */
+	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, CRC(8f7df93f) SHA1(ed91d48c1eaa8ca37d5055bcf67127ea51c4cad5)) /* TI disk DSR ROM */
 #if HAS_99CCFDC
 	ROM_LOAD_OPTIONAL("ccfdc.bin", offset_ccfdc_dsr, 0x4000, BAD_DUMP CRC(f69cc69d)) /* CorComp disk DSR ROM */
 #endif
-	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, CRC(06f1ec89)) /* BwG disk DSR ROM */
-	ROM_LOAD_OPTIONAL("hfdc.bin", offset_hfdc_dsr, 0x4000, CRC(66fbe0ed)) /* HFDC disk DSR ROM */
-	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb)) /* TI rs232 DSR ROM */
+	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, CRC(06f1ec89) SHA1(6ad77033ed268f986d9a5439e65f7d391c4b7651)) /* BwG disk DSR ROM */
+	ROM_LOAD_OPTIONAL("hfdc.bin", offset_hfdc_dsr, 0x4000, CRC(66fbe0ed) SHA1(11df2ecef51de6f543e4eaf8b2529d3e65d0bd59)) /* HFDC disk DSR ROM */
+	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb) SHA1(ee609a18a21f1a3ddab334e8798d5f2a0fcefa91)) /* TI rs232 DSR ROM */
 
 	/* HSGPL memory space */
 	ROM_REGION(region_hsgpl_len, region_hsgpl, 0)
@@ -484,101 +482,162 @@ ROM_END
 
 #define rom_ti99_8e rom_ti99_8
 
-static void ti99_8_cassette_getinfo(struct IODevice *dev)
+static void ti99_8_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
-	cassette_device_getinfo(dev, NULL, NULL, (cassette_state) -1);
-	dev->count = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		default:										cassette_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void ti99_8_cartslot_getinfo(struct IODevice *dev)
+static void ti99_8_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	dev->type = IO_CARTSLOT;
-	dev->count = 3;
-	dev->file_extensions = "bin\0c\0d\0g\0m\0crom\0drom\0grom\0mrom\0";
-	dev->readable = 1;
-	dev->writeable = 0;
-	dev->creatable = 0;
-	dev->load = device_load_ti99_cart;
-	dev->unload = device_unload_ti99_cart;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_CARTSLOT; break;
+		case DEVINFO_INT_READABLE:						info->i = 1; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 0; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case DEVINFO_INT_COUNT:							info->i = 3; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_ti99_cart; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_cart; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "bin,c,d,g,m,crom,drom,grom,mrom"); break;
+	}
 }
 
-static void ti99_8_floppy_getinfo(struct IODevice *dev)
+static void ti99_8_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	floppy_device_getinfo(dev, floppyoptions_ti99);
-	dev->count = 4;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 4; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_ti99; break;
+
+		default:										floppy_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void ti99_8_harddisk_getinfo(struct IODevice *dev)
+static void ti99_8_harddisk_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* harddisk */
-	dev->type = IO_HARDDISK;
-	dev->count = 4;
-	dev->file_extensions = "hd\0";
-	dev->readable = 1;
-	dev->writeable = 1;
-	dev->creatable = 0;
-	dev->init = device_init_ti99_hd;
-	dev->load = device_load_ti99_hd;
-	dev->unload = device_unload_ti99_hd;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_HARDDISK; break;
+		case DEVINFO_INT_READABLE:						info->i = 1; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case DEVINFO_INT_COUNT:							info->i = 3; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_INIT:							info->init = device_init_mess_hd; break;
+		case DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hd; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hd; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hd"); break;
+	}
 }
 
-static void ti99_8_parallel_getinfo(struct IODevice *dev)
+static void ti99_8_parallel_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* parallel */
-	dev->type = IO_PARALLEL;
-	dev->file_extensions = "\0";
-	dev->count = 1;
-	dev->readable = 1;
-	dev->writeable = 1;
-	dev->creatable = 1;
-	dev->load = device_load_ti99_4_pio;
-	dev->unload = device_unload_ti99_4_pio;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_PARALLEL; break;
+		case DEVINFO_INT_READABLE:						info->i = 1; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_pio; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_pio; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
+	}
 }
 
-static void ti99_8_serial_getinfo(struct IODevice *dev)
+static void ti99_8_serial_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* serial */
-	dev->type = IO_SERIAL;
-	dev->file_extensions = "\0";
-	dev->count = 1;
-	dev->readable = 1;
-	dev->writeable = 1;
-	dev->creatable = 1;
-	dev->load = device_load_ti99_4_rs232;
-	dev->unload = device_unload_ti99_4_rs232;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
+		case DEVINFO_INT_READABLE:						info->i = 1; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_rs232; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_rs232; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
+	}
 }
 
 #if 0
-static void ti99_8_quickload_getinfo(struct IODevice *dev)
+static void ti99_8_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* quickload */
-	dev->type = IO_QUICKLOAD;
-	dev->file_extensions = "\0";
-	dev->count = 1;
-	dev->reset_on_load = 1;
-	dev->readable = 1;
-	dev->writeable = 1;
-	dev->creatable = 1;
-	dev->load = device_load_ti99_hsgpl;
-	dev->unload = device_unload_ti99_hsgpl;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_QUICKLOAD; break;
+		case DEVINFO_INT_READABLE:						info->i = 1; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hsgpl; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hsgpl; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
+	}
 }
 #endif
 
-static void ti99_8_memcard_getinfo(struct IODevice *dev)
+static void ti99_8_memcard_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* memcard */
-	dev->type = IO_MEMCARD;
-	dev->file_extensions = "\0";
-	dev->count = 1;
-	dev->readable = 1;
-	dev->writeable = 1;
-	dev->creatable = 0;
-	dev->init = device_init_smartmedia;
-	dev->load = device_load_smartmedia;
-	dev->unload = device_unload_smartmedia;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_MEMCARD; break;
+		case DEVINFO_INT_READABLE:						info->i = 1; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_INIT:							info->init = device_init_smartmedia; break;
+		case DEVINFO_PTR_LOAD:							info->load = device_load_smartmedia; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_smartmedia; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
+	}
 }
 
 SYSTEM_CONFIG_START(ti99_8)
@@ -592,6 +651,7 @@ SYSTEM_CONFIG_START(ti99_8)
 #if 1
 	CONFIG_DEVICE(ti99_8_floppy_getinfo)
 	CONFIG_DEVICE(ti99_8_harddisk_getinfo)
+	CONFIG_DEVICE(ti99_ide_harddisk_getinfo)
 	CONFIG_DEVICE(ti99_8_parallel_getinfo)
 	CONFIG_DEVICE(ti99_8_serial_getinfo)
 	/*CONFIG_DEVICE(ti99_8_quickload_getinfo)*/

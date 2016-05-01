@@ -4,7 +4,7 @@
 
 ****************************************************************************/
 
-#include "vidhrdw/generic.h"
+#include "driver.h"
 #include "beathead.h"
 
 
@@ -48,8 +48,6 @@ static UINT8 *				hsyncram;
 VIDEO_START( beathead )
 {
 	hsyncram = auto_malloc(0x800);
-	if (!hsyncram)
-		return 1;
 	return 0;
 }
 

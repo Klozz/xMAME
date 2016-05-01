@@ -8,7 +8,6 @@
 
 #include "driver.h"
 #include "qix.h"
-#include "vidhrdw/generic.h"
 
 
 /* Constants */
@@ -36,8 +35,6 @@ VIDEO_START( qix )
 {
 	/* allocate memory for the full video RAM */
 	videoram = auto_malloc(256 * 256);
-	if (!videoram)
-		return 1;
 
 	/* initialize the mask for games that don't use it */
 	vram_mask = 0xff;

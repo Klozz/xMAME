@@ -4,6 +4,9 @@
 
     Core file I/O interface functions and definitions.
 
+    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
 ***************************************************************************/
 
 #pragma once
@@ -11,9 +14,7 @@
 #ifndef __FILEIO_H__
 #define __FILEIO_H__
 
-#include <stdarg.h>
-#include "osdepend.h"
-#include "hash.h"
+#include "mamecore.h"
 
 
 /* file types */
@@ -39,10 +40,10 @@ enum
 	FILETYPE_LANGUAGE,
 	FILETYPE_CTRLR,
 	FILETYPE_INI,
-#ifdef MESS
-	FILETYPE_HASH,
-#endif
-	FILETYPE_end /* dummy last entry */
+	FILETYPE_COMMENT,
+	FILETYPE_DEBUGLOG,
+	FILETYPE_HASH,	/* MESS-specific */
+	FILETYPE_end 	/* dummy last entry */
 };
 
 
@@ -50,11 +51,13 @@ enum
 /* samples. If 'write' is not 0, the file is opened for write. Otherwise */
 /* it is opened for read. */
 
-typedef struct _mame_file mame_file;
+void fileio_init(void);
+void fileio_exit(void);
 
 int mame_faccess(const char *filename, int filetype);
 mame_file *mame_fopen(const char *gamename, const char *filename, int filetype, int openforwrite);
-mame_file *mame_fopen_rom(const char *gamename, const char *filename, const char* exphash);
+mame_file *mame_fopen_error(const char *gamename, const char *filename, int filetype, int openforwrite, osd_file_error *error);
+mame_file *mame_fopen_rom(const char *gamename, const char *filename, const char *exphash);
 UINT32 mame_fread(mame_file *file, void *buffer, UINT32 length);
 UINT32 mame_fwrite(mame_file *file, const void *buffer, UINT32 length);
 UINT32 mame_fread_swap(mame_file *file, void *buffer, UINT32 length);
@@ -72,7 +75,7 @@ UINT32 mame_fwrite_swap(mame_file *file, const void *buffer, UINT32 length);
 #endif
 int mame_fseek(mame_file *file, INT64 offset, int whence);
 void mame_fclose(mame_file *file);
-int mame_fchecksum(const char *gamename, const char *filename, unsigned int *length, char* hash);
+int mame_fchecksum(const char *gamename, const char *filename, unsigned int *length, char *hash);
 UINT64 mame_fsize(mame_file *file);
 const char *mame_fhash(mame_file *file);
 int mame_fgetc(mame_file *file);
@@ -82,7 +85,6 @@ int mame_feof(mame_file *file);
 UINT64 mame_ftell(mame_file *file);
 
 int mame_fputs(mame_file *f, const char *s);
-int mame_vfprintf(mame_file *f, const char *fmt, va_list va);
 int CLIB_DECL mame_fprintf(mame_file *f, const char *fmt, ...) ATTR_PRINTF(2,3);
 
 #endif	/* __FILEIO_H__ */

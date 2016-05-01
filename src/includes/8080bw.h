@@ -33,24 +33,23 @@ READ8_HANDLER( desertgu_port_1_r );
 
 /*----------- defined in sndhrdw/8080bw.c -----------*/
 
-MACHINE_INIT( invaders );
-MACHINE_INIT( sstrangr );
-MACHINE_INIT( invad2ct );
-MACHINE_INIT( gunfight );
-MACHINE_INIT( boothill );
-MACHINE_INIT( phantom2 );
-MACHINE_INIT( bowler );
-MACHINE_INIT( ballbomb );
-MACHINE_INIT( seawolf );
-MACHINE_INIT( desertgu );
-MACHINE_INIT( schaser );
-MACHINE_INIT( polaris );
-MACHINE_INIT( clowns );
+MACHINE_RESET( invaders );
+MACHINE_RESET( sstrangr );
+MACHINE_RESET( invad2ct );
+MACHINE_RESET( gunfight );
+MACHINE_RESET( boothill );
+MACHINE_RESET( phantom2 );
+MACHINE_RESET( bowler );
+MACHINE_RESET( ballbomb );
+MACHINE_RESET( seawolf );
+MACHINE_RESET( desertgu );
+MACHINE_RESET( schaser );
+MACHINE_RESET( polaris );
+MACHINE_RESET( clowns );
 
 WRITE8_HANDLER( indianbt_sh_port7_w );
 
 extern struct Samplesinterface boothill_samples_interface;
-extern struct Samplesinterface circus_samples_interface;
 extern struct discrete_sound_block clowns_discrete_interface[];
 extern struct SN76477interface invaders_sn76477_interface;
 extern struct Samplesinterface invaders_samples_interface;
@@ -86,8 +85,8 @@ DRIVER_INIT( desertgu );
 DRIVER_INIT( phantom2 );
 DRIVER_INIT( bowler );
 DRIVER_INIT( gunfight );
-DRIVER_INIT( bandido );
 DRIVER_INIT( indianbt );
+DRIVER_INIT( shuttlei );
 
 void c8080bw_flip_screen_w(int data);
 void c8080bw_screen_red_w(int data);
@@ -98,7 +97,6 @@ INTERRUPT_GEN( phantom2_interrupt );
 WRITE8_HANDLER( c8080bw_videoram_w );
 WRITE8_HANDLER( schaser_colorram_w );
 READ8_HANDLER( schaser_colorram_r );
-WRITE8_HANDLER( spaceint_color_w );
 WRITE8_HANDLER( cosmo_colorram_w );
 
 VIDEO_UPDATE( 8080bw );

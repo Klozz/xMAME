@@ -51,7 +51,7 @@ static WRITE8_HANDLER( spc_ram_100_w )
 }
 
 static ADDRESS_MAP_START( spc_map, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x00ef) AM_READWRITE(spc_ram_r, spc_ram_w)   	/* lower 32k ram */
+	AM_RANGE(0x0000, 0x00ef) AM_READWRITE(spc_ram_r, spc_ram_w) AM_BASE(&spc_ram)   	/* lower 32k ram */
 	AM_RANGE(0x00f0, 0x00ff) AM_READWRITE(spc_io_r, spc_io_w)   	/* spc io */
 	AM_RANGE(0x0100, 0xffff) AM_WRITE(spc_ram_100_w)
 	AM_RANGE(0x0100, 0xffbf) AM_READ(spc_ram_100_r)
@@ -197,7 +197,7 @@ static void snes_load_sram(void)
 	{
 		for( ii = 0; ii < 8; ii++ )
 		{
-			memcpy( &snes_ram[0x700000 + (ii * 0x010000)], ptr, 0x7fff );
+			memmove( &snes_ram[0x700000 + (ii * 0x010000)], ptr, 0x7fff );
 			ptr += 0x7fff;
 		}
 	}
@@ -205,7 +205,7 @@ static void snes_load_sram(void)
 	{
 		for( ii = 0; ii < 16; ii++ )
 		{
-			memcpy( &snes_ram[0x306000 + (ii * 0x010000)], ptr, 0x1fff );
+			memmove( &snes_ram[0x306000 + (ii * 0x010000)], ptr, 0x1fff );
 			ptr += 0x1fff;
 		}
 	}
@@ -226,7 +226,7 @@ static void snes_save_sram(void)
 	{
 		for( ii = 0; ii < 8; ii++ )
 		{
-			memcpy( ptr, &snes_ram[0x700000 + (ii * 0x010000)], 0x8000 );
+			memmove( ptr, &snes_ram[0x700000 + (ii * 0x010000)], 0x8000 );
 			ptr += 0x8000;
 		}
 	}
@@ -234,7 +234,7 @@ static void snes_save_sram(void)
 	{
 		for( ii = 0; ii < 16; ii++ )
 		{
-			memcpy( ptr, &snes_ram[0x306000 + (ii * 0x010000)], 0x2000 );
+			memmove( ptr, &snes_ram[0x306000 + (ii * 0x010000)], 0x2000 );
 			ptr += 0x2000;
 		}
 	}
@@ -246,14 +246,20 @@ static void snes_save_sram(void)
 
 
 
-static MACHINE_STOP( snes )
+static void snes_machine_stop(void)
 {
 	/* Save SRAM */
 	if( snes_cart.sram > 0 )
 		snes_save_sram();
 }
 
-static DEVICE_LOAD(snes_cart)
+static MACHINE_START( snes_mess )
+{
+	add_exit_callback(snes_machine_stop);
+	return machine_start_snes();
+}
+
+static int device_load_snes_cart(mess_image *image, mame_file *file)
 {
 	int i;
 	UINT16 totalblocks, readblocks;
@@ -474,8 +480,8 @@ static MACHINE_DRIVER_START( snes )
 	MDRV_VBLANK_DURATION((int)(((262. - 240.) / 262.) * 1000000. / 60.))
 	MDRV_INTERLEAVE(800)
 
-	MDRV_MACHINE_INIT( snes )
-	MDRV_MACHINE_STOP( snes )
+	MDRV_MACHINE_START( snes_mess )
+	MDRV_MACHINE_RESET( snes )
 
 	/* video hardware */
 	MDRV_VIDEO_START( generic_bitmapped )
@@ -504,14 +510,23 @@ static MACHINE_DRIVER_START( snespal )
 	MDRV_FRAMES_PER_SECOND(50)
 MACHINE_DRIVER_END
 
-static void snes_cartslot_getinfo(struct IODevice *dev)
+static void snes_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
-	cartslot_device_getinfo(dev);
-	dev->count = 1;
-	dev->file_extensions = "smc\0sfc\0fig\0swc\0";
-	dev->must_be_loaded = 1;
-	dev->load = device_load_snes_cart;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_snes_cart; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "smc,sfc,fig,swc"); break;
+
+		default:										cartslot_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(snes)
@@ -525,27 +540,17 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 ROM_START(snes)
-	ROM_REGION(0x1000000,       REGION_CPU1,  0)		/* 65C816 */
-	ROM_REGION(SNES_VRAM_SIZE,  REGION_GFX1,  0)		/* VRAM */
-	ROM_REGION(SNES_CGRAM_SIZE, REGION_USER1, 0)		/* CGRAM */
-	ROM_REGION(SNES_OAM_SIZE,   REGION_USER2, 0)		/* OAM */
-	ROM_REGION(0x10000,         REGION_CPU2,  0)		/* SPC700 */
 	ROM_REGION(0x100,           REGION_USER5, 0)		/* IPL ROM */
 	ROM_LOAD("spc700.rom", 0, 0x40, CRC(44bb3a40) SHA1(97e352553e94242ae823547cd853eecda55c20f0))	/* boot rom */
 	ROM_REGION(0x800,           REGION_USER6, 0)		/* add-on chip ROMs (DSP, SFX, etc) */
-        ROM_LOAD("dsp1data.bin", 0x000000, 0x000800, CRC(4b02d66d) SHA1(1534f4403d2a0f68ba6e35186fe7595d33de34b1))
+	ROM_LOAD("dsp1data.bin", 0x000000, 0x000800, CRC(4b02d66d) SHA1(1534f4403d2a0f68ba6e35186fe7595d33de34b1))
 ROM_END
 
 ROM_START(snespal)
-	ROM_REGION(0x1000000,       REGION_CPU1,  0)		/* 65C816 */
-	ROM_REGION(SNES_VRAM_SIZE,  REGION_GFX1,  0)		/* VRAM */
-	ROM_REGION(SNES_CGRAM_SIZE, REGION_USER1, 0)		/* CGRAM */
-	ROM_REGION(SNES_OAM_SIZE,   REGION_USER2, 0)		/* OAM */
-	ROM_REGION(0x10000,         REGION_CPU2,  0)		/* SPC700 */
 	ROM_REGION(0x100,           REGION_USER5, 0)		/* IPL ROM */
 	ROM_LOAD("spc700.rom", 0, 0x40, CRC(44bb3a40) SHA1(97e352553e94242ae823547cd853eecda55c20f0))	/* boot rom */
 	ROM_REGION(0x800,           REGION_USER6, 0)		/* add-on chip ROMs (DSP, SFX, etc) */
-        ROM_LOAD("dsp1data.bin", 0x000000, 0x000800, CRC(4b02d66d) SHA1(1534f4403d2a0f68ba6e35186fe7595d33de34b1))
+	ROM_LOAD("dsp1data.bin", 0x000000, 0x000800, CRC(4b02d66d) SHA1(1534f4403d2a0f68ba6e35186fe7595d33de34b1))
 ROM_END
 
 /*     YEAR  NAME     PARENT  COMPAT  MACHINE  INPUT  INIT  CONFIG  COMPANY     FULLNAME                                      FLAGS */

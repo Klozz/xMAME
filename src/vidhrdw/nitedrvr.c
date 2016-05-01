@@ -5,7 +5,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
+#include "includes/nitedrvr.h"
 
 UINT8 *nitedrvr_hvc;
 
@@ -34,6 +34,8 @@ static void get_bg_tile_info(int tile_index)
 
 	SET_TILE_INFO(0, code, 0, 0)
 }
+
+
 
 VIDEO_START( nitedrvr )
 {

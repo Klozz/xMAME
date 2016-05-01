@@ -20,6 +20,7 @@
  *  This work is based on:
  *  #1) 'Atmel Corporation ARM7TDMI (Thumb) Datasheet - January 1999'
  *  #2) Arm 2/3/6 emulator By Bryan McPhail (bmcphail@tendril.co.uk) and Phil Stroffolino (MAME CORE 0.76)
+ *  #3) Thumb support by Ryan Holtz
  *
  *****************************************************************************/
 
@@ -46,7 +47,7 @@
     output to be tailored to the co-proc implementation details.
 
     Todo:
-    Thumb mode support not yet implemented. 26 bit compatibility mode not implemented.
+    26 bit compatibility mode not implemented.
     Data Processing opcodes need cycle count adjustments (see page 194 of ARM7TDMI manual for instruction timing summary)
     Multi-emulated cpu support untested, but probably will not work too well, as no effort was made to code for more than 1.
     Could not find info on what the TEQP opcode is from page 44..
@@ -55,6 +56,7 @@
 
 
     Differences from Arm 2/3 (6 also?)
+    -Thumb instruction support
     -Full 32 bit address support
     -PC no longer contains CPSR information, CPSR is own register now
     -New register SPSR to store previous contents of CPSR (this register is banked in many modes)
@@ -73,6 +75,9 @@
 
     By Bryan McPhail (bmcphail@tendril.co.uk) and Phil Stroffolino
 *****************************************************************************/
+
+#include <stdarg.h>
+
 #define ARM7_DEBUG_CORE 0
 
 #if 0
@@ -80,6 +85,30 @@
 #else
 #define LOG(x) logerror x
 #endif
+
+#define VERBOSELOG(x) verboselog x
+
+#define VERBOSE_LEVEL ( 0 )
+
+INLINE void verboselog( int n_level, const char *s_fmt, ... )
+{
+	if( VERBOSE_LEVEL >= n_level )
+	{
+		va_list v;
+		char buf[ 32768 ];
+		va_start( v, s_fmt );
+		vsprintf( buf, s_fmt, v );
+		va_end( v );
+		if( cpu_getactivecpu() != -1 )
+		{
+			logerror( "%08x: %s", activecpu_get_pc(), buf );
+		}
+		else
+		{
+			logerror( "(timer) : %s", buf );
+		}
+	}
+}
 
 /* Prototypes */
 
@@ -212,6 +241,15 @@ INLINE UINT8 arm7_cpu_read8( offs_t addr )
       | HandleALUNZFlags(rd))); \
   R15 += 4;
 
+#define HandleThumbALUAddFlags(rd, rn, op2) \
+    SET_CPSR( \
+      ((GET_CPSR &~ (N_MASK | Z_MASK | V_MASK | C_MASK)) \
+      | (((!THUMB_SIGN_BITS_DIFFER(rn, op2)) && THUMB_SIGN_BITS_DIFFER(rn, rd)) \
+          << V_BIT) \
+      | (((~(rn)) < (op2)) << C_BIT) \
+      | HandleALUNZFlags(rd))); \
+  	R15 += 2;
+
 #define HandleALUSubFlags(rd, rn, op2) \
   if (insn & INSN_S) \
     SET_CPSR( \
@@ -221,6 +259,15 @@ INLINE UINT8 arm7_cpu_read8( offs_t addr )
       | (((op2) <= (rn)) << C_BIT) \
       | HandleALUNZFlags(rd))); \
   R15 += 4;
+
+#define HandleThumbALUSubFlags(rd, rn, op2) \
+    SET_CPSR( \
+      ((GET_CPSR &~ (N_MASK | Z_MASK | V_MASK | C_MASK)) \
+      | ((THUMB_SIGN_BITS_DIFFER(rn, op2) && THUMB_SIGN_BITS_DIFFER(rn, rd)) \
+          << V_BIT) \
+      | (((op2) <= (rn)) << C_BIT) \
+      | HandleALUNZFlags(rd))); \
+	R15 += 2;
 
 /* Set NZC flags for logical operations. */
 
@@ -483,32 +530,29 @@ static int storeDec( UINT32 pat, UINT32 rbv)
  ***************************************************************************/
 
 /*CPU INIT */
-static void arm7_core_init(const char *cpuname)
+static void arm7_core_init(const char *cpuname, int index)
 {
-    int cpu = cpu_getactivecpu(),i;
-    char buf[8];
-    for (i=0; i<kNumRegisters; i++) {
-        sprintf(buf,"R%d",i);
-        state_save_register_UINT32(cpuname, cpu, buf, &ARM7REG(i), 4);
-    }
-    state_save_register_UINT8(cpuname, cpu, "IRQ", &ARM7.pendingIrq, 1);
-    state_save_register_UINT8(cpuname, cpu, "FIQ", &ARM7.pendingFiq, 1);
-    state_save_register_UINT8(cpuname, cpu, "ABTD", &ARM7.pendingAbtD, 1);
-    state_save_register_UINT8(cpuname, cpu, "ABTP", &ARM7.pendingAbtP, 1);
-    state_save_register_UINT8(cpuname, cpu, "UND", &ARM7.pendingUnd, 1);
-    state_save_register_UINT8(cpuname, cpu, "SWI", &ARM7.pendingSwi, 1);
+    state_save_register_item_array(cpuname, index, ARM7.sArmRegister);
+    state_save_register_item(cpuname, index, ARM7.pendingIrq);
+    state_save_register_item(cpuname, index, ARM7.pendingFiq);
+    state_save_register_item(cpuname, index, ARM7.pendingAbtD);
+    state_save_register_item(cpuname, index, ARM7.pendingAbtP);
+    state_save_register_item(cpuname, index, ARM7.pendingUnd);
+    state_save_register_item(cpuname, index, ARM7.pendingSwi);
 }
 
 /*CPU RESET */
-static void arm7_core_reset(void *param)
+static void arm7_core_reset(void)
 {
+	int (*save_irqcallback)(int) = ARM7.irq_callback;
     memset(&ARM7, 0, sizeof(ARM7));
+    ARM7.irq_callback = save_irqcallback;
 
     /* start up in SVC mode with interrupts disabled. */
     SwitchMode(eARM7_MODE_SVC);
     SET_CPSR(GET_CPSR | I_MASK | F_MASK);
     R15 = 0;
-/*change_pc32lew(R15); */
+	change_pc(R15);
 }
 
 /*Execute used to be here.. moved to separate file (arm7exec.c) to be included by cpu cores separately */
@@ -536,6 +580,7 @@ static void arm7_check_irq_state(void)
         SwitchMode(eARM7_MODE_ABT);             /* Set ABT mode so PC is saved to correct R14 bank */
         SET_REGISTER( 14, pc );                 /* save PC to R14 */
         SET_REGISTER( SPSR, cpsr );             /* Save current CPSR */
+        SET_CPSR(GET_CPSR & ~T_MASK);
         R15 = 0x10;                             /* IRQ Vector address */
         ARM7.pendingAbtD = 0;
         return;
@@ -547,6 +592,7 @@ static void arm7_check_irq_state(void)
         SET_REGISTER( 14, pc );                 /* save PC to R14 */
         SET_REGISTER( SPSR, cpsr );             /* Save current CPSR */
         SET_CPSR(GET_CPSR | I_MASK | F_MASK);   /* Mask both IRQ & FIRQ*/
+        SET_CPSR(GET_CPSR & ~T_MASK);
         R15 = 0x1c;                             /* IRQ Vector address */
         return;
     }
@@ -557,6 +603,7 @@ static void arm7_check_irq_state(void)
         SET_REGISTER( 14, pc );                 /* save PC to R14 */
         SET_REGISTER( SPSR, cpsr );             /* Save current CPSR */
         SET_CPSR(GET_CPSR | I_MASK);            /* Mask IRQ */
+        SET_CPSR(GET_CPSR & ~T_MASK);
         R15 = 0x18;                             /* IRQ Vector address */
         return;
     }
@@ -566,6 +613,7 @@ static void arm7_check_irq_state(void)
         SwitchMode(eARM7_MODE_ABT);             /* Set ABT mode so PC is saved to correct R14 bank */
         SET_REGISTER( 14, pc );                 /* save PC to R14 */
         SET_REGISTER( SPSR, cpsr );             /* Save current CPSR */
+        SET_CPSR(GET_CPSR & ~T_MASK);
         R15 = 0x0c;                             /* IRQ Vector address */
         ARM7.pendingAbtP = 0;
         return;
@@ -576,6 +624,7 @@ static void arm7_check_irq_state(void)
         SwitchMode(eARM7_MODE_UND);             /* Set UND mode so PC is saved to correct R14 bank */
         SET_REGISTER( 14, pc );                 /* save PC to R14 */
         SET_REGISTER( SPSR, cpsr );             /* Save current CPSR */
+        SET_CPSR(GET_CPSR & ~T_MASK);
         R15 = 0x04;                             /* IRQ Vector address */
         ARM7.pendingUnd = 0;
         return;
@@ -586,6 +635,7 @@ static void arm7_check_irq_state(void)
         SwitchMode(eARM7_MODE_SVC);             /* Set SVC mode so PC is saved to correct R14 bank */
         SET_REGISTER( 14, pc );                 /* save PC to R14 */
         SET_REGISTER( SPSR, cpsr );             /* Save current CPSR */
+        SET_CPSR(GET_CPSR & ~T_MASK);
         R15 = 0x08;                             /* IRQ Vector address */
         ARM7.pendingSwi = 0;
         return;
@@ -743,6 +793,8 @@ static void HandleBranch(  UINT32 insn )
     {
         R15 += off + 8;
     }
+
+	change_pc(R15);
 }
 
 static void HandleMemSingle( UINT32 insn )
@@ -815,6 +867,7 @@ static void HandleMemSingle( UINT32 insn )
             {
                 R15 = READ32(rnv);
                 R15 -= 4;
+				change_pc(R15);
                 /*LDR, PC takes 2S + 2N + 1I (5 total cycles) */
                 ARM7_ICOUNT -= 2;
             }
@@ -973,7 +1026,7 @@ static void HandleHalfWordDT(UINT32 insn)
             if(rd == eR15)
             {
                 R15 = newval + 8;
-                /*LDR(H,SH,SB) PC takes 2S + 2N + 1I (5 total cycles) */
+				/*LDR(H,SH,SB) PC takes 2S + 2N + 1I (5 total cycles) */
                 ARM7_ICOUNT -= 2;
 
             }
@@ -996,6 +1049,8 @@ static void HandleHalfWordDT(UINT32 insn)
                 R15 += 4;
             }
         }
+
+
     }
     /* Store */
     else
@@ -1007,6 +1062,8 @@ static void HandleHalfWordDT(UINT32 insn)
         /*STRH takes 2 cycles, so we add + 1 */
         ARM7_ICOUNT += 1;
     }
+
+
 
     /*SJE: No idea if this writeback code works or makes sense here.. */
 
@@ -1044,6 +1101,7 @@ static void HandleHalfWordDT(UINT32 insn)
             }
         }
     }
+	change_pc(R15);
 }
 
 static void HandleSwap(UINT32 insn)
@@ -1191,6 +1249,8 @@ static void HandleALU( UINT32 insn )
         }
     }
 
+	change_pc(R15);
+
     /* Perform the operation */
 
     switch (opcode)
@@ -1300,6 +1360,8 @@ static void HandleALU( UINT32 insn )
             #endif
         }
     }
+
+	change_pc(R15);
 }
 
 static void HandleMul( UINT32 insn)
@@ -1589,6 +1651,8 @@ static void HandleMemBlock( UINT32 insn)
         /*STM takes (n+1)S+2N+1I cycles (n = # of register transfers) */
         ARM7_ICOUNT -= ((result+1)+2+1);
     }
+
+	change_pc(R15);
 } /* HandleMemBlock */
 
 

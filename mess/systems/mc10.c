@@ -112,11 +112,8 @@ INPUT_PORTS_START( mc10 )
 	PORT_DIPNAME( 0x40, 0x00, "DOS extension" )
 	PORT_DIPSETTING(	0x00, DEF_STR( No ))
 	PORT_DIPSETTING(	0x40, DEF_STR( Yes ))
-	PORT_BIT(	  0x3c, 0x3c, IPT_UNUSED )
-	PORT_DIPNAME( 0x03, 0x01, "Artifacting" )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x01, "Red" )
-	PORT_DIPSETTING(    0x02, "Blue" )
+
+	PORT_INCLUDE( m6847_artifacting )
 
 INPUT_PORTS_END
 
@@ -127,12 +124,16 @@ static MACHINE_DRIVER_START( mc10 )
 	MDRV_CPU_ADD_TAG("main", M6803, 894886)        /* 0,894886 Mhz */
 	MDRV_CPU_PROGRAM_MAP(mc10_mem, 0)
 	MDRV_CPU_IO_MAP(mc10_io, 0)
-	MDRV_CPU_VBLANK_INT(m6847_vh_interrupt, M6847_INTERRUPTS_PER_FRAME)
 	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(0)
+
+	MDRV_MACHINE_START(mc10)
 
 	/* video hardware */
-	MDRV_M6847_NTSC( mc10 )
+	MDRV_VIDEO_START(mc10)
+	MDRV_VIDEO_UPDATE(m6847)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_RGB_DIRECT | VIDEO_NEEDS_6BITS_PER_GUN)
+	MDRV_SCREEN_SIZE(320, 25+192+26)
+	MDRV_VISIBLE_AREA(0, 319, 1, 239)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -146,12 +147,22 @@ ROM_START(mc10)
 	ROM_LOAD("mc10.rom", 0x0000, 0x2000, CRC(11fda97e) SHA1(4afff2b4c120334481aab7b02c3552bf76f1bc43))
 ROM_END
 
-static void mc10_cassette_getinfo(struct IODevice *dev)
+static void mc10_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
-	cassette_device_getinfo(dev, coco_cassette_formats, NULL,
-		CASSETTE_PLAY);
-	dev->count = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) coco_cassette_formats; break;
+
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_PLAY; break;
+
+		default:										cassette_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(mc10)
@@ -162,5 +173,5 @@ SYSTEM_CONFIG_START(mc10)
 SYSTEM_CONFIG_END
 
 /*	  YEAR	NAME	  PARENT	COMPAT	MACHINE   INPUT 	INIT	  CONFIG   COMPANY               FULLNAME */
-COMP( 1983, mc10,     0,		0,		mc10,     mc10,     mc10,     mc10,    "Tandy Radio Shack",  "MC-10" , 0)
+COMP( 1983, mc10,     0,		0,		mc10,     mc10,     0,        mc10,    "Tandy Radio Shack",  "MC-10" , GAME_SUPPORTS_SAVE)
 

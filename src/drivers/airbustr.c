@@ -176,10 +176,9 @@ c760    rom bank
                                 To Do
                                 -----
 
-- The bankswitching registers bits 4&5 are used (any Z80). What for ?
 - Is the sub cpu / sound cpu communication status port (0e) correct ?
 - Main cpu: port  01 ?
-- Sub  cpu: ports 0x28, 0x38 ? Plus it can probably cause a nmi to main cpu
+- Sub  cpu: port 0x38 ? Plus it can probably cause a nmi to main cpu
 - incomplete DSW's
 - Spriteram low 0x300 bytes (priority?)
 
@@ -219,7 +218,6 @@ Code at 505: waits for bit 1 to go low, writes command, waits for bit
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "sound/2203intf.h"
 #include "sound/okim6295.h"
@@ -228,6 +226,7 @@ static UINT8 *devram;
 static int soundlatch_status, soundlatch2_status;
 
 extern UINT8 *airbustr_videoram2, *airbustr_colorram2;
+extern int airbustr_clear_sprites;
 
 extern WRITE8_HANDLER( airbustr_videoram_w );
 extern WRITE8_HANDLER( airbustr_colorram_w );
@@ -299,6 +298,8 @@ static WRITE8_HANDLER( slave_bankswitch_w )
 	airbustr_bankswitch(1, data);
 
 	flip_screen_set(data & 0x10);
+
+	airbustr_clear_sprites = data & 0x20;
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
@@ -356,6 +357,14 @@ static WRITE8_HANDLER( airbustr_paletteram_w )
 	palette_set_color(offset/2, (r * 0xff) / 0x1f, (g * 0xff) / 0x1f, (b * 0xff) / 0x1f);
 }
 
+static WRITE8_HANDLER( airbustr_coin_counter_w )
+{
+	coin_counter_w(0, data & 1);
+	coin_counter_w(1, data & 2);
+	coin_lockout_w(0, ~data & 4);
+	coin_lockout_w(1, ~data & 8);
+}
+
 /* Memory Maps */
 
 static ADDRESS_MAP_START( master_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -396,7 +405,7 @@ static ADDRESS_MAP_START( slave_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x20, 0x20) AM_READ(input_port_0_r)
 	AM_RANGE(0x22, 0x22) AM_READ(input_port_1_r)
 	AM_RANGE(0x24, 0x24) AM_READ(input_port_2_r)
-	AM_RANGE(0x28, 0x28) AM_WRITENOP /* ??? */
+	AM_RANGE(0x28, 0x28) AM_WRITE(airbustr_coin_counter_w)
 	AM_RANGE(0x38, 0x38) AM_WRITENOP /* ??? */
 ADDRESS_MAP_END
 
@@ -566,7 +575,7 @@ static INTERRUPT_GEN( slave_interrupt )
 
 /* Machine Initialization */
 
-static MACHINE_INIT( airbustr )
+static MACHINE_RESET( airbustr )
 {
 	soundlatch_status = soundlatch2_status = 0;
 	master_bankswitch_w(0, 0x02);
@@ -597,7 +606,7 @@ static MACHINE_DRIVER_START( airbustr )
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)	/* Palette RAM is filled by sub cpu with data supplied by main cpu */
 							/* Maybe a high value is safer in order to avoid glitches */
-	MDRV_MACHINE_INIT(airbustr)
+	MDRV_MACHINE_RESET(airbustr)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

@@ -2,10 +2,6 @@
 # Non-user-configurable settings
 ##############################################################################
 
-# *** Comment out this line to get verbose make output, for debugging build
-# problems
-QUIET = 1
-
 
 ##############################################################################
 # CPU-dependent settings
@@ -21,6 +17,7 @@ CFLAGS.m68k       =
 CFLAGS.risc       = -DALIGN_INTS -DALIGN_SHORTS 
 CFLAGS.risc_lsb   = -DALIGN_INTS -DALIGN_SHORTS -DLSB_FIRST
 CFLAGS.mips       = -DALIGN_INTS -DALIGN_SHORTS -DSGI_FIX_MWA_NOP
+CFLAGS.bfin       = -DLSB_FIRST -DALIGN_INTS -DALIGN_SHORTS
 
 ##############################################################################
 # Architecture-dependent settings
@@ -79,7 +76,7 @@ INST.svgafx     = doinstallsuid
 INST.SDL	= doinstall
 INST.photon2	= doinstall
 
-# handle X11 display method additonal settings, override INST if nescesarry
+# handle X11 display method additonal settings, override INST if necessary
 ifdef X11_MITSHM
 CFLAGS.x11 += -DUSE_MITSHM
 endif
@@ -119,21 +116,6 @@ endif
 
 
 ##############################################################################
-# Quiet the compiler output if requested
-##############################################################################
-
-ifdef QUIET
-CC_COMMENT = 
-CC_COMPILE = @
-AR_OPTS = rc
-else
-CC_COMMENT = \#
-CC_COMPILE = 
-AR_OPTS = rcv
-endif
-
-
-##############################################################################
 # these are the object subdirectories that need to be created.
 ##############################################################################
 OBJ     = $(NAME).obj
@@ -153,10 +135,6 @@ OBJDIRS += $(OBJ)/mess $(OBJ)/mess/expat $(OBJ)/mess/cpu \
 	   $(OBJ)/mess/tools/messtest $(OBJ)/mess/tools/mkimage \
 	   $(OBJ)/mess/sound
 endif
-ifeq ($(TARGET), mage)
-OBJDIRS += $(OBJ)/mage/src/machine $(OBJ)/mage/src/vidhrdw $(OBJ)/mage/src/drivers \
-           $(OBJ)/mage/src/sndhrdw
-endif
 
 UNIX_OBJDIR = $(OBJ)/unix.$(DISPLAY_METHOD)
 
@@ -171,21 +149,28 @@ FRAMESKIP_DIR = $(UNIX_OBJDIR)/frameskip-drivers
 OBJDIRS += $(UNIX_OBJDIR) $(SYSDEP_DIR) $(DSP_DIR) $(MIXER_DIR) $(VID_DIR) \
 	$(JOY_DIR) $(FRAMESKIP_DIR) $(BLIT_DIR)
 
-IMGTOOL_LIBS = -lz
-
 ifeq ($(TARGET), mess)
 INCLUDE_PATH = -I. -Imess -Isrc -Isrc/includes -Isrc/debug -Isrc/unix -Isrc/unix/sysdep -I$(OBJ)/cpu/m68000 -Isrc/cpu/m68000
 else
 INCLUDE_PATH = -I. -Isrc -Isrc/includes -Isrc/debug -Isrc/unix -I$(OBJ)/cpu/m68000 -Isrc/cpu/m68000
 endif
-ifeq ($(TARGET), mage)
-INCLUDE_PATH = -I. -Image/src -Image/src/includes -Isrc/includes -Isrc -Isrc/unix -I$(OBJ)/cpu/m68000 -Isrc/cpu/m68000
-endif
+
+##############################################################################
+# Define standard libraries for CPU and sounds
+##############################################################################
+
+CPULIB = $(OBJ)/libcpu.a
+
+SOUNDLIB = $(OBJ)/libsound.a
 
 ##############################################################################
 # "Calculate" the final CFLAGS, unix CONFIG, LIBS and OBJS
 ##############################################################################
-ifdef BUILD_EXPAT
+ifdef SEPARATE_LIBM
+LIBS += -lm
+endif
+
+ifeq ($(BUILD_EXPAT),1)
 CFLAGS += -Isrc/expat
 OBJDIRS += $(OBJ)/expat
 EXPAT = $(OBJ)/libexpat.a
@@ -194,7 +179,7 @@ LIBS += -lexpat
 EXPAT =
 endif
 
-ifdef BUILD_ZLIB
+ifeq ($(BUILD_ZLIB),1)
 CFLAGS += -Isrc/zlib
 OBJDIRS += $(OBJ)/zlib
 ZLIB = $(OBJ)/libz.a
@@ -217,34 +202,28 @@ all: maketree $(NAME).$(DISPLAY_METHOD) extra
 VPATH = src $(wildcard src/cpu/*)
 
 # Platform-dependent objects for imgtool
-PLATFORM_IMGTOOL_OBJS = $(OBJDIR)/dirio.o \
+PLATFORM_TOOL_OBJS = $(OBJDIR)/dirio.o \
 			$(OBJDIR)/fileio.o \
 			$(OBJDIR)/sysdep/misc.o
 
-ifeq ($(TARGET), mage)
-include mage/src/core.mak
-else
 include src/core.mak
-endif
 
 ifeq ($(TARGET), mame)
 include src/$(TARGET).mak
 endif
-ifeq ($(TARGET), mage)
-include mage/src/$(TARGET).mak
-endif
 ifeq ($(TARGET), mess)
 include mess/$(TARGET).mak
 endif
+ifeq ($(TARGET), tiny)
+include src/$(TARGET).mak
+endif
 
-#ifeq ($(TARGET), mage)
-#include mage/src/rules.mak
-#else
-include src/rules.mak
-#endif
+include src/cpu/cpu.mak
+include src/sound/sound.mak
 
 ifeq ($(TARGET), mess)
-include mess/rules_ms.mak
+include mess/cpu/cpu.mak
+include mess/sound/sound.mak
 endif
 
 ifdef DEBUG
@@ -256,42 +235,37 @@ endif
 
 # Perhaps one day original mame/mess sources will use POSIX strcasecmp and
 # M_PI instead MS-DOS counterparts... (a long and sad history ...)
-MY_CFLAGS = $(CFLAGS) $(IL) $(CFLAGS.$(MY_CPU)) \
+CFLAGS += $(IL) $(CFLAGS.$(MY_CPU)) \
 	-D__ARCH_$(ARCH) -D__CPU_$(MY_CPU) -D$(DISPLAY_METHOD) \
-	-Dstricmp=strcasecmp -Dstrnicmp=strncasecmp \
 	-DPI=M_PI -DXMAME -DUNIX -DSIGNED_SAMPLES -DCLIB_DECL= \
 	-DHAVE_UNISTD_H=1 \
 	$(COREDEFS) $(SOUNDDEFS) $(CPUDEFS) $(ASMDEFS) \
 	$(INCLUDES) $(INCLUDE_PATH)
 
-MY_LIBS = $(LIBS) $(LIBS.$(ARCH)) $(LIBS.$(DISPLAY_METHOD)) -lz
-
-ifdef SEPARATE_LIBM
-MY_LIBS += -lm
-endif
+LIBS += $(LIBS.$(ARCH)) $(LIBS.$(DISPLAY_METHOD))
 
 ifdef DEBUG
-MY_CFLAGS += -DMAME_DEBUG
+CFLAGS += -DMAME_DEBUG
 endif
 
 ifdef XMAME_NET
-MY_CFLAGS += -DXMAME_NET
+CFLAGS += -DXMAME_NET
 endif
 
 ifdef DISABLE_EFFECTS
-MY_CFLAGS += -DDISABLE_EFFECTS
+CFLAGS += -DDISABLE_EFFECTS
 endif
 
 ifdef HAVE_MMAP
-MY_CFLAGS += -DHAVE_MMAP
+CFLAGS += -DHAVE_MMAP
 endif
 
 ifdef CRLF
-MY_CFLAGS += -DCRLF=$(CRLF)
+CFLAGS += -DCRLF=$(CRLF)
 endif
 
 ifdef PAUSE_KEY_119
-MY_CFLAGS += -DPAUSE_KEY_119
+CFLAGS += -DPAUSE_KEY_119
 endif
 
 # The SDL target automatically includes the SDL joystick and audio drivers.
@@ -324,8 +298,11 @@ TOOLS = dat2html chdman imgtool
 endif
 ifdef LIRC
 CONFIG  += -I/usr/include/lirc
-MY_LIBS += -L/usr/lib -llirc_client
+LIBS += -L/usr/lib -llirc_client
 endif
+
+OSTOOLOBJS = \
+	$(OBJDIR)/osd_tool.o
 
 # sysdep objs
 SYSDEP_OBJS = $(SYSDEP_DIR)/rc.o $(SYSDEP_DIR)/misc.o \
@@ -445,7 +422,7 @@ CFLAGS.linux      = -DSYSDEP_DSP_OSS -DSYSDEP_MIXER_OSS -DHAVE_SNPRINTF -DHAVE_V
 CFLAGS.freebsd    = -DSYSDEP_DSP_OSS -DSYSDEP_MIXER_OSS -DHAVE_SNPRINTF -DHAVE_VSNPRINTF -DHAVE_STRLCAT
 CFLAGS.netbsd     = -DSYSDEP_DSP_NETBSD -DHAVE_SNPRINTF -DHAVE_VSNPRINTF -DHAVE_STRLCAT
 CFLAGS.openbsd    = -DSYSDEP_DSP_NETBSD -DHAVE_SNPRINTF -DHAVE_VSNPRINTF -DHAVE_STRLCAT
-CFLAGS.solaris    = -DSYSDEP_DSP_SOLARIS -DSYSDEP_MIXER_SOLARIS -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
+CFLAGS.solaris    = -DSYSDEP_DSP_SOLARIS -DSYSDEP_MIXER_SOLARIS -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
 CFLAGS.next       = -DSYSDEP_DSP_SOUNDKIT -DBSD43
 CFLAGS.macosx     = -DSYSDEP_DSP_COREAUDIO -DHAVE_SNPRINTF -DHAVE_VSNPRINTF
 CFLAGS.nto        = -DSYSDEP_DSP_ALSA -DSYSDEP_MIXER_ALSA
@@ -456,11 +433,11 @@ CFLAGS.generic    =
 #these need to be converted to plugins first
 #CFLAGS.aix        = -DSYSDEP_DSP_AIX -I/usr/include/UMS -I/usr/lpp/som/include
 
-MY_CFLAGS += $(CFLAGS.$(ARCH))
+CFLAGS += $(CFLAGS.$(ARCH))
 
 # CONFIG are the cflags used to build the unix tree, this is where most defines
 # go
-CONFIG = $(MY_CFLAGS) $(CFLAGS.$(DISPLAY_METHOD)) -DNAME='"x$(TARGET)"' \
+CONFIG = $(CFLAGS) $(CFLAGS.$(DISPLAY_METHOD)) -DNAME='"x$(TARGET)"' \
 	-DDISPLAY_METHOD='"$(DISPLAY_METHOD)"' \
 	-DXMAMEROOT='"$(XMAMEROOT)"' -DSYSCONFDIR='"$(SYSCONFDIR)"'
 
@@ -471,27 +448,27 @@ endif
 # Sound drivers config
 ifdef SOUND_ESOUND
 CONFIG  += -DSYSDEP_DSP_ESOUND `esd-config --cflags`
-MY_LIBS += `esd-config --libs`
+LIBS += `esd-config --libs`
 endif
 
 ifdef SOUND_ALSA
 CONFIG  += -DSYSDEP_DSP_ALSA -DSYSDEP_MIXER_ALSA
-MY_LIBS += -lasound
+LIBS += -lasound
 endif
 
 ifdef SOUND_ARTS_TEIRA
 CONFIG  += -DSYSDEP_DSP_ARTS_TEIRA `artsc-config --cflags`
-MY_LIBS += `artsc-config --libs`
+LIBS += `artsc-config --libs`
 endif
 
 ifdef SOUND_ARTS_SMOTEK
 CONFIG  += -DSYSDEP_DSP_ARTS_SMOTEK `artsc-config --cflags`
-MY_LIBS += `artsc-config --libs`
+LIBS += `artsc-config --libs`
 endif
 
 ifdef SOUND_SDL
 CONFIG  += -DSYSDEP_DSP_SDL `$(SDL_CONFIG) --cflags`
-MY_LIBS += `$(SDL_CONFIG) --libs`
+LIBS += `$(SDL_CONFIG) --libs`
 endif
 
 ifdef SOUND_WAVEOUT
@@ -513,26 +490,26 @@ ifdef JOY_USB
 CONFIG += -DUSB_JOYSTICK
 ifeq ($(shell test -f /usr/include/usbhid.h && echo have_usbhid), have_usbhid)
 CONFIG += -DHAVE_USBHID_H
-MY_LIBS += -lusbhid
+LIBS += -lusbhid
 else
 ifeq ($(shell test -f /usr/include/libusbhid.h && echo have_libusbhid), have_libusbhid)
 CONFIG += -DHAVE_LIBUSBHID_H
-MY_LIBS += -lusbhid
+LIBS += -lusbhid
 else
-MY_LIBS += -lusb
+LIBS += -lusb
 endif
 endif
 endif
 
 ifdef JOY_SDL
 CONFIG  += -DSDL_JOYSTICK `$(SDL_CONFIG) --cflags`
-MY_LIBS += `$(SDL_CONFIG) --libs`
+LIBS += `$(SDL_CONFIG) --libs`
 endif
 
 # Happ UGCI config
 ifdef UGCICOIN
 CONFIG += -DUGCICOIN
-MY_LIBS += -lugci
+LIBS += -lugci
 endif
 
 ifdef LIRC
@@ -548,10 +525,10 @@ CONFIG += -DLIGHTGUN_DEFINE_INPUT_ABSINFO
 endif
 
 ifdef EFENCE
-MY_LIBS += -lefence
+LIBS += -lefence
 endif
 
-OBJS += $(COREOBJS) $(DRVLIBS)
+OBJS += $(COREOBJS) $(CPULIB) $(SOUNDLIB) $(DRVLIBS)
 
 OSDEPEND = $(OBJDIR)/osdepend.a
 
@@ -566,8 +543,8 @@ endif
 ##############################################################################
 
 $(NAME).$(DISPLAY_METHOD): $(EXPAT) $(ZLIB) $(OBJS) $(UNIX_OBJS) $(OSDEPEND)
-	$(CC_COMMENT) @echo 'Linking $@ ...'
-	$(CC_COMPILE) $(LD) $(LDFLAGS) -o $@ $(OBJS) $(EXPAT) $(ZLIB) $(UNIX_OBJS) $(OSDEPEND) $(MY_LIBS)
+	@echo 'Linking $@ ...'
+	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(EXPAT) $(ZLIB) $(UNIX_OBJS) $(OSDEPEND) $(LIBS)
 
 maketree: $(sort $(OBJDIRS))
 
@@ -576,31 +553,33 @@ $(sort $(OBJDIRS)):
 
 extra: $(TOOLS)
 
-$(PLATFORM_IMGTOOL_OBJS):
-
 xlistdev: src/unix/contrib/tools/xlistdev.c
-	$(CC_COMMENT) @echo 'Compiling $< ...'
-	$(CC_COMPILE) $(CC) $(X11INC) src/unix/contrib/tools/xlistdev.c -o xlistdev $(JSLIB) $(LIBS.$(ARCH)) $(LIBS.$(DISPLAY_METHOD)) -lXi -lm
+	@echo 'Compiling $< ...'
+	$(CC) $(X11INC) src/unix/contrib/tools/xlistdev.c -o xlistdev $(JSLIB) $(LIBS.$(ARCH)) $(LIBS.$(DISPLAY_METHOD)) -lXi -lm
 
 romcmp: $(OBJ)/romcmp.o $(OBJ)/unzip.o $(ZLIB)
-	$(CC_COMMENT) @echo 'Linking $@...'
-	$(CC_COMPILE) $(LD) $(LDFLAGS) $^ $(LIBS) -o $@
+	@echo 'Linking $@...'
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
-chdman: $(OBJ)/chdman.o $(OBJ)/chd.o $(OBJ)/chdcd.o $(OBJ)/cdrom.o $(OBJ)/md5.o $(OBJ)/sha1.o $(OBJ)/version.o $(ZLIB)
-	$(CC_COMMENT) @echo 'Linking $@...'
-	$(CC_COMPILE) $(LD) $(LDFLAGS) $^ $(LIBS) -o $@
+chdman: $(OBJ)/chdman.o $(OBJ)/chd.o $(OBJ)/chdcd.o $(OBJ)/cdrom.o $(OBJ)/md5.o $(OBJ)/sha1.o $(OBJ)/version.o $(ZLIB) $(OSTOOLOBJS)
+	@echo 'Linking $@...'
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
 xml2info: $(OBJ)/xml2info.o $(EXPAT)
-	$(CC_COMMENT) @echo 'Linking $@...'
-	$(CC_COMPILE) $(LD) $(LDFLAGS) $^ $(LIBS) -o $@
+	@echo 'Linking $@...'
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
+
+jedutil: $(OBJ)/jedutil.o $(OBJ)/jedparse.o $(OSDBGOBJS)
+	@echo 'Linking $@...'
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
 dat2html: $(DAT2HTML_OBJS)
-	$(CC_COMMENT) @echo 'Compiling $@...'
-	$(CC_COMPILE) $(LD) $(LDFLAGS) $^ -o $@
+	@echo 'Compiling $@...'
+	$(LD) $(LDFLAGS) $^ -o $@
 
-imgtool: $(IMGTOOL_OBJS) $(ZLIB) $(PLATFORM_IMGTOOL_OBJS)
-	$(CC_COMMENT) @echo 'Compiling $@...'
-	$(CC_COMPILE) $(LD) $(LDFLAGS) $^ -lz -o $@
+imgtool: $(IMGTOOL_OBJS) $(OSTOOLOBJS) $(ZLIB) $(PLATFORM_TOOL_OBJS)
+	@echo 'Compiling $@...'
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
 messtest: $(OBJS) $(MESSTEST_OBJS) \
 	$(OBJDIR)/dirio.o \
@@ -609,14 +588,23 @@ messtest: $(OBJS) $(MESSTEST_OBJS) \
 	$(OBJDIR)/parallel.o \
 	$(OBJDIR)/sysdep/misc.o \
 	$(OBJDIR)/sysdep/rc.o \
-	$(OBJDIR)/tststubs.o
-	$(CC_COMMENT) @echo 'Linking $@...'
-	$(CC_COMPILE) $(LD) $(LDFLAGS) $(MY_LIBS) $^ -Wl,--allow-multiple-definition -o $@
+	$(OBJDIR)/tststubs.o \
+	$(OBJDIR)/osd_tool.o
+	@echo 'Linking $@...'
+	$(LD) $(LDFLAGS) $(LIBS) $^ -Wl,--allow-multiple-definition -o $@
 
 $(OBJDIR)/tststubs.o: src/unix/tststubs.c
-	$(CC_COMPILE) $(CC) $(MY_CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) -o $@ -c $<
 
-#secondary libraries
+# library targets and dependencies
+$(CPULIB): $(CPUOBJS)
+
+ifdef DEBUG
+$(CPULIB): $(DBGOBJS)
+endif
+
+$(SOUNDLIB): $(SOUNDOBJS)
+
 $(OBJ)/libexpat.a: $(OBJ)/expat/xmlparse.o $(OBJ)/expat/xmlrole.o \
 	$(OBJ)/expat/xmltok.o
 
@@ -628,93 +616,38 @@ $(OBJ)/libz.a: $(OBJ)/zlib/adler32.o $(OBJ)/zlib/compress.o \
 
 ifdef MESS
 $(OBJ)/mess/%.o: mess/%.c
-	$(CC_COMMENT) @echo '[MESS] Compiling $< ...'
-	$(CC_COMPILE) $(CC) $(MY_CFLAGS) -o $@ -c $<
+	@echo '[MESS] Compiling $< ...'
+	$(CC) $(CFLAGS) -o $@ -c $<
 endif
 
-ifdef MAGE
-$(OBJ)/mage/src/%.o: mage/src/%.c
-	$(CC_COMMENT) @echo '[MAGE] Compiling $< ...'
-	$(CC_COMPILE) $(CC) $(MY_CFLAGS) -o $@ -c $<
-#else
-endif
 $(OBJ)/%.o: src/%.c
-	$(CC_COMMENT) @echo 'Compiling $< ...'
-	$(CC_COMPILE) $(CC) $(MY_CFLAGS) -o $@ -c $<
-#endif
+	@echo 'Compiling $< ...'
+	$(CC) $(CFLAGS) -o $@ -c $<
 
 $(OBJ)/%.a:
-	$(CC_COMMENT) @echo 'Archiving $@ ...'
-	$(CC_COMPILE) ar $(AR_OPTS) $@ $^
-	$(CC_COMPILE) $(RANLIB) $@
+	@echo 'Archiving $@ ...'
+	$(AR) $(AR_OPTS) $@ $^
+	$(RANLIB) $@
 
 $(OSDEPEND): $(UNIX_OBJS)
-	$(CC_COMMENT) @echo '[OSDEPEND] Archiving $@ ...'
-	$(CC_COMPILE) ar $(AR_OPTS) $@ $(UNIX_OBJS)
-	$(CC_COMPILE) $(RANLIB) $@
+	@echo '[OSDEPEND] Archiving $@ ...'
+	$(AR) $(AR_OPTS) $@ $(UNIX_OBJS)
+	$(RANLIB) $@
 
 $(UNIX_OBJDIR)/%.o: src/unix/%.c src/unix/xmame.h
-	$(CC_COMMENT) @echo '[OSDEPEND] Compiling $< ...'
-	$(CC_COMPILE) $(CC) $(CONFIG) -o $@ -c $<
+	@echo '[OSDEPEND] Compiling $< ...'
+	$(CC) $(CONFIG) -o $@ -c $<
 
 $(UNIX_OBJDIR)/%.o: %.m src/unix/xmame.h
-	$(CC_COMMENT) @echo '[OSDEPEND] Compiling $< ...'
-	$(CC_COMPILE) $(CC) $(MY_CFLAGS) -o $@ -c $<
-
-# special cases for the 68000 core
-#
-# compile generated C files for the 68000 emulator
-$(M68000_GENERATED_OBJS): $(OBJ)/cpu/m68000/m68kmake
-	$(CC_COMMENT) @echo 'Compiling $(subst .o,.c,$@)...'
-	$(CC_COMPILE) $(CC) $(MY_CFLAGS) -c $*.c -o $@
-
-# additional rule, because m68kcpu.c includes the generated m68kops.h :-/
-$(OBJ)/cpu/m68000/m68kcpu.o: $(OBJ)/cpu/m68000/m68kmake
-
-# generate C source files for the 68000 emulator
-$(OBJ)/cpu/m68000/m68kmake: src/cpu/m68000/m68kmake.c
-	$(CC_COMMENT) @echo 'M68K make $<...'
-	$(CC_COMPILE) $(HOST_CC) $(MY_CFLAGS) -DDOS -o $(OBJ)/cpu/m68000/m68kmake $<
-	$(CC_COMMENT) @echo 'Generating M68K source files...'
-	$(CC_COMPILE) $(OBJ)/cpu/m68000/m68kmake $(OBJ)/cpu/m68000 src/cpu/m68000/m68k_in.c
-
-# generate asm source files for the 68000/68020 emulators
-$(OBJ)/cpu/m68000/68000.asm:  src/cpu/m68000/make68k.c
-	$(CC_COMMENT) @echo Compiling $<...
-	$(CC_COMPILE) $(CC) $(MY_CFLAGS) -O0 -DDOS -o $(OBJ)/cpu/m68000/make68k $<
-	$(CC_COMMENT) @echo Generating $@...
-	$(CC_COMPILE) $(OBJ)/cpu/m68000/make68k $@ $(OBJ)/cpu/m68000/68000tab.asm 00
-
-$(OBJ)/cpu/m68000/68020.asm:  src/cpu/m68000/make68k.c
-	$(CC_COMMENT) @echo Compiling $<...
-	$(CC_COMPILE) $(CC) $(MY_CFLAGS) -O0 -DDOS -o $(OBJ)/cpu/m68000/make68k $<
-	$(CC_COMMENT) @echo Generating $@...
-	$(CC_COMPILE) $(OBJ)/cpu/m68000/make68k $@ $(OBJ)/cpu/m68000/68020tab.asm 20
-
-# generated asm files for the 68000 emulator
-$(OBJ)/cpu/m68000/68000.o:  $(OBJ)/cpu/m68000/68000.asm
-	$(CC_COMMENT) @echo Assembling $<...
-	$(CC_COMPILE) $(ASM_STRIP) $<
-	$(CC_COMPILE) nasm $(NASM_FMT) -o $@ $(subst -D,-d,$(ASMDEFS)) $<
-
-$(OBJ)/cpu/m68000/68020.o:  $(OBJ)/cpu/m68000/68020.asm
-	$(CC_COMMENT) @echo Assembling $<...
-	$(CC_COMPILE) $(ASM_STRIP) $<
-	$(CC_COMPILE) nasm $(NASM_FMT) -o $@ $(subst -D,-d,$(ASMDEFS)) $<
+	@echo '[OSDEPEND] Compiling $< ...'
+	$(CC) $(CFLAGS) -o $@ -c $<
 
 # MMX assembly language for effect filters
 $(OBJ)/unix.$(DISPLAY_METHOD)/effect_asm.o: src/unix/effect_asm.asm
-	$(CC_COMMENT) @echo Assembling $<...
-	$(CC_COMPILE) nasm $(NASM_FMT) -o $@ $<
+	@echo Assembling $<...
+	$(ASM) $(ASM_FMT) -o $@ $<
 
 doc: src/unix/doc/xmame-doc.txt src/unix/doc/x$(TARGET)rc.dist doc/gamelist.$(TARGET) src/unix/doc/x$(TARGET).6
-
-src/unix/doc/xmame-doc.txt: src/unix/doc/xmame-doc.sgml
-	cd src/unix/doc; \
-	sgml2txt   -l en -p a4 -f          xmame-doc.sgml; \
-	sgml2html  -l en -p a4             xmame-doc.sgml; \
-	sgml2latex -l en -p a4 --output=ps xmame-doc.sgml; \
-	rm -f xmame-doc.lyx~
 
 src/unix/doc/x$(TARGET)rc.dist: all src/unix/xmamerc-keybinding-notes.txt
 	./x$(TARGET).$(DISPLAY_METHOD) -noloadconfig -showconfig | \
@@ -735,22 +668,24 @@ install: $(INST.$(DISPLAY_METHOD)) install-man
 	@echo $(NAME) for $(ARCH)-$(MY_CPU) installation completed
 
 install-man:
-	@echo installing manual pages under $(MANDIR) ...
+	@echo Installing manual pages under $(MANDIR) ...
 	-$(INSTALL_MAN_DIR) $(MANDIR)
 	$(INSTALL_MAN) src/unix/doc/x$(TARGET).6 $(MANDIR)/x$(TARGET).6
 
 doinstall:
-	@echo installing binaries under $(BINDIR)...
+	@echo Installing binaries under $(BINDIR)...
 	-$(INSTALL_PROGRAM_DIR) $(BINDIR)
 	$(INSTALL_PROGRAM) $(NAME).$(DISPLAY_METHOD) $(BINDIR)
+	$(INSTALL_PROGRAM) $(TOOLS) $(BINDIR)
 
 doinstallsuid:
-	@echo installing binaries under $(BINDIR)...
+	@echo Installing binaries under $(BINDIR)...
 	-$(INSTALL_PROGRAM_DIR) $(BINDIR)
 	$(INSTALL_PROGRAM_SUID) $(NAME).$(DISPLAY_METHOD) $(BINDIR)
+	$(INSTALL_PROGRAM) $(TOOLS) $(BINDIR)
 
 copycab:
-	@echo installing cabinet files under $(XMAMEROOT)...
+	@echo Installing cabinet files under $(XMAMEROOT)...
 	@cd src/unix; \
 	for i in cab/*; do \
 	if test ! -d $(XMAMEROOT)/$$i; then \
@@ -764,6 +699,7 @@ clean68k:
 	@echo Deleting 68k object files...
 	@rm -f $(OBJ)/cpuintrf.o
 	@rm -f $(OBJ)/drivers/cps2.o
+	@rm -f $(OBJ)/libcpu.a
 	@rm -rf $(OBJ)/cpu/m68000
 
 cleanosd:
@@ -773,4 +709,4 @@ cleanosd:
 cleancore:
 	@echo Deleting core object files...
 	@if test -d $(OBJ); then \
-	rm -rf `find $(OBJ) -mindepth 1 -path '$(OBJDIR)' -prune -o -print`; fi
+	@rm -rf `find $(OBJ) -mindepth 1 -path '$(OBJDIR)' -prune -o -print`; fi

@@ -46,7 +46,6 @@ Notes:
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 static unsigned char *unkram;
 static unsigned char *mainram;
@@ -156,8 +155,6 @@ ROM_START( gunpey )
 	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* V30 code */
 	ROM_LOAD16_BYTE( "gp_rom1.021",  0x00000, 0x80000, CRC(07a589a7) SHA1(06c4140ffd5f74b3d3ddfc424f43fcd08d903490) )
 	ROM_LOAD16_BYTE( "gp_rom2.022",  0x00001, 0x80000, CRC(f66bc4cf) SHA1(54931d878d228c535b9e2bf22a0a3e41756f0fe5) )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* 64k code for sound Z80 */
 
 	ROM_REGION( 0x400000*2, REGION_GFX1, 0 )
 	ROM_LOAD( "gp_rom3.025",  0x00000, 0x400000,  CRC(f2d1f9f0) SHA1(0d20301fd33892074508b9d127456eae80cc3a1c) )

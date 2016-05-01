@@ -849,10 +849,6 @@ int osd_readkey_unicode(int flush)
 		return 0;
 }
 
-void osd_pause(int paused)
-{
-}
-
 static void update_joystick_axes(void)
 {
 	int joynum, axis;
@@ -2030,5 +2026,5 @@ int osd_keyboard_disabled()
 
 int osd_trying_to_quit()
 {
-	return 0;
+	return trying_to_quit;
 }

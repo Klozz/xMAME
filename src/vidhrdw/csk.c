@@ -16,9 +16,7 @@ unsigned char * cpk_palette;
 unsigned char * cpk_palette2;
 unsigned char * cpk_expram;
 
-static unsigned char * dirtybuffer;
 static unsigned char * dirtybuffer1;
-static mame_bitmap *tmpbitmap;
 static mame_bitmap *tmpbitmap2;
 
 static int hopperOK = 0;
@@ -122,8 +120,7 @@ VIDEO_START( cska )
 	tmpbitmap = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height);
 	tmpbitmap2 = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height);
 
-	if (!dirtybuffer || !dirtybuffer1 || !cpk_colorram || !cpk_videoram || !cpk_expram ||
-		!cpk_palette || !cpk_palette2 || !tmpbitmap || !tmpbitmap2)
+	if (!tmpbitmap || !tmpbitmap2)
 	{
 		return 1;
 	}
@@ -157,7 +154,7 @@ static void init_csk234_internals(void)
 	sleepcountdown = 0xf98e;
 }
 
-MACHINE_INIT (cpk)
+MACHINE_RESET (cpk)
 {
 	static int initonce = 0;
 

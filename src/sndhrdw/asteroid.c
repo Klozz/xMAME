@@ -7,13 +7,14 @@
 #include <math.h>
 #include "driver.h"
 #include "sound/discrete.h"
+#include "includes/asteroid.h"
 
 /************************************************************************/
 /* Asteroids Sound System Analog emulation by K.Wilkins Nov 2000        */
 /* Questions/Suggestions to mame@dysfunction.demon.co.uk                */
 /************************************************************************/
 
-const struct discrete_lfsr_desc asteroid_lfsr={
+static const struct discrete_lfsr_desc asteroid_lfsr={
 	DISC_CLK_IS_FREQ,
 	16,			/* Bit Length */
 	0,			/* Reset Value */
@@ -27,7 +28,7 @@ const struct discrete_lfsr_desc asteroid_lfsr={
 	16			/* Output bit is feedback bit */
 };
 
-const struct discrete_dac_r1_ladder asteroid_thump_dac1 =
+static const struct discrete_dac_r1_ladder asteroid_thump_dac1 =
 {
 	4,			/* size of ladder */
 	{RES_K(220), RES_K(100), RES_K(47), RES_K(22)}, /*R44-R47 */
@@ -37,7 +38,7 @@ const struct discrete_dac_r1_ladder asteroid_thump_dac1 =
 	CAP_U(0.01)	/* C27 */
 };
 
-const struct discrete_555_cc_desc asteroid_thump_555cc =
+static const struct discrete_555_cc_desc asteroid_thump_555cc =
 {
 	DISC_555_OUT_SQW | DISC_555_OUT_AC | DISCRETE_555_CC_TO_CAP,
 	5,		/* B+ voltage of 555 */
@@ -208,9 +209,8 @@ DISCRETE_SOUND_START(asteroid_discrete_interface)
 	/************************************************/
 	DISCRETE_ADDER4(NODE_90, 1, ASTEROID_THUMP_SND, ASTEROID_SAUCER_SND, ASTEROID_SHIP_FIRE_SND, ASTEROID_SAUCER_FIRE_SND)
 	DISCRETE_ADDER4(NODE_91, 1, ASTEROID_THRUST_SND, ASTEROID_EXPLODE_SND, ASTEROID_LIFE_SND, NODE_90)
-	DISCRETE_GAIN(NODE_92, NODE_91, 65534.0 / (131.6+76.1+49.5+53.0+1000.0+600.0))
 
-	DISCRETE_OUTPUT(NODE_92, 100)		/* Take the output from the mixer */
+	DISCRETE_OUTPUT(NODE_91, 65534.0 / (131.6+76.1+49.5+53.0+1000.0+600.0))		/* Take the output from the mixer */
 DISCRETE_SOUND_END
 
 
@@ -272,9 +272,8 @@ DISCRETE_SOUND_START(astdelux_discrete_interface)
 	/* adder circuit                                */
 	/************************************************/
 	DISCRETE_ADDER2(NODE_90, 1, ASTEROID_THRUST_SND, ASTEROID_EXPLODE_SND)
-	DISCRETE_GAIN(NODE_91, NODE_90, 65534.0/(1000+600))
 
-	DISCRETE_OUTPUT(NODE_91, 100)	/* Take the output from the mixer */
+	DISCRETE_OUTPUT(NODE_90, 65534.0/(1000+600))	/* Take the output from the mixer */
 DISCRETE_SOUND_END
 
 

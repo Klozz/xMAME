@@ -17,7 +17,6 @@
 ********************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 
 static UINT8 *vram1,*vram2;
 static int vrambank=0;
@@ -26,8 +25,7 @@ VIDEO_START(laserbas)
 {
 	vram1=auto_malloc(0x8000);
 	vram2=auto_malloc(0x8000);
-	if ((tmpbitmap = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height)) == 0)
-		return 1;
+	tmpbitmap = auto_bitmap_alloc(Machine->drv->screen_width,Machine->drv->screen_height);
 	return 0;
 }
 

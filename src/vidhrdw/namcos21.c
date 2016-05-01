@@ -14,7 +14,6 @@ TODO: add depth cueing support (palette bank selection using most significant bi
 */
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "namcos2.h"
 #include "namcoic.h"
 #include "namcos21.h"
@@ -37,16 +36,9 @@ AllocatePolyFrameBuffer( void )
 	mpPolyFrameBufferZ2    = auto_malloc( FRAMEBUFFER_SIZE_IN_BYTES );
 	mpPolyFrameBufferPens2 = auto_malloc( FRAMEBUFFER_SIZE_IN_BYTES );
 
-	if( mpPolyFrameBufferZ &&
-		mpPolyFrameBufferPens &&
-		mpPolyFrameBufferZ2 &&
-		mpPolyFrameBufferPens2 )
-	{
 		namcos21_ClearPolyFrameBuffer();
 		namcos21_ClearPolyFrameBuffer();
 		return 0;
-	}
-	return -1;
 } /* AllocatePolyFrameBuffer */
 
 void

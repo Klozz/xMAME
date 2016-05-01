@@ -11,6 +11,7 @@
 #include "artwork.h"
 #include "usrintrf.h"
 #include "vidhrdw/vector.h"
+#include "mamedbg.h"
 #ifdef MESS
 #include "mess/mesintrf.h"
 #endif
@@ -27,6 +28,7 @@ static int show_effect_or_scale = 0;
 static int show_status = 0;
 static const char *status_msg = NULL;
 static int normal_params_changed = 0;
+static char *mngwrite = NULL;
 
 /* options these are initialised through the rc_option struct */
 static float f_beam;
@@ -226,6 +228,7 @@ struct rc_option video_opts[] = {
    { "hardware-vectors", "hwvec",		rc_int,		&use_hw_vectors,
      "1",		0,			2,		NULL,
      "Use the video card to draw the vectors in vector games:\n0 never\n1 auto\n2 always" },
+   { "mngwrite", NULL, rc_string, &mngwrite, NULL, 0, 0, NULL, "Save video in specified mng file" },
    { NULL,		NULL,			rc_link,	sysdep_display_opts,
      NULL,		0,			0,		NULL,
      NULL },
@@ -317,12 +320,18 @@ static int video_verify_artwork(struct rc_option *option, const char *arg,
 
 static int video_verify_ftr(struct rc_option *option, const char *arg, int priority)
 {
-	/*
-	 * if we're running < 5 minutes, allow us to skip warnings to
-	 * facilitate benchmarking/validation testing
-	 */
+	int ftr;
+
+	if (sscanf(arg, "%d", &ftr) != 1)
+	{
+		fprintf(stderr, "error: invalid value for frames_to_run: %s\n", arg);
+		return -1;
+	}
+
+	/* if we're running < 5 minutes, allow us to skip warnings to facilitate benchmarking/validation testing */
+	frames_to_display = ftr;
 	if (frames_to_display > 0 && frames_to_display < 60*60*5)
-		options.skip_warnings = 1;
+		options.skip_warnings = options.skip_gameinfo = options.skip_disclaimer = 1;
 
 	option->priority = priority;
 	return 0;
@@ -382,6 +391,7 @@ int osd_create_display(const osd_create_params *params,
 		UINT32 *rgb_components)
 {
 	int orientation;
+	const game_driver *clone_of;
 
 	video_fps                      = params->fps;
 	normal_params.width            = params->width;
@@ -394,7 +404,7 @@ int osd_create_display(const osd_create_params *params,
 	normal_params.keyboard_handler = xmame_keyboard_register_event;
 	normal_params.vec_src_bounds   = NULL;
 	normal_params.vec_dest_bounds  = NULL;
-	
+
 	/* get the orientation, start with the game's built-in orientation */
 	orientation = drivers[game_index]->flags & ORIENTATION_MASK;
 
@@ -454,21 +464,21 @@ int osd_create_display(const osd_create_params *params,
 
 	normal_params.orientation = 0;
 	if (orientation & ORIENTATION_FLIP_X)
-	   normal_params.orientation |= SYSDEP_DISPLAY_FLIPX;
+		normal_params.orientation |= SYSDEP_DISPLAY_FLIPX;
 	if (orientation & ORIENTATION_FLIP_Y)
-	   normal_params.orientation |= SYSDEP_DISPLAY_FLIPY;
+		normal_params.orientation |= SYSDEP_DISPLAY_FLIPY;
 	if (orientation & ORIENTATION_SWAP_XY)
-	   normal_params.orientation |= SYSDEP_DISPLAY_SWAPXY;
-	   
-        /* Setup width- and height-scale */
-        if (user_yarbsize)
-        {
-          if (normal_params.orientation & SYSDEP_DISPLAY_SWAPXY)
-            user_heightscale = (double)user_yarbsize/params->width + 0.5;
-          else
-            user_heightscale = (double)user_yarbsize/params->height + 0.5;
-        }
-        else if (use_auto_double && (user_widthscale == user_heightscale))
+		normal_params.orientation |= SYSDEP_DISPLAY_SWAPXY;
+
+	/* Setup width- and height-scale */
+	if (user_yarbsize)
+	{
+		if (normal_params.orientation & SYSDEP_DISPLAY_SWAPXY)
+			user_heightscale = (double)user_yarbsize/params->width + 0.5;
+		else
+			user_heightscale = (double)user_yarbsize/params->height + 0.5;
+	}
+	else if (use_auto_double && (user_widthscale == user_heightscale))
 	{
 		if ((params->video_attributes & VIDEO_PIXEL_ASPECT_RATIO_MASK)
 				== VIDEO_PIXEL_ASPECT_RATIO_1_2)
@@ -497,28 +507,28 @@ int osd_create_display(const osd_create_params *params,
 
 	switch (use_hw_vectors)
 	{
-	  case 0: /* disabled */
-	    break;
-	  case 1: /* auto */
-	    if (artwork_overlay_active())
-	      break;
-	  case 2: /* always on */
-	    if (params->video_attributes & VIDEO_TYPE_VECTOR)
-	    {
-	      normal_params.vec_src_bounds  = &(Machine->visible_area);
-	      normal_params.vec_dest_bounds = artwork_get_game_rect();
-	    }
+		case 0: /* disabled */
+			break;
+		case 1: /* auto */
+			if (artwork_overlay_active())
+				break;
+		case 2: /* always on */
+			if (params->video_attributes & VIDEO_TYPE_VECTOR)
+			{
+				normal_params.vec_src_bounds  = &(Machine->visible_area);
+				normal_params.vec_dest_bounds = artwork_get_game_rect();
+			}
 	}
-	
+
 	if (sysdep_display_open(&normal_params) != OSD_OK)
 		return -1;
 
 	if (normal_params.vec_src_bounds)
-	      vector_register_aux_renderer(sysdep_display_properties.vector_renderer);
-	      
+		vector_register_aux_renderer(sysdep_display_properties.vector_renderer);
+
 	if (!(normal_palette = sysdep_palette_create(&sysdep_display_properties.palette_info, normal_params.depth)))
 		return -1;
-	
+
 	/* a lot of display_targets need to have the display initialised before
 	   initialising any input devices */
 	if (osd_input_initpost() != OSD_OK)
@@ -546,39 +556,42 @@ int osd_create_display(const osd_create_params *params,
 	debug_params.height     = options.debug_height;
 	debug_params.max_width  = options.debug_width;
 	debug_params.max_height = options.debug_height;
-	
+
 	/* apply vis area override hacks */
-      	if (!strcmp(drivers[game_index]->clone_of->name, "megatech"))
-      	{
-      	  game_vis_area_override_rect[1].min_y = 192;
-      	  game_vis_area_override_rect[2].max_x = 255;
-      	  game_vis_area_override_rect[2].max_y = 191;
-      	  game_vis_area_override_aspect[1] = (double)4.0/3.0;
-      	  game_vis_area_override_aspect[2] = (double)4.0/3.0;
-      	  game_vis_area_override_index = 1;
-      	}
-      	if (!strcmp(drivers[game_index]->clone_of->name, "playch10"))
-      	{
-      	  game_vis_area_override_rect[1].min_y = 240;
-      	  game_vis_area_override_rect[2].max_y = 239;
-      	  game_vis_area_override_aspect[1] = (double)4.0/3.0;
-      	  game_vis_area_override_aspect[2] = (double)4.0/3.0;
-      	  game_vis_area_override_index = 1;
-      	}
-      	if (!strcmp(drivers[game_index]->name, "punchout"))
-      	{
-      	  game_vis_area_override_rect[1].min_y = 224;
-      	  game_vis_area_override_rect[2].max_y = 223;
-      	  game_vis_area_override_aspect[1] = (double)4.0/3.0;
-      	  game_vis_area_override_aspect[2] = (double)4.0/3.0;
-      	}
-      	if (game_vis_area_override_rect[1].min_y != -1)
-      	{
-      	  game_vis_area_override_aspect[0] = normal_params.aspect_ratio;
-          status_msg  = "Dual monitor Game, press\nleft-ctrl+left-shift+insert\nto toggle visible monitors";
-          show_status = 5.0 * video_fps;
-          ui_show_fps_temp(5.0);
-      	}
+	if ((clone_of = driver_get_clone(drivers[game_index])) && !strcmp(clone_of->name, "megatech"))
+	{
+		game_vis_area_override_rect[1].min_y = 192;
+		game_vis_area_override_rect[2].max_x = 255;
+		game_vis_area_override_rect[2].max_y = 191;
+		game_vis_area_override_aspect[1] = (double)4.0/3.0;
+		game_vis_area_override_aspect[2] = (double)4.0/3.0;
+		game_vis_area_override_index = 1;
+	}
+	if ((clone_of = driver_get_clone(drivers[game_index])) && !strcmp(clone_of->name, "playch10"))
+	{
+		game_vis_area_override_rect[1].min_y = 240;
+		game_vis_area_override_rect[2].max_y = 239;
+		game_vis_area_override_aspect[1] = (double)4.0/3.0;
+		game_vis_area_override_aspect[2] = (double)4.0/3.0;
+		game_vis_area_override_index = 1;
+	}
+	if (!strcmp(drivers[game_index]->name, "punchout"))
+	{
+		game_vis_area_override_rect[1].min_y = 224;
+		game_vis_area_override_rect[2].max_y = 223;
+		game_vis_area_override_aspect[1] = (double)4.0/3.0;
+		game_vis_area_override_aspect[2] = (double)4.0/3.0;
+	}
+	if (game_vis_area_override_rect[1].min_y != -1)
+	{
+		game_vis_area_override_aspect[0] = normal_params.aspect_ratio;
+		status_msg  = "Dual monitor Game, press\nleft-ctrl+left-shift+insert\nto toggle visible monitors";
+		show_status = 5.0 * video_fps;
+		ui_show_fps_temp(5.0);
+	}
+
+	if (mngwrite != NULL)
+		record_movie_start(mngwrite);
 
 	return 0;
 }
@@ -920,7 +933,7 @@ void osd_update_video_and_audio(mame_display *display)
 	if (display->changed_flags & DEBUG_FOCUS_CHANGED)
 		change_debugger_focus(display->debug_focus);
 	/* If the user presses the F5 key, toggle the debugger's focus */
-	else if (input_ui_pressed(IPT_UI_TOGGLE_DEBUG) && mame_debug)
+	else if (input_ui_pressed(IPT_UI_TOGGLE_DEBUG) && Machine->debug_mode)
 		change_debugger_focus(!debugger_has_focus);
 
 	/*** STEP 3: update the focused display ***/
@@ -1143,7 +1156,7 @@ void osd_update_video_and_audio(mame_display *display)
 			else
 			{
 				frames_displayed++;
-				if (frames_displayed + 1 == frames_to_display)
+				if (frames_displayed == frames_to_display)
 				{
 					char name[20];
 					mame_file *fp;
@@ -1157,7 +1170,7 @@ void osd_update_video_and_audio(mame_display *display)
 						save_screen_snapshot_as(fp, artwork_get_ui_bitmap());
 						mame_fclose(fp);
 					}
-					trying_to_quit = 1;
+					mame_schedule_exit();
 				}
 				end_time = curr;
 			}

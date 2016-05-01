@@ -843,7 +843,7 @@ WRITE32_HANDLER( graphics_w )
  *
  *************************************/
 
-static MACHINE_INIT( midzeus )
+static MACHINE_RESET( midzeus )
 {
 	memcpy(ram_base, memory_region(REGION_USER1), 0x20000*4);
 
@@ -1415,7 +1415,7 @@ MACHINE_DRIVER_START( midzeus )
 	MDRV_FRAMES_PER_SECOND(57)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(midzeus)
+	MDRV_MACHINE_RESET(midzeus)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
@@ -1428,7 +1428,7 @@ MACHINE_DRIVER_START( midzeus )
 	MDRV_VIDEO_UPDATE(midzeus)
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM(dcs2_audio_2104_rom)
+	MDRV_IMPORT_FROM(dcs2_audio_2104)
 MACHINE_DRIVER_END
 
 
@@ -1535,7 +1535,7 @@ ROM_END
 
 static DRIVER_INIT( mk4 )
 {
-	dcs2_rom_init(0);
+	dcs2_init(0, 0);
 	midway_ioasic_init(MIDWAY_IOASIC_STANDARD, 461/* or 474 */, 94, NULL);
 	midway_ioasic_set_shuffle_state(1);
 }
@@ -1547,7 +1547,7 @@ static READ32_HANDLER( gun_r )
 }
 static DRIVER_INIT( invasn )
 {
-	dcs2_rom_init(0);
+	dcs2_init(0, 0);
 	midway_ioasic_init(MIDWAY_IOASIC_STANDARD, 461/* unknown */, 94, NULL);
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x9c0000, 0x9c0000, 0, 0, gun_r);
 }
@@ -1555,7 +1555,7 @@ static DRIVER_INIT( invasn )
 
 static DRIVER_INIT( crusnexo )
 {
-	dcs2_rom_init(0);
+	dcs2_init(0, 0);
 	midway_ioasic_init(MIDWAY_IOASIC_STANDARD, 461/* unknown */, 94, NULL);
 }
 
@@ -1563,7 +1563,7 @@ static DRIVER_INIT( crusnexo )
 static DRIVER_INIT( thegrid )
 {
 	cpunum_set_input_line(0, INPUT_LINE_HALT, ASSERT_LINE);
-	dcs2_rom_init(0);
+	dcs2_init(0, 0);
 	midway_ioasic_init(MIDWAY_IOASIC_STANDARD, 461/* unknown */, 94, NULL);
 }
 

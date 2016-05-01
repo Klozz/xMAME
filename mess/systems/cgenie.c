@@ -35,8 +35,7 @@ NMI
 
 static ADDRESS_MAP_START (cgenie_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE( MRA8_RAM, cgenie_videoram_w) AM_BASE( &videoram )
-/*	AM_RANGE(0x8000, 0xbfff) AM_RAM	// only if 32K RAM is enabled */
+/*	AM_RANGE(0x4000, 0xbfff) AM_RAM	// set up in MACHINE_START */
 /*	AM_RANGE(0xc000, 0xdfff) AM_ROM	// installed in cgenie_init_machine */
 /*	AM_RANGE(0xe000, 0xefff) AM_ROM	// installed in cgenie_init_machine */
 	AM_RANGE(0xf000, 0xf3ff) AM_READWRITE( cgenie_colorram_r, cgenie_colorram_w ) AM_BASE( &colorram )
@@ -80,9 +79,6 @@ INPUT_PORTS_START( cgenie )
 	PORT_BIT(	  0x08, 0x08, IPT_DIPSWITCH_NAME) PORT_NAME("Virtual tape support") PORT_CODE(KEYCODE_F6) PORT_TOGGLE
 	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x08, DEF_STR( On ) )
-	PORT_DIPNAME(	  0x04, 0x04, "Memory Size")
-	PORT_DIPSETTING(	0x04, "32K" )
-	PORT_DIPSETTING(	0x00, "16K" )
 	PORT_BIT(0x07, 0x07, IPT_UNUSED)
 
 /**************************************************************************
@@ -385,9 +381,8 @@ static MACHINE_DRIVER_START( cgenie )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(4)
 
-	MDRV_MACHINE_INIT( cgenie )
-	MDRV_MACHINE_STOP( cgenie )
-
+	MDRV_MACHINE_START( cgenie )
+	
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_SIZE(48*8, (32)*8)
@@ -429,32 +424,51 @@ ROM_START (cgenie)
 
 ROM_END
 
-static void cgenie_floppy_getinfo(struct IODevice *dev)
+static void cgenie_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	legacybasicdsk_device_getinfo(dev);
-	dev->count = 4;
-	dev->file_extensions = "dsk\0";
-	dev->load = device_load_cgenie_floppy;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 4; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_cgenie_floppy; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+
+		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void cgenie_cassette_getinfo(struct IODevice *dev)
+static void cgenie_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
-	dev->type = IO_CASSETTE;
-	dev->count = 1;
-	dev->file_extensions = "cas\0";
-	dev->readable = 0;	/* INVALID */
-	dev->writeable = 0;	/* INVALID */
-	dev->creatable = 0;	/* INVALID */
-	dev->load = device_load_cgenie_cassette;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
+		case DEVINFO_INT_READABLE:						info->i = 0;	/* INVALID */ break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 0;	/* INVALID */ break;
+		case DEVINFO_INT_CREATABLE:						info->i = 0;	/* INVALID */ break;
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = device_load_cgenie_cassette; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cas"); break;
+	}
 }
 
 SYSTEM_CONFIG_START(cgenie)
 	CONFIG_DEVICE(cartslot_device_getinfo)
 	CONFIG_DEVICE(cgenie_floppy_getinfo)
 	CONFIG_DEVICE(cgenie_cassette_getinfo)
+	CONFIG_RAM_DEFAULT	(16 * 1024)
+	CONFIG_RAM			(32 * 1024)
 SYSTEM_CONFIG_END
 
 /*	  YEAR	NAME	  PARENT	COMPAT	MACHINE   INPUT 	INIT	  CONFIG     COMPANY	FULLNAME */
-COMP( 1982, cgenie,   0,		0,		cgenie,   cgenie,	cgenie,   cgenie,    "EACA Computers Ltd.",  "Colour Genie EG2000" , 0)
+COMP( 1982, cgenie,   0,		0,		cgenie,   cgenie,	0,        cgenie,    "EACA Computers Ltd.",  "Colour Genie EG2000" , 0)

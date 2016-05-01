@@ -37,7 +37,6 @@ So this is the correct behavior of real hardware, not an emulation bug.
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/2151intf.h"
@@ -66,7 +65,7 @@ WRITE16_HANDLER( nemesis_characterram_word_w );
 VIDEO_UPDATE( nemesis );
 VIDEO_START( nemesis );
 VIDEO_UPDATE( salamand );
-MACHINE_INIT( nemesis );
+MACHINE_RESET( nemesis );
 
 WRITE16_HANDLER( nemesis_gfx_flipx_w );
 WRITE16_HANDLER( nemesis_gfx_flipy_w );
@@ -76,13 +75,13 @@ extern UINT16 *nemesis_yscroll1, *nemesis_yscroll2;
 
 WRITE16_HANDLER( nemesis_palette_word_w );
 
-int irq_on = 0;
-int irq1_on = 0;
-int irq2_on = 0;
-int irq4_on = 0;
+static int irq_on = 0;
+static int irq1_on = 0;
+static int irq2_on = 0;
+static int irq4_on = 0;
 
 
-MACHINE_INIT( nemesis )
+MACHINE_RESET( nemesis )
 {
 	irq_on = 0;
 	irq1_on = 0;
@@ -2046,30 +2045,41 @@ static const gfx_layout spritelayout168 =
 
 };
 
+static const UINT32 spritelayout6464_xoffset[64] =
+{
+	XOR(0*4), XOR(1*4), XOR(2*4), XOR(3*4), XOR(4*4), XOR(5*4), XOR(6*4), XOR(7*4),
+	XOR(8*4), XOR(9*4), XOR(10*4), XOR(11*4), XOR(12*4), XOR(13*4), XOR(14*4), XOR(15*4),
+	XOR(16*4),XOR(17*4), XOR(18*4), XOR(19*4), XOR(20*4), XOR(21*4), XOR(22*4), XOR(23*4),
+	XOR(24*4),XOR(25*4), XOR(26*4), XOR(27*4), XOR(28*4), XOR(29*4), XOR(30*4), XOR(31*4),
+	XOR(32*4),XOR(33*4), XOR(34*4), XOR(35*4), XOR(36*4), XOR(37*4), XOR(38*4), XOR(39*4),
+	XOR(40*4),XOR(41*4), XOR(42*4), XOR(43*4), XOR(44*4), XOR(45*4), XOR(46*4), XOR(47*4),
+	XOR(48*4),XOR(49*4), XOR(50*4), XOR(51*4), XOR(52*4), XOR(53*4), XOR(54*4), XOR(55*4),
+	XOR(56*4),XOR(57*4), XOR(58*4), XOR(59*4), XOR(60*4), XOR(61*4), XOR(62*4), XOR(63*4)
+};
+
+static const UINT32 spritelayout6464_yoffset[64] =
+{
+	0*256, 1*256, 2*256, 3*256, 4*256, 5*256, 6*256, 7*256,
+	8*256, 9*256, 10*256, 11*256, 12*256, 13*256, 14*256, 15*256,
+	16*256, 17*256, 18*256, 19*256, 20*256, 21*256, 22*256, 23*256,
+	24*256, 25*256, 26*256, 27*256, 28*256, 29*256, 30*256, 31*256,
+	32*256, 33*256, 34*256, 35*256, 36*256, 37*256, 38*256, 39*256,
+	40*256, 41*256, 42*256, 43*256, 44*256, 45*256, 46*256, 47*256,
+	48*256, 49*256, 50*256, 51*256, 52*256, 53*256, 54*256, 55*256,
+	56*256, 57*256, 58*256, 59*256, 60*256, 61*256, 62*256, 63*256
+};
+
 static const gfx_layout spritelayout6464 =
 {
 	64,64,	/* 32*32 sprites */
 	32,	/* 128 sprites */
 	4,	/* 4 bits per pixel */
-	{ 0, 1, 2, 3 }, /* the two bitplanes are merged in the same nibble */
-	{ XOR(0*4), XOR(1*4), XOR(2*4), XOR(3*4), XOR(4*4), XOR(5*4), XOR(6*4), XOR(7*4),
-			XOR(8*4), XOR(9*4), XOR(10*4), XOR(11*4), XOR(12*4), XOR(13*4), XOR(14*4), XOR(15*4),
-		   XOR(16*4),XOR(17*4), XOR(18*4), XOR(19*4), XOR(20*4), XOR(21*4), XOR(22*4), XOR(23*4),
-		   XOR(24*4),XOR(25*4), XOR(26*4), XOR(27*4), XOR(28*4), XOR(29*4), XOR(30*4), XOR(31*4),
-		   XOR(32*4),XOR(33*4), XOR(34*4), XOR(35*4), XOR(36*4), XOR(37*4), XOR(38*4), XOR(39*4),
-		   XOR(40*4),XOR(41*4), XOR(42*4), XOR(43*4), XOR(44*4), XOR(45*4), XOR(46*4), XOR(47*4),
-		   XOR(48*4),XOR(49*4), XOR(50*4), XOR(51*4), XOR(52*4), XOR(53*4), XOR(54*4), XOR(55*4),
-		   XOR(56*4),XOR(57*4), XOR(58*4), XOR(59*4), XOR(60*4), XOR(61*4), XOR(62*4), XOR(63*4)},
-
-	{ 0*256, 1*256, 2*256, 3*256, 4*256, 5*256, 6*256, 7*256,
-			8*256,  9*256, 10*256, 11*256, 12*256, 13*256, 14*256, 15*256,
-		   16*256, 17*256, 18*256, 19*256, 20*256, 21*256, 22*256, 23*256,
-		   24*256, 25*256, 26*256, 27*256, 28*256, 29*256, 30*256, 31*256,
-		   32*256, 33*256, 34*256, 35*256, 36*256, 37*256, 38*256, 39*256,
-		   40*256, 41*256, 42*256, 43*256, 44*256, 45*256, 46*256, 47*256,
-		   48*256, 49*256, 50*256, 51*256, 52*256, 53*256, 54*256, 55*256,
-		   56*256, 57*256, 58*256, 59*256, 60*256, 61*256, 62*256, 63*256},
-	2048*8     /* every sprite takes 128 consecutive bytes */
+	{ 0, 1, 2, 3 },
+	EXTENDED_XOFFS,
+	EXTENDED_YOFFS,
+	2048*8,     /* every sprite takes 128 consecutive bytes */
+	spritelayout6464_xoffset,
+	spritelayout6464_yoffset
 };
 
 static const gfx_decode gfxdecodeinfo[] =
@@ -2156,7 +2166,7 @@ static MACHINE_DRIVER_START( nemesis )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* ??? */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2203,7 +2213,7 @@ static MACHINE_DRIVER_START( konamigt )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2246,7 +2256,7 @@ static MACHINE_DRIVER_START( salamand )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_VBLANK_DURATION((264-256)*62.5)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
@@ -2294,7 +2304,7 @@ static MACHINE_DRIVER_START( blkpnthr )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -2337,7 +2347,7 @@ static MACHINE_DRIVER_START( citybomb )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -2384,7 +2394,7 @@ static MACHINE_DRIVER_START( nyanpani )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
@@ -2431,7 +2441,7 @@ static MACHINE_DRIVER_START( gx400 )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2479,7 +2489,7 @@ static MACHINE_DRIVER_START( rf2_gx400 )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2525,7 +2535,7 @@ static MACHINE_DRIVER_START( hcrash )
 	MDRV_FRAMES_PER_SECOND((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(nemesis)
+	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -2870,7 +2880,7 @@ Notes:
       YM2151 clock  - 3.579545MHz
       VLM5030 clock - 3.579545MHz
       007232 clock  - 3.579545MHz
-      CN3/CN4 - 4 pin plug/jumper for stereo/mono ouput selection
+      CN3/CN4 - 4 pin plug/jumper for stereo/mono output selection
       CN5 - Right speaker output connection
       CN7 - 4 pin steering connector
       CN8 - 4 pin accelerate/brake connection

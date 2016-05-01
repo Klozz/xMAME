@@ -75,7 +75,6 @@ Known issues:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "cpu/z80/z80.h"
 #include "machine/8255ppi.h"
 #include "sound/ay8910.h"
@@ -94,7 +93,7 @@ VIDEO_UPDATE( monzagp )
 	{
 		UINT16 *dest = bitmap->line[sy];
 		int sx;
-		for( sx=0; sx<512; sx++ );
+		for( sx=0; sx<512; sx++ )
 		{
 			dest[sx] = *source++;
 		}

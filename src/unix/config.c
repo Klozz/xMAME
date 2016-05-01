@@ -29,7 +29,7 @@ static int showconfig = 0;
 static int showmanusage = 0;
 static int showversion = 0;
 static int showusage  = 0;
-static int use_fuzzycmp = 1;
+static int validate = 0;
 static int loadconfig = 1;
 static char *language = NULL;
 static char *gamename = NULL;
@@ -51,8 +51,8 @@ static int config_handle_debug_size(struct rc_option *option, const char *arg,
 void show_usage(void);
 
 #ifdef MESS
-static int add_device(struct rc_option *option, const char *arg, int priority);
 static int specify_ram(struct rc_option *option, const char *arg, int priority);
+static void add_mess_device_options(struct rc_struct *rc, const game_driver *gamedrv);
 #endif
 
 /* OpenVMS doesn't support paths with a leading '.' character. */
@@ -78,34 +78,19 @@ static struct rc_option opts2[] = {
 #ifdef MESS
 	/* FIXME - these option->names should NOT be hardcoded! */
 	{ "MESS specific options", NULL, rc_seperator, NULL, NULL, 0, 0, NULL, NULL },
-	{ "cartridge", "cart", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to cartridge device" },
-	{ "floppydisk","flop", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to floppy disk device" },
-	{ "harddisk",  "hard", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to hard disk device" },
-	{ "cylinder",  "cyln", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to cylinder device" },
-	{ "cassette",  "cass", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to cassette device" },
-	{ "punchcard", "pcrd", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to punch card device" },
-	{ "punchtape", "ptap", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to punch tape device" },
-	{ "printer",   "prin", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to printer device" },
-	{ "serial",    "serl", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to serial device" },
-	{ "parallel",  "parl", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to parallel device" },
-	{ "snapshot",  "dump", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to snapshot device" },
-	{ "quickload", "quik", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to quickload device" },
-	{ "memcard", "memc", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach image to memcard device" },
-	{ "cdrom", "cdrm", rc_string, &mess_opts, NULL, 0, 0, add_device, "Attach software to CD-ROM device" },
 	{ "ramsize", "ram", rc_string, &mess_opts, NULL, 0, 0, specify_ram, "Specifies size of RAM (if supported by driver)" },
 #else
 	{ "MAME Related", NULL, rc_seperator, NULL, NULL, 0, 0, NULL, NULL },
 	{ "defaultgame", "def", rc_string, &defaultgamename, "robby", 0, 0, NULL, "Set the default game started when no game is given on the command line (only useful in the config files)" },
 #endif
 	{ "language", "lang", rc_string, &language, "english", 0, 0, NULL, "Select the language for the menus and osd" },
-	{ "fuzzycmp", "fc", rc_bool, &use_fuzzycmp, "1", 0, 0, NULL, "Enable/disable use of fuzzy gamename matching when there is no exact match" },
 	{ "cheat", "c", rc_bool, &options.cheat, "0", 0, 0, NULL, "Enable/disable cheat subsystem" },
-	{ "skip_disclaimer", NULL, rc_bool, &options.skip_disclaimer, "0", 0, 0, NULL, "Skip displaying the disclaimer screen" },
 	{ "skip_gameinfo", NULL, rc_bool, &options.skip_gameinfo, "0", 0, 0, NULL, "Skip displaying the game info screen" },
 #ifdef MESS
 	{ "skip_warnings", NULL, rc_bool, &options.skip_warnings, "0", 0, 0, NULL, "Skip displaying the warnings screen" },
 #endif
-	{ "bios", NULL, rc_string, &options.bios, "default", 0, 14, NULL, "change system bios" },
+	{ "validate", "valid", rc_bool, &validate, "0", 0, 0, NULL, "Validate all game drivers" },
+	{ "bios", NULL, rc_string, &options.bios, "default", 0, 14, NULL, "Change system bios" },
 	{ "state", NULL, rc_string, &statename, NULL, 0, 0, NULL, "state to load" },
 	{ "autosave", NULL, rc_bool, &options.auto_save, "0", 0, 0, NULL, "Enable automatic restore at startup and save at exit" },
 #ifdef MAME_DEBUG
@@ -123,10 +108,16 @@ static struct rc_option opts2[] = {
 	{ NULL, NULL, rc_end, NULL, NULL, 0, 0, NULL, NULL }
 };
 
-/* fuzzy string compare, compare short string against long string        */
-/* e.g. astdel == "Asteroids Deluxe". The return code is the fuzz index, */
-/* we simply count the gaps between maching chars.                       */
-static int fuzzycmp (const char *s, const char *l)
+/*
+ * Penalty string compare, the result _should_ be a measure on
+ * how "close" two strings ressemble each other.
+ * The implementation is way too simple, but it sort of suits the
+ * purpose.
+ * This used to be called fuzzy matching, but there's no randomness
+ * involved and it is in fact a penalty method.
+ */
+
+int penalty_compare (const char *s, const char *l)
 {
 	int gaps = 0;
 	int match = 0;
@@ -161,6 +152,54 @@ static int fuzzycmp (const char *s, const char *l)
 	return gaps;
 }
 
+/*
+ * We compare the game name given on the CLI against the long and
+ * the short game names supported
+ */
+void show_approx_matches(void)
+{
+	struct { int penalty; int index; } topten[10];
+	int i,j;
+	int penalty; /* best fuzz factor so far */
+
+	for (i = 0; i < 10; i++)
+	{
+		topten[i].penalty = 9999;
+		topten[i].index = -1;
+	}
+
+	for (i = 0; (drivers[i] != 0); i++)
+	{
+		int tmp;
+
+		if ((drivers[i]->flags & NOT_A_DRIVER) != 0)
+			continue;
+
+		penalty = penalty_compare (gamename, drivers[i]->description);
+		tmp = penalty_compare (gamename, drivers[i]->name);
+		if (tmp < penalty) penalty = tmp;
+
+		/* eventually insert into table of approximate matches */
+		for (j = 0; j < 10; j++)
+		{
+			if (penalty >= topten[j].penalty) break;
+			if (j > 0)
+			{
+				topten[j-1].penalty = topten[j].penalty;
+				topten[j-1].index = topten[j].index;
+			}
+			topten[j].index = i;
+			topten[j].penalty = penalty;
+		}
+	}
+
+	for (i = 9; i >= 0; i--)
+	{
+		if (topten[i].index != -1)
+			fprintf (stderr, "%-10s%s\n", drivers[topten[i].index]->name, drivers[topten[i].index]->description);
+	}
+}
+
 #ifndef MESS
 /* for verify roms which is used for the random game selection */
 static int config_printf(const char *fmt, ...)
@@ -171,6 +210,8 @@ static int config_printf(const char *fmt, ...)
 
 static int config_handle_arg(char *arg)
 {
+	int i;
+
 	/* notice: for MESS game means system */
 	if (got_gamename)
 	{
@@ -188,11 +229,20 @@ static int config_handle_arg(char *arg)
 
 	gamename = arg;
 
-	if (!gamename || !strlen(gamename))
+	/* do we have a driver for this? */
+	for (i = 0; drivers[i]; i++)
 	{
-		fprintf(stderr, "error: no gamename given in %s\n", arg);
-		return -1;
+		if (mame_stricmp(gamename, drivers[i]->name) == 0)
+		{
+			game_index = i;
+			break;
+		}
 	}
+
+#ifdef MESS
+	if (game_index >= 0)
+		add_mess_device_options(rc, drivers[game_index]);
+#endif /* MESS */
 
 	got_gamename = 1;
 	return 0;
@@ -233,7 +283,7 @@ int xmess_printf_output(const char *fmt, va_list arg)
 int xmame_config_init(int argc, char *argv[])
 {
 	char buffer[BUF_SIZE];
-	unsigned char lsb_test[2]={0,1};
+	unsigned char lsb_test[2] = {0, 1};
 	int i;
 
 	memset(&options,0,sizeof(options));
@@ -323,6 +373,14 @@ int xmame_config_init(int argc, char *argv[])
 	if (rc_parse_commandline(rc, argc, argv, 2, config_handle_arg))
 		return OSD_NOT_OK;
 
+	if (validate)
+	{
+		extern int mame_validitychecks(int game);
+		cpuintrf_init();
+		sndintrf_init();
+		exit(mame_validitychecks(-1));
+	}
+
 	if (showmanusage)
 	{
 		rc_print_man_options(rc, stdout);
@@ -361,8 +419,10 @@ int xmame_config_init(int argc, char *argv[])
 	}
 
 	/* setup stderr_file and stdout_file */
-	if (!stderr_file) stderr_file = stderr;
-	if (!stdout_file) stdout_file = stdout;
+	if (!stderr_file)
+		stderr_file = stderr;
+	if (!stdout_file)
+		stdout_file = stdout;
 
 	if (showconfig)
 	{
@@ -371,17 +431,17 @@ int xmame_config_init(int argc, char *argv[])
 	}
 
 	/* handle frontend options */
-	if ( (i=frontend_list(gamename)) != 1234)
+	if ((i = frontend_list(gamename)) != 1234)
 		return i;
 
-	if ( (i=frontend_ident(gamename)) != 1234)
+	if ((i = frontend_ident(gamename)) != 1234)
 		return i;
 
 	if (playbackname)
 	{
 		options.playback = mame_fopen(playbackname, 0, FILETYPE_INPUTLOG, 0);
 		if (!options.playback)
-			osd_die("failed to open %s for playback\n", playbackname);
+			fatalerror("failed to open %s for playback\n", playbackname);
 	}
 
 	/* check for game name embedded in .inp header */
@@ -489,47 +549,15 @@ int xmame_config_init(int argc, char *argv[])
 			}
 		}
 	}
-#endif                                
+#endif
 
-	/* educated guess on what the user wants to play */
-	if ( (game_index == -1) && use_fuzzycmp)
-	{
-		int fuzz = 9999; /*best fuzz factor so far*/
-
-		for (i = 0; (drivers[i] != 0); i++)
-		{
-			int tmp;
-			tmp = fuzzycmp(gamename, drivers[i]->description);
-			/* continue if the fuzz index is worse */
-			if (tmp > fuzz)
-				continue;
-			/* on equal fuzz index, we prefear working, original games */
-			if (tmp == fuzz)
-			{
-				/* game is a clone */
-				if (drivers[i]->clone_of != 0 && !(drivers[i]->clone_of->flags & NOT_A_DRIVER))
-				{
-					if ((!drivers[game_index]->flags & GAME_NOT_WORKING) || (drivers[i]->flags & GAME_NOT_WORKING))
-						continue;
-				}
-				else continue;
-			}
-
-
-			/* we found a better match */
-			game_index = i;
-			fuzz = tmp;
-		}
-
-		if (game_index != -1)
-			fprintf(stdout_file,
-					"fuzzy name compare, running %s\n", drivers[game_index]->name);
-	}
-
+	/* we give up. print a few approximate matches */
 	if (game_index == -1)
 	{
-		fprintf(stderr_file, "\"%s\" not supported\n", gamename);
-		return OSD_NOT_OK;
+		fprintf(stderr_file, "\n\"%s\" approximately matches the following\n"
+				"supported " GAMESNOUN " (best match first):\n\n", gamename);
+		show_approx_matches();
+		exit(1);
 	}
 
 	/* now that we've got the gamename parse the game specific configfile */
@@ -545,71 +573,11 @@ int xmame_config_init(int argc, char *argv[])
 			return OSD_NOT_OK;
 	}
 
-#ifdef MESS
-	/* set the image type if necessary */
-	for(i=0; i<options.image_count; i++)
-	{
-		if(options.image_files[i].type)
-		{
-			logerror("User specified %s for %s\n",
-					device_typename(options.image_files[i].type),
-					options.image_files[i].name);
-		}
-		else
-		{
-			char *ext;
-			char name[BUF_SIZE];
-			const struct IODevice *dev;
-
-			/* make a copy of the name */
-			strncpy(name, options.image_files[i].name, BUF_SIZE);
-			/* strncpy is buggy */
-			name[BUF_SIZE-1]=0;
-
-			/* get ext, skip .gz */
-			ext = strrchr(name, '.');
-			if (ext && !strcmp(ext, ".gz"))
-			{
-				*ext = 0;
-				ext = strrchr(name, '.');
-			}
-
-			/* Look up the filename extension in the drivers device list */
-			if (ext && (dev = Machine->devices))
-			{
-				ext++; /* skip the "." */
-
-				while (dev->type < IO_COUNT)
-				{
-					const char *dst = dev->file_extensions;
-					/* scan supported extensions for this device */
-					while (dst && *dst)
-					{
-						if (strcasecmp(dst,ext) == 0)
-						{
-							logerror("Extension match %s [%s] for %s\n",
-									device_typename(dev->type), dst,
-									options.image_files[i].name);
-
-							options.image_files[i].type = dev->type;
-						}
-						/* skip '\0' once in the list of extensions */
-						dst += strlen(dst) + 1;
-					}
-					dev++;
-				}
-			}
-			if(!options.image_files[i].type)
-				options.image_files[i].type = IO_CARTSLOT;
-		}
-	}
-#endif
-
 	if (recordname)
 	{
 		options.record = mame_fopen(recordname, 0, FILETYPE_INPUTLOG, 1);
 		if (!options.record)
-			osd_die("failed to open %s for recording\n", recordname);
+			fatalerror("failed to open %s for recording\n", recordname);
 	}
 
 	if (options.record)
@@ -657,16 +625,24 @@ void xmame_config_exit(void)
 	home_dir = NULL;
 
 	/* close open files */
+	if (options.logfile)
+	{
+		mame_fclose(options.logfile);
+		options.logfile = NULL;
+	}
+
 	if (options.playback)
 	{
 		mame_fclose(options.playback);
 		options.playback = NULL;
 	}
+
 	if (options.record)
 	{
 		mame_fclose(options.record);
 		options.record = NULL;
 	}
+
 	if (options.language_file)
 	{
 		mame_fclose(options.language_file);
@@ -721,26 +697,6 @@ void show_usage(void)
 
 #ifdef MESS
 
-/*	add_device() is called when the MESS CLI option has been identified
- *	This searches throught the devices{} struct array to grab the ID of the
- *	option, which then registers the device using register_device()
- */
-static int add_device(struct rc_option *option, const char *arg, int priority)
-{
-	int id;
-	id = device_typeid(option->name);
-	if (id < 0)
-	{
-		/* If we get to here, log the error - This is mostly due to a mismatch in the array */
-		logerror("Command Line Option [-%s] not a valid device - ignoring\n", option->name);
-		return -1;
-	}
-
-	/* A match!  we now know the ID of the device */
-	option->priority = priority;
-	return register_device(id, arg);
-}
-
 static int specify_ram(struct rc_option *option, const char *arg, int priority)
 {
 	UINT32 specified_ram = 0;
@@ -758,57 +714,139 @@ static int specify_ram(struct rc_option *option, const char *arg, int priority)
 	return 0;
 }
 
-#endif
 
 
-/*============================================================*/
-/*	vlogerror */
-/*============================================================*/
+/*============================================================ */
+/*	Device options */
+/*============================================================ */
 
-extern FILE *errorlog;
-
-static void vlogerror(const char *text, va_list arg)
+struct device_rc_option
 {
-	if (errorlog)
+	/* options for the RC system */
+	struct rc_option opts[2];
+
+	/* device information */
+	iodevice_t devtype;
+	const char *tag;
+	int index;
+
+	/* mounted file */
+	char *filename;
+};
+
+struct device_type_options
+{
+	int count;
+	struct device_rc_option *opts[MAX_DEV_INSTANCES];
+};
+
+struct device_type_options *device_options;
+
+
+
+static int add_device(struct rc_option *option, const char *arg, int priority)
+{
+	struct device_rc_option *dev_option = (struct device_rc_option *) option;
+
+	/* the user specified a device type */
+	options.image_files[options.image_count].device_type = dev_option->devtype;
+	options.image_files[options.image_count].device_tag = dev_option->tag;
+	options.image_files[options.image_count].device_index = dev_option->index;
+	options.image_files[options.image_count].name = auto_strdup(arg);
+	options.image_count++;
+
+	return 0;
+}
+
+
+
+static void add_mess_device_options(struct rc_struct *rc, const game_driver *gamedrv)
+{
+	struct SystemConfigurationParamBlock cfg;
+	device_getinfo_handler handlers[64];
+	int count_overrides[sizeof(handlers) / sizeof(handlers[0])];
+	device_class devclass;
+	iodevice_t devtype;
+	int dev_count, dev, id, count;
+	struct device_rc_option *dev_option;
+	struct rc_option *opts;
+	const char *dev_name;
+	const char *dev_short_name;
+	const char *dev_tag;
+
+	/* retrieve getinfo handlers */
+	memset(&cfg, 0, sizeof(cfg));
+	memset(handlers, 0, sizeof(handlers));
+	cfg.device_slotcount = sizeof(handlers) / sizeof(handlers[0]);
+	cfg.device_handlers = handlers;
+	cfg.device_countoverrides = count_overrides;
+	if (gamedrv->sysconfig_ctor)
+		gamedrv->sysconfig_ctor(&cfg);
+
+	/* count devides */
+	for (dev_count = 0; handlers[dev_count]; dev_count++)
+		;
+
+	if (dev_count > 0)
 	{
-		vfprintf(errorlog, text, arg);
-		fflush(errorlog);
+		/* add a separator */
+		opts = auto_malloc(sizeof(*opts) * 2);
+		memset(opts, 0, sizeof(*opts) * 2);
+		opts[0].name = "MESS devices";
+		opts[0].type = rc_seperator;
+		opts[1].type = rc_end;
+		rc_register(rc, opts);
+
+		/* we need to save all options */
+		device_options = auto_malloc(sizeof(*device_options) * dev_count);
+		memset(device_options, 0, sizeof(*device_options) * dev_count);
+
+		/* list all options */
+		for (dev = 0; dev < dev_count; dev++)
+		{
+			devclass.gamedrv = gamedrv;
+			devclass.get_info = handlers[dev];
+
+			/* retrieve info about the device */
+			devtype = (iodevice_t) (int) device_get_info_int(&devclass, DEVINFO_INT_TYPE);
+			count = (int) device_get_info_int(&devclass, DEVINFO_INT_COUNT);
+			dev_tag = device_get_info_string(&devclass, DEVINFO_STR_DEV_TAG);
+			if (dev_tag)
+				dev_tag = auto_strdup(dev_tag);
+
+			device_options[dev].count = count;
+
+			for (id = 0; id < count; id++)
+			{
+				/* retrieve info about the device instance */
+				dev_name = device_instancename(&devclass, id);
+				dev_short_name = device_briefinstancename(&devclass, id);
+
+				/* dynamically allocate the option */
+				dev_option = auto_malloc(sizeof(*dev_option));
+				memset(dev_option, 0, sizeof(*dev_option));
+
+				/* populate the options */
+				dev_option->opts[0].name = auto_strdup(dev_name);
+				dev_option->opts[0].shortname = auto_strdup(dev_short_name);
+				dev_option->opts[0].type = rc_string;
+				dev_option->opts[0].func = add_device;
+				dev_option->opts[0].dest = &dev_option->filename;
+				dev_option->opts[1].type = rc_end;
+				dev_option->devtype = devtype;
+				dev_option->tag = dev_tag;
+				dev_option->index = id;
+
+				/* register these options */
+				device_options[dev].opts[id] = dev_option;
+				rc_register(rc, dev_option->opts);
+			}
+		}
 	}
-}
-
-
-/*============================================================*/
-/*	logerror */
-/*============================================================*/
-
-void logerror(const char *text,...)
-{
-	va_list arg;
-
-	/* standard vfprintf stuff here */
-	va_start(arg, text);
-	vlogerror(text, arg);
-	va_end(arg);
-}
-
-
-/*============================================================*/
-/*	osd_die */
-/*============================================================*/
-
-void osd_die(const char *text,...)
-{
-	va_list arg;
-
-	/* standard vfprintf stuff here */
-	va_start(arg, text);
-	vlogerror(text, arg);
-	vfprintf(stderr_file, text, arg);
-	va_end(arg);
-
-	exit(-1);
 }
 
 void osd_begin_final_unloading(void)
 {
 }
+
+#endif

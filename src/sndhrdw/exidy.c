@@ -5,6 +5,7 @@
 *************************************************************************/
 
 #include "driver.h"
+#include "streams.h"
 #include "cpu/m6502/m6502.h"
 #include "machine/6821pia.h"
 #include "sound/hc55516.h"
@@ -119,7 +120,7 @@ WRITE8_HANDLER(victory_sound_irq_clear_w);
 WRITE8_HANDLER(victory_main_ack_w);
 
 /* PIA 0 */
-static struct pia6821_interface pia_0_intf =
+static const pia6821_interface pia_0_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ pia_1_portb_w, pia_1_porta_w, pia_1_cb1_w, pia_1_ca1_w,
@@ -127,7 +128,7 @@ static struct pia6821_interface pia_0_intf =
 };
 
 /* PIA 1 */
-static struct pia6821_interface pia_1_intf =
+static const pia6821_interface pia_1_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ pia_0_portb_w, pia_0_porta_w, pia_0_cb1_w, pia_0_ca1_w,
@@ -135,7 +136,7 @@ static struct pia6821_interface pia_1_intf =
 };
 
 /* Victory PIA 0 */
-static struct pia6821_interface victory_pia_0_intf =
+static const pia6821_interface victory_pia_0_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ 0, victory_sound_response_w, victory_sound_irq_clear_w, victory_main_ack_w,
@@ -374,6 +375,7 @@ static void riot_interrupt(int parm);
 
 static void *common_start(void)
 {
+	int sample_rate = SH8253_CLOCK;
 	int i;
 
 	/* determine which sound hardware is installed */
@@ -388,7 +390,7 @@ static void *common_start(void)
 	}
 
 	/* allocate the stream */
-	exidy_stream = stream_create(0, 1, Machine->sample_rate, NULL, exidy_stream_update);
+	exidy_stream = stream_create(0, 1, sample_rate, NULL, exidy_stream_update);
 
 	/* Init PIA */
 	pia_reset();
@@ -404,15 +406,13 @@ static void *common_start(void)
 
 	/* Init 6840 */
 	memset(sh6840_timer, 0, sizeof(sh6840_timer));
-	if (Machine->sample_rate != 0)
-		sh6840_clocks_per_sample = (int)((double)SH6840_CLOCK / (double)Machine->sample_rate * (double)(1 << 24));
+	sh6840_clocks_per_sample = (int)((double)SH6840_CLOCK / (double)sample_rate * (double)(1 << 24));
 	sh6840_MSB = 0;
 	exidy_sfxctrl = 0;
 
 	/* Init 8253 */
 	memset(sh8253_timer, 0, sizeof(sh8253_timer));
-	if (Machine->sample_rate != 0)
-		freq_to_step = (double)(1 << 24) / (double)Machine->sample_rate;
+	freq_to_step = (double)(1 << 24) / (double)sample_rate;
 
 	return auto_malloc(1);
 }

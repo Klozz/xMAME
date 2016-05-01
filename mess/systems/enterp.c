@@ -19,7 +19,7 @@
 #include "sndhrdw/dave.h"
 #include "includes/enterp.h"
 #include "vidhrdw/epnick.h"
-#include "includes/wd179x.h"
+#include "machine/wd17xx.h"
 #include "cpuintrf.h"
 #include "devices/basicdsk.h"
 /* for CPCEMU style disk images */
@@ -537,7 +537,7 @@ static MACHINE_DRIVER_START( ep128 )
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
-	MDRV_MACHINE_INIT( enterprise )
+	MDRV_MACHINE_RESET( enterprise )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_PIXEL_ASPECT_RATIO_1_2)
@@ -580,21 +580,35 @@ ROM_END
 
 ***************************************************************************/
 
-static void ep128_floppy_getinfo(struct IODevice *dev)
+static void ep128_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	legacydsk_device_getinfo(dev);
-	dev->count = 4;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 4; break;
+
+		default:										legacydsk_device_getinfo(devclass, state, info); break;
+	}
 }
 
 #if 0
-static void ep128_floppy_getinfo(struct IODevice *dev)
+static void ep128_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	legacybasicdsk_device_getinfo(dev);
-	dev->count = 4;
-	dev->file_extensions = "dsk\0";
-	dev->load = enterprise_floppy_init;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 4; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_LOAD:							info->load = enterprise_floppy_init; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+
+		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
+	}
 }
 #endif
 

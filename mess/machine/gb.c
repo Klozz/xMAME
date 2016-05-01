@@ -61,13 +61,17 @@ static UINT8 GBC_RAMBank;			   /* (GBC) Number of RAM bank currently used     */
 UINT8 *GBC_VRAMMap[2];				   /* (GBC) Addressses of video RAM banks         */
 UINT8 GBC_VRAMBank;					   /* (GBC) Number of video RAM bank currently used */
 static UINT8 sgb_atf_data[4050];	   /* (SGB) Attribute files                       */
+UINT8 *sgb_tile_data;
 UINT8 *gb_cart = NULL;
 UINT8 *gb_cart_ram = NULL;
 UINT8 *gb_vram = NULL;				/* points to start of VRAM area */
 UINT8 gb_io[0x10];
 UINT8 gb_vid_regs[0x40];
 UINT8 gb_ie;
+UINT8 *gb_dummy_rom_bank = NULL;
+UINT8 *gb_dummy_ram_bank = NULL;
 
+static void gb_machine_stop(void);
 void (*refresh_scanline)(void);
 
 #ifdef MAME_DEBUG
@@ -106,9 +110,9 @@ static void gb_init(void)
 	MBC3RTCBank = 0;
 	ROMBank = 1;
 	RAMBank = 0;
-	memory_set_bankptr (1, ROMMap[ROMBank] ? ROMMap[ROMBank] : memory_region(REGION_CPU1) + 0x4000);
+	memory_set_bankptr (1, ROMMap[ROMBank] ? ROMMap[ROMBank] : gb_dummy_rom_bank);
 	if ( MBCType != MEGADUCK ) {
-		memory_set_bankptr (2, RAMMap[RAMBank] ? RAMMap[RAMBank] : memory_region(REGION_CPU1) + 0xA000);
+		memory_set_bankptr (2, RAMMap[RAMBank] ? RAMMap[RAMBank] : gb_dummy_ram_bank);
 	} else {
 		memory_set_bankptr( 10, ROMMap[0] );
 	}
@@ -163,27 +167,29 @@ static void gb_init(void)
 	gb_sound_w( 0x16, 0x00 );       /* Initialize sound hardware */
 }
 
-MACHINE_INIT( gb )
+MACHINE_RESET( gb )
 {
         gb_init();
 
         /* Enable BIOS rom */
-        memory_set_bankptr(5, memory_region(REGION_CPU1) + 0x10000);
-        memory_set_bankptr(10, ROMMap[0] ? ROMMap[0] + 0x0100 : memory_region(REGION_CPU1) + 0x0100);
+        memory_set_bankptr(5, memory_region(REGION_CPU1) );
+        memory_set_bankptr(10, ROMMap[0] ? ROMMap[0] + 0x0100 : gb_dummy_rom_bank + 0x0100);
 
 	/* set the scanline refresh function */
 	refresh_scanline = gb_refresh_scanline;
 }
 
-MACHINE_INIT( sgb )
+MACHINE_RESET( sgb )
 {
 	gb_init();
 
 	gb_init_regs();
 
-	memory_set_bankptr(5, ROMMap[0] ? ROMMap[0] : memory_region(REGION_CPU1) );
+	memory_set_bankptr(5, ROMMap[0] ? ROMMap[0] : gb_dummy_rom_bank );
 
-	sgb_tile_data = (UINT8 *)memory_region( REGION_GFX1 );
+	if ( sgb_tile_data == NULL ) {
+		sgb_tile_data = auto_malloc( 0x2000 );
+	}
 	memset( sgb_tile_data, 0, 0x2000 );
 
 	/* Initialize the Sound Registers */
@@ -207,21 +213,21 @@ MACHINE_INIT( sgb )
 	refresh_scanline = sgb_refresh_scanline;
 }
 
-MACHINE_INIT( gbpocket )
+MACHINE_RESET( gbpocket )
 {
 	gb_init();
 
 	gb_init_regs();
 
 	/* Enable BIOS rom if we have one */
-	memory_set_bankptr(5, ROMMap[0] ? ROMMap[0] : memory_region(REGION_CPU1) );
-	memory_set_bankptr(10, ROMMap[0] ? ROMMap[0] + 0x0100 : memory_region(REGION_CPU1) + 0x0100);
+	memory_set_bankptr(5, ROMMap[0] ? ROMMap[0] : gb_dummy_rom_bank );
+	memory_set_bankptr(10, ROMMap[0] ? ROMMap[0] + 0x0100 : gb_dummy_rom_bank + 0x0100);
 
 	/* set the scanline refresh function */
 	refresh_scanline = gb_refresh_scanline;
 }
 
-MACHINE_INIT( gbc )
+MACHINE_RESET( gbc )
 {
 	int ii;
 
@@ -229,7 +235,7 @@ MACHINE_INIT( gbc )
 
 	gb_init_regs();
 
-	memory_set_bankptr(5, ROMMap[0] ? ROMMap[0] : memory_region(REGION_CPU1) );
+	memory_set_bankptr(5, ROMMap[0] ? ROMMap[0] : gb_dummy_rom_bank );
 
 	/* Allocate memory for internal ram */
 	for( ii = 0; ii < 8; ii++ )
@@ -284,9 +290,11 @@ MACHINE_INIT( gbc )
 
 	/* set the scanline refresh function */
 	refresh_scanline = gbc_refresh_scanline;
+
+	/*add_exit_callback(gb_machine_stop);*/
 }
 
-MACHINE_STOP( gb )
+static void gb_machine_stop(void)
 {
 /*	int I; */
 
@@ -1075,19 +1083,21 @@ DEVICE_INIT(gb_cart)
 {
 	int I;
 
-	if ( gb_cart != NULL ) {
-		free( gb_cart );
-		gb_cart = NULL;
+	if ( gb_dummy_rom_bank == NULL ) {
+		gb_dummy_rom_bank = auto_malloc( 0x4000 );
+		memset( gb_dummy_rom_bank, 0xFF, 0x4000 );
 	}
 
-	memset (memory_region(REGION_CPU1), 0xFF, 0x8000);
-	memset (memory_region(REGION_CPU1) + 0x8000, 0, 0x8000);
+	if ( gb_dummy_ram_bank == NULL ) {
+		gb_dummy_ram_bank = auto_malloc( 0x2000 );
+		memset( gb_dummy_ram_bank, 0x00, 0x2000 );
+	}
 
 	for(I = 0; I < MAX_ROMBANK; I++) {
-		ROMMap[I] = memory_region(REGION_CPU1);
+		ROMMap[I] = NULL;
 	}
 	for(I = 0; I < MAX_RAMBANK; I++) {
-		RAMMap[I] = memory_region(REGION_CPU1) + 0xA000;
+		RAMMap[I] = NULL;
 	}
 	ROMBanks = 0;
 	RAMBanks = 0;
@@ -1248,17 +1258,8 @@ DEVICE_LOAD(gb_cart)
 		return INIT_FAIL;
 	}
 
-	/* Release any previously claimed memory */
-	if ( gb_cart != NULL ) {
-		free( gb_cart );
-		gb_cart = NULL;
-	}
 	/* Claim memory */
-	gb_cart = malloc( filesize );
-	if ( gb_cart == NULL ) {
-		logerror( "Error loading cartridge: Memory allocation failed reading roms!\n" );
-		return INIT_FAIL;
-	}
+	gb_cart = auto_malloc( filesize );
 
 	/* Read cartridge */
 	if ( mame_fread( file, gb_cart, filesize ) != filesize ) {
@@ -1450,11 +1451,7 @@ DEVICE_LOAD(gb_cart)
 			gb_cart_ram = NULL;
 		}
 		/* Claim memory */
-		gb_cart_ram = malloc( RAMBanks * 0x2000 );
-		if ( gb_cart_ram == NULL ) {
-			logerror( "Error loading cartridge: Unable to allocate memory.\n" );
-			return INIT_FAIL;
-		}
+		gb_cart_ram = auto_malloc( RAMBanks * 0x2000 );
 
 		for (I = 0; I < RAMBanks; I++)
 		{
@@ -1832,7 +1829,7 @@ WRITE8_HANDLER ( gbc_video_w )
 
  ****************************************************************************/
 
-MACHINE_INIT( megaduck )
+MACHINE_RESET( megaduck )
 {
 	/* We may have to add some more stuff here, if not then it can be merged back into gb */
 	gb_init();
@@ -1973,9 +1970,6 @@ DEVICE_LOAD(megaduck_cart)
 	for (I = 0; I < MAX_RAMBANK; I++)
 		RAMMap[I] = NULL;
 
-	memset (memory_region(REGION_CPU1), 0xFF, 0x8000);
-	memset (memory_region(REGION_CPU1) + 0x8000, 0, 0x8000);
-
 	filesize = image_length(image);
 	ROMBanks = filesize / 0x4000;
 
@@ -1984,17 +1978,8 @@ DEVICE_LOAD(megaduck_cart)
 		return INIT_FAIL;
 	}
 
-	/* Release any previously claimed memory */
-	if ( gb_cart != NULL ) {
-		free( gb_cart );
-		gb_cart = NULL;
-	}
 	/* Claim memory */
-	gb_cart = malloc( filesize );
-	if ( gb_cart == NULL ) {
-		logerror( "Error loading cartridge: Memory allocation failed while reading rom!\n" );
-		return INIT_FAIL;
-	}
+	gb_cart = auto_malloc( filesize );
 
 	/* Read cartridge */
 	if (mame_fread (file, gb_cart, filesize) != filesize) {

@@ -53,7 +53,7 @@ static WRITE8_HANDLER( chqflag_bankswitch_w )
 	/* bit 5 = memory bank select */
 	if (data & 0x20){
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, paletteram_r);							/* palette */
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, paletteram_xBBBBBGGGGGRRRRR_swap_w);	/* palette */
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, paletteram_xBBBBBGGGGGRRRRR_be_w);	/* palette */
 		if (K051316_readroms){
 			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, K051316_rom_0_r);	/* 051316 #1 (ROM test) */
 			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, K051316_0_w);		/* 051316 #1 */
@@ -64,10 +64,10 @@ static WRITE8_HANDLER( chqflag_bankswitch_w )
 		}
 	}
 	else{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, MRA8_RAM);				/* RAM */
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, MWA8_RAM);				/* RAM */
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, MRA8_RAM);				/* RAM */
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, MWA8_RAM);				/* RAM */
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, MRA8_BANK1);				/* RAM */
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, MWA8_BANK1);				/* RAM */
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, MRA8_BANK2);				/* RAM */
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, MWA8_BANK2);				/* RAM */
 	}
 
 	/* other bits unknown/unused */
@@ -167,7 +167,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( chqflag_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_WRITE(MWA8_RAM)					/* RAM */
-	AM_RANGE(0x1000, 0x17ff) AM_WRITE(MWA8_BANK1)					/* banked RAM (RAM/051316 (chip 1)) */
+	AM_RANGE(0x1000, 0x17ff) AM_WRITE(MWA8_BANK1)				/* banked RAM (RAM/051316 (chip 1)) */
 	AM_RANGE(0x1800, 0x1fff) AM_WRITE(MWA8_BANK2)					/* palette + RAM */
 	AM_RANGE(0x2000, 0x2007) AM_WRITE(K051937_w)					/* Sprite control registers */
 	AM_RANGE(0x2400, 0x27ff) AM_WRITE(K051960_w)					/* Sprite RAM */

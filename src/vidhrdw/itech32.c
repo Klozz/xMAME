@@ -6,7 +6,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
+#include "profiler.h"
 #include "cpu/m68000/m68000.h"
 #include "itech32.h"
 
@@ -205,8 +205,6 @@ VIDEO_START( itech32 )
 
 	/* allocate memory */
 	videoram16 = auto_malloc(VRAM_WIDTH * (itech32_vram_height + 16) * 2 * 2);
-	if (!videoram16)
-		return 1;
 	memset(videoram16, 0xff, VRAM_WIDTH * (itech32_vram_height + 16) * 2 * 2);
 
 	/* videoplane[0] is the foreground; videoplane[1] is the background */

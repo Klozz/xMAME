@@ -23,9 +23,9 @@ Revisions:
 
 *********************************************************/
 #include <math.h>
-#include "driver.h"
+#include "sndintrf.h"
+#include "streams.h"
 #include "iremga20.h"
-#include "state.h"
 
 /*AT */
 #define MAX_VOL 256
@@ -36,7 +36,7 @@ Revisions:
 		eax = pos[CH]; \
 		ebx = eax; \
 		eax >>= 8; \
-		eax = *(char *)(esi + eax); \
+		eax = *(INT8 *)(esi + eax); \
 		eax *= vol[CH]; \
 		ebx += rate[CH]; \
 		pos[CH] = ebx; \
@@ -48,38 +48,35 @@ Revisions:
 
 struct IremGA20_channel_def
 {
-	unsigned long rate;
-	unsigned long size;
-	unsigned long start;
-	unsigned long pos;
-	unsigned long end;
-	unsigned long volume;
-	unsigned long pan;
-	unsigned long effect;
-	unsigned long play;
+	UINT32 rate;
+	UINT32 size;
+	UINT32 start;
+	UINT32 pos;
+	UINT32 end;
+	UINT32 volume;
+	UINT32 pan;
+	UINT32 effect;
+	UINT32 play;
 };
 
 struct IremGA20_chip_def
 {
 	const struct IremGA20_interface *intf;
-	unsigned char *rom;
-	int rom_size;
+	UINT8 *rom;
+	INT32 rom_size;
 	sound_stream * stream;
-	int mode;
-	int regs[0x40];
+	INT32 regs[0x40];
 	struct IremGA20_channel_def channel[4];
-	int sr_table[256];
+	INT32 sr_table[256];
 };
 
 void IremGA20_update( void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length )
 {
 	struct IremGA20_chip_def *chip = param;
-	unsigned long rate[4], pos[4], end[4], vol[4], play[4];
-	unsigned long esi;
+	UINT32 rate[4], pos[4], end[4], vol[4], play[4];
+	UINT32 esi;
 	stream_sample_t *edi, *ebp;
 	int eax, ebx, ecx, edx;
-
-	if (!Machine->sample_rate) return;
 
 	/* precache some values */
 	for (ecx=0; ecx<4; ecx++)
@@ -92,7 +89,7 @@ void IremGA20_update( void *param, stream_sample_t **inputs, stream_sample_t **b
 	}
 
 	ecx = length;
-	esi = (unsigned long)chip->rom;
+	esi = (UINT32)chip->rom;
 	edi = buffer[0];
 	ebp = buffer[1];
 	edi += ecx;
@@ -128,9 +125,6 @@ WRITE8_HANDLER( IremGA20_w )
 	int channel;
 
 	/*logerror("GA20:  Offset %02x, data %04x\n",offset,data); */
-
-	if (!Machine->sample_rate)
-		return;
 
 	stream_update(chip->stream, 0);
 
@@ -175,9 +169,6 @@ READ8_HANDLER( IremGA20_r )
 {
 	struct IremGA20_chip_def *chip = sndti_token(SOUND_IREMGA20, 0);
 	int channel;
-
-	if (!Machine->sample_rate)
-		return 0;
 
 	stream_update(chip->stream, 0);
 
@@ -224,11 +215,8 @@ static void *iremga20_start(int sndindex, int clock, const void *config)
 	chip = auto_malloc(sizeof(*chip));
 	memset(chip, 0, sizeof(*chip));
 
-	if (!Machine->sample_rate) return chip;
-
 	/* Initialize our chip structure */
 	chip->intf = config;
-	chip->mode = 0;
 	chip->rom = memory_region(chip->intf->region);
 	chip->rom_size = memory_region_length(chip->intf->region);
 
@@ -249,7 +237,21 @@ static void *iremga20_start(int sndindex, int clock, const void *config)
 
 	chip->stream = stream_create( 0, 2, Machine->sample_rate, chip, IremGA20_update );
 
-	state_save_register_UINT8("sound", sndindex, "IremGA20_chip",    (UINT8*) chip,   sizeof(*chip));
+	state_save_register_item_array("irem_ga20", sndindex, chip->regs);
+	for (i = 0; i < 4; i++)
+	{
+		char buf[20];
+		sprintf(buf, "irem_ga20.ch%d", i);
+		state_save_register_item(buf, sndindex, chip->channel[i].rate);
+		state_save_register_item(buf, sndindex, chip->channel[i].size);
+		state_save_register_item(buf, sndindex, chip->channel[i].start);
+		state_save_register_item(buf, sndindex, chip->channel[i].pos);
+		state_save_register_item(buf, sndindex, chip->channel[i].end);
+		state_save_register_item(buf, sndindex, chip->channel[i].volume);
+		state_save_register_item(buf, sndindex, chip->channel[i].pan);
+		state_save_register_item(buf, sndindex, chip->channel[i].effect);
+		state_save_register_item(buf, sndindex, chip->channel[i].play);
+	}
 
 	return chip;
 }
@@ -261,7 +263,7 @@ static void *iremga20_start(int sndindex, int clock, const void *config)
  * Generic get_info
  **************************************************************************/
 
-static void iremga20_set_info(void *token, UINT32 state, union sndinfo *info)
+static void iremga20_set_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
@@ -270,7 +272,7 @@ static void iremga20_set_info(void *token, UINT32 state, union sndinfo *info)
 }
 
 
-void iremga20_get_info(void *token, UINT32 state, union sndinfo *info)
+void iremga20_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{

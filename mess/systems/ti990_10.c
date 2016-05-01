@@ -74,7 +74,7 @@ TODO :
 #include "machine/990_tap.h"
 #include "vidhrdw/911_vdt.h"
 
-static void machine_init_ti990_10(void)
+static MACHINE_RESET( ti990_10 )
 {
 	ti990_hold_load();
 
@@ -206,7 +206,7 @@ static MACHINE_DRIVER_START(ti990_10)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	/*MDRV_INTERLEAVE(interleave)*/
 
-	MDRV_MACHINE_INIT( ti990_10 )
+	MDRV_MACHINE_RESET( ti990_10 )
 	/*MDRV_NVRAM_HANDLER( NULL )*/
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -220,7 +220,6 @@ static MACHINE_DRIVER_START(ti990_10)
 
 	MDRV_PALETTE_INIT(vdt911)
 	MDRV_VIDEO_START(ti990_10)
-	/*MDRV_VIDEO_STOP(ti990_10)*/
 	/*MDRV_VIDEO_EOF(name)*/
 	MDRV_VIDEO_UPDATE(ti990_10)
 
@@ -253,10 +252,10 @@ ROM_START(ti990_10)
 	ROM_REGION16_BE(0x200000, REGION_CPU1,0)
 
 	/* TI990/10 : newer "universal" boot ROMs  */
-	ROM_LOAD16_BYTE("975383.45", 0x1FFC00, 0x100, CRC(391943c7))
-	ROM_LOAD16_BYTE("975383.46", 0x1FFC01, 0x100, CRC(f40f7c18))
-	ROM_LOAD16_BYTE("975383.47", 0x1FFE00, 0x100, CRC(1ba571d8))
-	ROM_LOAD16_BYTE("975383.48", 0x1FFE01, 0x100, CRC(8852b09e))
+	ROM_LOAD16_BYTE("975383.45", 0x1FFC00, 0x100, CRC(391943c7) SHA1(bbd4da60b221d146542a6b547ae1570024e41b8a))
+	ROM_LOAD16_BYTE("975383.46", 0x1FFC01, 0x100, CRC(f40f7c18) SHA1(03613bbf2263a4335c25dfc63cf2878c06bfe280))
+	ROM_LOAD16_BYTE("975383.47", 0x1FFE00, 0x100, CRC(1ba571d8) SHA1(adaa18f149b643cc842fea8d7107ee868d6ffaf4))
+	ROM_LOAD16_BYTE("975383.48", 0x1FFE01, 0x100, CRC(8852b09e) SHA1(f0df2abb438716832c16ab111e475da3ae612673))
 
 #else
 
@@ -291,32 +290,48 @@ INPUT_PORTS_START(ti990_10)
 	VDT911_KEY_PORTS
 INPUT_PORTS_END
 
-static void ti990_10_harddisk_getinfo(struct IODevice *dev)
+static void ti990_10_harddisk_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* harddisk */
-	dev->type = IO_HARDDISK;
-	dev->count = 4;
-	dev->file_extensions = "hd\0";
-	dev->readable = 1;
-	dev->writeable = 1;
-	dev->creatable = 0;
-	dev->init = device_init_ti990_hd;
-	dev->load = device_load_ti990_hd;
-	dev->unload = device_unload_ti990_hd;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_HARDDISK; break;
+		case DEVINFO_INT_READABLE:						info->i = 1; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case DEVINFO_INT_COUNT:							info->i = 4; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_INIT:							info->init = device_init_ti990_hd; break;
+		case DEVINFO_PTR_LOAD:							info->load = device_load_ti990_hd; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti990_hd; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hd"); break;
+	}
 }
 
-static void ti990_10_cassette_getinfo(struct IODevice *dev)
+static void ti990_10_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
-	dev->type = IO_CASSETTE;
-	dev->count = 4;
-	dev->file_extensions = "tap\0";
-	dev->readable = 1;
-	dev->writeable = 1;
-	dev->creatable = 0;
-	dev->init = device_init_ti990_tape;
-	dev->load = device_load_ti990_tape;
-	dev->unload = device_unload_ti990_tape;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
+		case DEVINFO_INT_READABLE:						info->i = 1; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case DEVINFO_INT_COUNT:							info->i = 4; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_INIT:							info->init = device_init_ti990_tape; break;
+		case DEVINFO_PTR_LOAD:							info->load = device_load_ti990_tape; break;
+		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti990_tape; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap"); break;
+	}
 }
 
 SYSTEM_CONFIG_START(ti990_10)

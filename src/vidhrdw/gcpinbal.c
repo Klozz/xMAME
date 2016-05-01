@@ -1,6 +1,5 @@
 #include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
+#include "includes/gcpinbal.h"
 
 
 static tilemap *gcpinbal_tilemap[3];

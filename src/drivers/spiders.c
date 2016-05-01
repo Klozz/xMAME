@@ -163,25 +163,13 @@ $F987 - Addresses table at $f98d containing four structs:
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "vidhrdw/crtc6845.h"
 #include "machine/6821pia.h"
 #include "spiders.h"
 
 UINT8 *spiders_ram;
 
-
-/* VIDHRDW */
-
 PALETTE_INIT( nyny );
-VIDEO_START( spiders );
-VIDEO_UPDATE( spiders );
-
-/* MACHINE */
-
-MACHINE_INIT( spiders );
-INTERRUPT_GEN( spiders_timed_irq );
-
 
 /* Driver structure definition */
 
@@ -327,7 +315,8 @@ static MACHINE_DRIVER_START( spiders )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(spiders)
+	MDRV_MACHINE_START(spiders)
+	MDRV_MACHINE_RESET(spiders)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */

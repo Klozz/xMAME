@@ -3,8 +3,9 @@
     Sound handler
 ****************************************************************************/
 #include "driver.h"
+#include "streams.h"
 #include "sound/filter.h"
-#include "rc.h"
+#include "rescap.h"
 #include "sound/custom.h"
 
 static int sample_msb = 0;
@@ -51,7 +52,7 @@ static void engine_sound_update(void *param, stream_sample_t **inputs, stream_sa
 	int loop;
 
 	/* if we're not enabled, just fill with 0 */
-	if (!sample_enable || Machine->sample_rate == 0)
+	if (!sample_enable)
 	{
 		memset(buffer, 0, length * sizeof(*buffer));
 		return;

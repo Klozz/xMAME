@@ -31,13 +31,13 @@
 #endif
 
 /* REGULAR TYPE DEFINITIONS */
-typedef char          int8;
-typedef int           int16;
-typedef long          int32;
-typedef unsigned char uint8;
-typedef unsigned int  uint16;
-typedef unsigned long uint32;
-typedef char          boolean;
+typedef INT8          int8;
+typedef INT16         int16;
+typedef INT32         int32;
+typedef UINT8         uint8;
+typedef UINT16        uint16;
+typedef UINT32        uint32;
+typedef UINT8         boolean;
 
 
 /* QUEUE TYPES */
@@ -190,7 +190,7 @@ static const int noise_freq[16] =
 };
 
 /* dpcm transfer freqs */
-const int dpcm_clocks[16] =
+static const int dpcm_clocks[16] =
 {
    428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 85, 72, 54
 };

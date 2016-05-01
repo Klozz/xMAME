@@ -117,8 +117,6 @@ Notes:
 */
 
 #include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
 #include "cpu/se3208/se3208.h"
 #include "vidhrdw/vrender0.h"
 #include "machine/ds1302.h"
@@ -553,7 +551,7 @@ loop:
 */
 
 #if 1
-	const UINT32 Patch[] =
+	static const UINT32 Patch[] =
 	{
 		0x40c0ea01,
 		0xe906400a,
@@ -565,21 +563,24 @@ loop:
 
 	memcpy(ResetPatch,Patch,sizeof(Patch));
 #else
-	const UINT8 Patch[]={	0x01,0xEA,0xC0,0x40,0x0A,0x40,0x06,0xE9,
-				0x20,0x2A,0xC0,0x40,0x0A,0x40,0x06,0xE9,
-				0x20,0x3A,0xD0,0xA1,0xFA,0xD4,0xF4,0xDE};
+	static const UINT8 Patch[] =
+	{
+		0x01,0xEA,0xC0,0x40,0x0A,0x40,0x06,0xE9,
+		0x20,0x2A,0xC0,0x40,0x0A,0x40,0x06,0xE9,
+		0x20,0x3A,0xD0,0xA1,0xFA,0xD4,0xF4,0xDE
+	};
 
 	memcpy(ResetPatch,Patch,sizeof(Patch));
 #endif
 }
 
-static MACHINE_INIT(crystal)
+static MACHINE_RESET(crystal)
 {
 	memset(sysregs,0,0x10000);
 	memset(vidregs,0,0x10000);
 	FlipCount=0;
 	IntHigh=0;
-	cpu_set_irq_callback(0,icallback);
+	cpunum_set_irq_callback(0,icallback);
 	Bank=0;
 	memory_set_bankptr(1,memory_region(REGION_USER1)+0);
 	FlashCmd=0xff;
@@ -829,7 +830,7 @@ static MACHINE_DRIVER_START( crystal )
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_INIT(crystal)
+	MDRV_MACHINE_RESET(crystal)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 

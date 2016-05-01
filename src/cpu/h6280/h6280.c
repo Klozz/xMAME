@@ -56,15 +56,39 @@
     Changelog, version 1.07, 3/9/00:
         Changed timer to be single shot - fixes Crude Buster music in level 1.
 
+    Changelog, version 1.08, 8/11/05: (Charles MacDonald)
+
+        Changed timer implementation, no longer single shot and reading the
+        timer registers returns the count only. Fixes the following:
+        - Mesopotamia: Music tempo & in-game timer
+        - Dragon Saber: DDA effects
+        - Magical Chase: Music tempo and speed regulation
+        - Cadash: Allows the first level to start
+        - Turrican: Allows the game to start
+
+        Changed PLX and PLY to set NZ flags. Fixes:
+        - Afterburner: Graphics unpacking
+        - Aoi Blink: Collision detection with background
+
+        Fixed the decimal version of ADC/SBC to *not* update the V flag,
+        only the binary ones do.
+
+        Fixed B flag handling so it is always set outside of an interrupt;
+        even after being set by PLP and RTI.
+
+        Fixed P state after reset to set I and B, leaving T, D cleared and
+        NVZC randomized (cleared in this case).
+
+        Fixed interrupt processing order (Timer has highest priority followed
+        by IRQ1 and finally IRQ2).
+
+    Changelog, version 1.08, 1/07/06: (Rob Bohms)
+
+        Added emulation of the T flag, fixes PCE Ankuku Densetsu title screen
+
 ******************************************************************************/
-
-#include "memory.h"
-#include "cpuintrf.h"
-#include "mamedbg.h"
+#include "debugger.h"
 #include "h6280.h"
-
-#include <stdio.h>
-#include <string.h>
 
 extern FILE * errorlog;
 
@@ -108,17 +132,17 @@ typedef struct
     UINT8 irq_mask;     /* interrupt enable/disable */
     UINT8 timer_status; /* timer status */
 	UINT8 timer_ack;	/* timer acknowledge */
-    int timer_value;    /* timer interrupt */
-    int timer_load;		/* reload value */
-	int extra_cycles;	/* cycles used taking an interrupt */
-    int nmi_state;
-    int irq_state[3];
+    INT32 timer_value;    /* timer interrupt */
+    INT32 timer_load;		/* reload value */
+	INT32 extra_cycles;	/* cycles used taking an interrupt */
+    UINT8 nmi_state;
+    UINT8 irq_state[3];
     int (*irq_callback)(int irqline);
 
 #if LAZY_FLAGS
-    int NZ;             /* last value (lazy N and Z flag) */
+    INT32 NZ;             /* last value (lazy N and Z flag) */
 #endif
-
+	UINT8 io_buffer;	/* last value written to the PSG, timer, and interrupt pages */
 }   h6280_Regs;
 
 static  h6280_Regs  h6280;
@@ -136,19 +160,49 @@ static void set_irq_line(int irqline, int state);
 #include "tblh6280.c"
 
 /*****************************************************************************/
-static void h6280_init(void)
+static void h6280_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
+	state_save_register_item("h6280", index, h6280.ppc.w.l);
+	state_save_register_item("h6280", index, h6280.pc.w.l);
+	state_save_register_item("h6280", index, h6280.sp.w.l);
+	state_save_register_item("h6280", index, h6280.zp.w.l);
+	state_save_register_item("h6280", index, h6280.ea.w.l);
+	state_save_register_item("h6280", index, h6280.a);
+	state_save_register_item("h6280", index, h6280.x);
+	state_save_register_item("h6280", index, h6280.y);
+	state_save_register_item("h6280", index, h6280.p);
+	state_save_register_item_array("h6280", index, h6280.mmr);
+	state_save_register_item("h6280", index, h6280.irq_mask);
+	state_save_register_item("h6280", index, h6280.timer_status);
+	state_save_register_item("h6280", index, h6280.timer_ack);
+	state_save_register_item("h6280", index, h6280.timer_value);
+	state_save_register_item("h6280", index, h6280.timer_load);
+	state_save_register_item("h6280", index, h6280.extra_cycles);
+	state_save_register_item("h6280", index, h6280.nmi_state);
+	state_save_register_item("h6280", index, h6280.irq_state[0]);
+	state_save_register_item("h6280", index, h6280.irq_state[1]);
+	state_save_register_item("h6280", index, h6280.irq_state[2]);
+
+	#if LAZY_FLAGS
+	state_save_register_item("h6280", index, h6280.NZ);
+	#endif
+	state_save_register_item("h6280", index, h6280.io_buffer);
+
+	h6280.irq_callback = irqcallback;
 }
 
-static void h6280_reset(void *param)
+static void h6280_reset(void)
 {
+	int (*save_irqcallback)(int);
 	int i;
 
 	/* wipe out the h6280 structure */
+	save_irqcallback = h6280.irq_callback;
 	memset(&h6280, 0, sizeof(h6280_Regs));
+	h6280.irq_callback = save_irqcallback;
 
-	/* set I and Z flags */
-	P = _fI | _fZ;
+	/* set I and B flags */
+	P = _fI | _fB;
 
     /* stack starts at 0x01ff */
 	h6280.sp.d = 0x1ff;
@@ -160,7 +214,6 @@ static void h6280_reset(void *param)
 
 	/* timer off by default */
 	h6280.timer_status=0;
-	h6280.timer_ack=1;
 
     /* clear pending interrupts */
 	for (i = 0; i < 3; i++)
@@ -191,14 +244,14 @@ static int h6280_execute(int cycles)
 
 #ifdef  MAME_DEBUG
 	 	{
-			if (mame_debug)
+			if (Machine->debug_mode)
 			{
 				/* Copy the segmentation registers for debugger to use */
 				int i;
 				for (i=0; i<8; i++)
 					H6280_debug_mmr[i]=h6280.mmr[i];
 
-				MAME_Debug();
+				mame_debug_hook();
 			}
 		}
 #endif
@@ -213,9 +266,9 @@ static int h6280_execute(int cycles)
 		{
 			deltacycle = lastcycle - h6280_ICount;
 			h6280.timer_value -= deltacycle;
-			if(h6280.timer_value<=0 && h6280.timer_ack==1)
+			if(h6280.timer_value<=0)
 			{
-				h6280.timer_ack=h6280.timer_status=0;
+				h6280.timer_value=h6280.timer_load;
 				set_irq_line(2,ASSERT_LINE);
 			}
 		}
@@ -294,53 +347,47 @@ READ8_HANDLER( H6280_irq_status_r )
 {
 	int status;
 
-	switch (offset)
+	switch (offset&3)
 	{
-		case 0: /* Read irq mask */
-			return h6280.irq_mask;
-
-		case 1: /* Read irq status */
+	default:return h6280.io_buffer;break;
+	case 3:
+		{
 			status=0;
 			if(h6280.irq_state[1]!=CLEAR_LINE) status|=1; /* IRQ 2 */
 			if(h6280.irq_state[0]!=CLEAR_LINE) status|=2; /* IRQ 1 */
 			if(h6280.irq_state[2]!=CLEAR_LINE) status|=4; /* TIMER */
-			return status;
+			return status|(h6280.io_buffer&(~H6280_IRQ_MASK));break;
+		}
+	case 2: return h6280.irq_mask|(h6280.io_buffer&(~H6280_IRQ_MASK));break;
 	}
-
-	return 0;
 }
 
 WRITE8_HANDLER( H6280_irq_status_w )
 {
-	switch (offset)
+	h6280.io_buffer=data;
+	switch (offset&3)
 	{
-		case 0: /* Write irq mask */
+		default:h6280.io_buffer=data;break;
+		case 2: /* Write irq mask */
 			h6280.irq_mask=data&0x7;
 			CHECK_IRQ_LINES;
 			break;
 
-		case 1: /* Timer irq ack - timer is reloaded here */
-			h6280.timer_value = h6280.timer_load;
-			h6280.timer_ack=1; /* Timer can't refire until ack'd */
+		case 3: /* Timer irq ack */
+			set_irq_line(2,CLEAR_LINE);
 			break;
 	}
 }
 
 READ8_HANDLER( H6280_timer_r )
 {
-	switch (offset) {
-		case 0: /* Counter value */
-			return (h6280.timer_value/1024)&127;
-
-		case 1: /* Read counter status */
-			return h6280.timer_status;
-	}
-
-	return 0;
+	/* only returns countdown */
+	return ((h6280.timer_value/1024)&0x7F)|(h6280.io_buffer&0x80);
 }
 
 WRITE8_HANDLER( H6280_timer_w )
 {
+	h6280.io_buffer=data;
 	switch (offset) {
 		case 0: /* Counter preload */
 			h6280.timer_load=h6280.timer_value=((data&127)+1)*1024;
@@ -361,6 +408,15 @@ static int h6280_translate(int space, offs_t *addr)
 	if (space == ADDRESS_SPACE_PROGRAM)
 		*addr = TRANSLATED(*addr);
 	return 1;
+}
+
+UINT8 h6280io_get_buffer()
+{
+	return h6280.io_buffer;
+}
+void h6280io_set_buffer(UINT8 data)
+{
+	h6280.io_buffer=data;
 }
 
 
@@ -404,8 +460,6 @@ static void h6280_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + H6280_M7:		h6280.mmr[6] = info->i;						break;
 		case CPUINFO_INT_REGISTER + H6280_M8:		h6280.mmr[7] = info->i;						break;
 #endif
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:				h6280.irq_callback = info->irqcallback;		break;
 	}
 }
 
@@ -483,7 +537,6 @@ void h6280_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = h6280_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = h6280_dasm;			break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = h6280.irq_callback;	break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &h6280_ICount;			break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = reg_layout;					break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = win_layout;					break;

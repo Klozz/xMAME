@@ -19,7 +19,7 @@
 #include "machine/6522via.h"
 #include "machine/ay3600.h"
 #include "machine/applefdc.h"
-#include "machine/appldriv.h"
+#include "devices/appldriv.h"
 #include "includes/6551.h"
 
 UINT32 a3;
@@ -514,7 +514,7 @@ static const struct via6522_interface via_1_intf =
 
 
 
-MACHINE_INIT( apple3 )
+MACHINE_RESET( apple3 )
 {
 	via_reset();
 }

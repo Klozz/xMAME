@@ -1,4 +1,5 @@
-/* vidhrdw/bosco.c */
+/*----------- defined in vidhrdw/bosco.c -----------*/
+
 extern UINT8 *bosco_videoram;
 extern UINT8 *bosco_radarattr;
 READ8_HANDLER( bosco_videoram_r );
@@ -13,9 +14,19 @@ VIDEO_UPDATE( bosco );
 PALETTE_INIT( bosco );
 VIDEO_EOF( bosco );	/* update starfield */
 
-/* vidhrdw/galaga.c */
+/*----------- defined in vidhrdw/galaga.c -----------*/
+
+struct star
+{
+	UINT16 x,y;
+	UINT8 col,set;
+};
+
 extern UINT8 *galaga_videoram;
 extern UINT8 *galaga_ram1,*galaga_ram2,*galaga_ram3;
+extern UINT8 galaga_starcontrol[];
+extern struct star star_seed_tab[];
+
 PALETTE_INIT( galaga );
 READ8_HANDLER( galaga_videoram_r );
 WRITE8_HANDLER( galaga_videoram_w );
@@ -25,10 +36,12 @@ VIDEO_START( galaga );
 VIDEO_UPDATE( galaga );
 VIDEO_EOF( galaga );	/* update starfield */
 
-/* XEVIOUS */
+/*----------- defined in vidhrdw/xevious.c -----------*/
+
 extern UINT8 *xevious_fg_videoram,*xevious_fg_colorram;
 extern UINT8 *xevious_bg_videoram,*xevious_bg_colorram;
 extern UINT8 *xevious_sr1,*xevious_sr2,*xevious_sr3;
+
 READ8_HANDLER( xevious_fg_videoram_r );
 READ8_HANDLER( xevious_fg_colorram_r );
 READ8_HANDLER( xevious_bg_videoram_r );
@@ -44,9 +57,12 @@ VIDEO_START( xevious );
 PALETTE_INIT( xevious );
 VIDEO_UPDATE( xevious );
 
+PALETTE_INIT( battles );
 
-/* BATTLES */
+/*----------- defined in machine/xevious.c -----------*/
+
 void battles_customio_init(void);
+
 READ8_HANDLER( battles_customio0_r );
 READ8_HANDLER( battles_customio_data0_r );
 READ8_HANDLER( battles_customio3_r );
@@ -62,12 +78,10 @@ WRITE8_HANDLER( battles_noise_sound_w );
 
 INTERRUPT_GEN( battles_interrupt_4 );
 
-PALETTE_INIT( battles );
+/*----------- defined in vidhrdw/digdug.c -----------*/
 
-
-
-/* DIG DUG */
 extern UINT8 *digdug_videoram,*digdug_objram, *digdug_posram, *digdug_flpram;
+
 READ8_HANDLER( digdug_videoram_r );
 WRITE8_HANDLER( digdug_videoram_w );
 WRITE8_HANDLER( digdug_PORT_w );

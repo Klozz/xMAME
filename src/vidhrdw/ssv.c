@@ -136,7 +136,6 @@ Note: press Z to show some info on each sprite (debug builds only)
 ***************************************************************************/
 
 #include "driver.h"
-#include "vidhrdw/generic.h"
 #include "seta.h"
 
 int shadow_pen_mask, shadow_pen_shift;
@@ -205,9 +204,6 @@ VIDEO_START( eaglshot )
 	eaglshot_gfxram		=	(UINT16*)auto_malloc(16 * 0x40000);
 	eaglshot_dirty_tile	=	(char*)auto_malloc(16 * 0x40000 / (16*8));
 
-	if ( !eaglshot_gfxram || !eaglshot_dirty_tile )
-		return 1;
-
 	return 0;
 }
 
@@ -239,7 +235,7 @@ VIDEO_START( gdfs )
 	gdfs_tmap			=	tilemap_create(	get_tile_info_0, tilemap_scan_rows,
 											TILEMAP_TRANSPARENT, 16,16, 0x100,0x100	);
 
-	if ( !eaglshot_gfxram || !eaglshot_dirty_tile || !gdfs_tmap)
+	if ( !gdfs_tmap)
 		return 1;
 
 	tilemap_set_transparent_pen(gdfs_tmap, 0);

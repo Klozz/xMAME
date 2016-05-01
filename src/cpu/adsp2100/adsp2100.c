@@ -1,93 +1,84 @@
-/*###################################################################################################
-**
-**
-**      ADSP2100.c
-**      Core implementation for the portable Analog ADSP-2100 emulator.
-**      Written by Aaron Giles
-**
-**
-**###################################################################################################
-**
-**
-**  For ADSP-2101, ADSP-2111
-**  ------------------------
-**
-**      MMAP = 0                                        MMAP = 1
-**
-**      Automatic boot loading                          No auto boot loading
-**
-**      Program Space:                                  Program Space:
-**          0000-07ff = 2k Internal RAM (booted)            0000-37ff = 14k External access
-**          0800-3fff = 14k External access                 3800-3fff = 2k Internal RAM
-**
-**      Data Space:                                     Data Space:
-**          0000-03ff = 1k External DWAIT0                  0000-03ff = 1k External DWAIT0
-**          0400-07ff = 1k External DWAIT1                  0400-07ff = 1k External DWAIT1
-**          0800-2fff = 10k External DWAIT2                 0800-2fff = 10k External DWAIT2
-**          3000-33ff = 1k External DWAIT3                  3000-33ff = 1k External DWAIT3
-**          3400-37ff = 1k External DWAIT4                  3400-37ff = 1k External DWAIT4
-**          3800-3bff = 1k Internal RAM                     3800-3bff = 1k Internal RAM
-**          3c00-3fff = 1k Internal Control regs            3c00-3fff = 1k Internal Control regs
-**
-**
-**  For ADSP-2105, ADSP-2115, ADSP-2104
-**  -----------------------------------
-**
-**      MMAP = 0                                        MMAP = 1
-**
-**      Automatic boot loading                          No auto boot loading
-**
-**      Program Space:                                  Program Space:
-**          0000-03ff = 1k Internal RAM (booted)            0000-37ff = 14k External access
-**          0400-07ff = 1k Reserved                         3800-3bff = 1k Internal RAM
-**          0800-3fff = 14k External access                 3c00-3fff = 1k Reserved
-**
-**      Data Space:                                     Data Space:
-**          0000-03ff = 1k External DWAIT0                  0000-03ff = 1k External DWAIT0
-**          0400-07ff = 1k External DWAIT1                  0400-07ff = 1k External DWAIT1
-**          0800-2fff = 10k External DWAIT2                 0800-2fff = 10k External DWAIT2
-**          3000-33ff = 1k External DWAIT3                  3000-33ff = 1k External DWAIT3
-**          3400-37ff = 1k External DWAIT4                  3400-37ff = 1k External DWAIT4
-**          3800-39ff = 512 Internal RAM                    3800-39ff = 512 Internal RAM
-**          3a00-3bff = 512 Reserved                        3a00-3bff = 512 Reserved
-**          3c00-3fff = 1k Internal Control regs            3c00-3fff = 1k Internal Control regs
-**
-**
-**  For ADSP-2181
-**  -------------
-**
-**      MMAP = 0                                        MMAP = 1
-**
-**      Program Space:                                  Program Space:
-**          0000-1fff = 8k Internal RAM                     0000-1fff = 8k External access
-**          2000-3fff = 8k Internal RAM or Overlay          2000-3fff = 8k Internal
-**
-**      Data Space:                                     Data Space:
-**          0000-1fff = 8k Internal RAM or Overlay          0000-1fff = 8k Internal RAM or Overlay
-**          2000-3fdf = 8k-32 Internal RAM                  2000-3fdf = 8k-32 Internal RAM
-**          3fe0-3fff = 32 Internal Control regs            3fe0-3fff = 32 Internal Control regs
-**
-**      I/O Space:                                      I/O Space:
-**          0000-01ff = 512 External IOWAIT0                0000-01ff = 512 External IOWAIT0
-**          0200-03ff = 512 External IOWAIT1                0200-03ff = 512 External IOWAIT1
-**          0400-05ff = 512 External IOWAIT2                0400-05ff = 512 External IOWAIT2
-**          0600-07ff = 512 External IOWAIT3                0600-07ff = 512 External IOWAIT3
-**
-**
-**#################################################################################################*/
+/***************************************************************************
 
-#include <stdio.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
-#include "cpuintrf.h"
-#include "mamedbg.h"
+        ADSP2100.c
+        Core implementation for the portable Analog ADSP-2100 emulator.
+        Written by Aaron Giles
+
+****************************************************************************
+
+    For ADSP-2101, ADSP-2111
+    ------------------------
+
+        MMAP = 0                                        MMAP = 1
+
+        Automatic boot loading                          No auto boot loading
+
+        Program Space:                                  Program Space:
+            0000-07ff = 2k Internal RAM (booted)            0000-37ff = 14k External access
+            0800-3fff = 14k External access                 3800-3fff = 2k Internal RAM
+
+        Data Space:                                     Data Space:
+            0000-03ff = 1k External DWAIT0                  0000-03ff = 1k External DWAIT0
+            0400-07ff = 1k External DWAIT1                  0400-07ff = 1k External DWAIT1
+            0800-2fff = 10k External DWAIT2                 0800-2fff = 10k External DWAIT2
+            3000-33ff = 1k External DWAIT3                  3000-33ff = 1k External DWAIT3
+            3400-37ff = 1k External DWAIT4                  3400-37ff = 1k External DWAIT4
+            3800-3bff = 1k Internal RAM                     3800-3bff = 1k Internal RAM
+            3c00-3fff = 1k Internal Control regs            3c00-3fff = 1k Internal Control regs
+
+
+    For ADSP-2105, ADSP-2115, ADSP-2104
+    -----------------------------------
+
+        MMAP = 0                                        MMAP = 1
+
+        Automatic boot loading                          No auto boot loading
+
+        Program Space:                                  Program Space:
+            0000-03ff = 1k Internal RAM (booted)            0000-37ff = 14k External access
+            0400-07ff = 1k Reserved                         3800-3bff = 1k Internal RAM
+            0800-3fff = 14k External access                 3c00-3fff = 1k Reserved
+
+        Data Space:                                     Data Space:
+            0000-03ff = 1k External DWAIT0                  0000-03ff = 1k External DWAIT0
+            0400-07ff = 1k External DWAIT1                  0400-07ff = 1k External DWAIT1
+            0800-2fff = 10k External DWAIT2                 0800-2fff = 10k External DWAIT2
+            3000-33ff = 1k External DWAIT3                  3000-33ff = 1k External DWAIT3
+            3400-37ff = 1k External DWAIT4                  3400-37ff = 1k External DWAIT4
+            3800-39ff = 512 Internal RAM                    3800-39ff = 512 Internal RAM
+            3a00-3bff = 512 Reserved                        3a00-3bff = 512 Reserved
+            3c00-3fff = 1k Internal Control regs            3c00-3fff = 1k Internal Control regs
+
+
+    For ADSP-2181
+    -------------
+
+        MMAP = 0                                        MMAP = 1
+
+        Program Space:                                  Program Space:
+            0000-1fff = 8k Internal RAM                     0000-1fff = 8k External access
+            2000-3fff = 8k Internal RAM or Overlay          2000-3fff = 8k Internal
+
+        Data Space:                                     Data Space:
+            0000-1fff = 8k Internal RAM or Overlay          0000-1fff = 8k Internal RAM or Overlay
+            2000-3fdf = 8k-32 Internal RAM                  2000-3fdf = 8k-32 Internal RAM
+            3fe0-3fff = 32 Internal Control regs            3fe0-3fff = 32 Internal Control regs
+
+        I/O Space:                                      I/O Space:
+            0000-01ff = 512 External IOWAIT0                0000-01ff = 512 External IOWAIT0
+            0200-03ff = 512 External IOWAIT1                0200-03ff = 512 External IOWAIT1
+            0400-05ff = 512 External IOWAIT2                0400-05ff = 512 External IOWAIT2
+            0600-07ff = 512 External IOWAIT3                0600-07ff = 512 External IOWAIT3
+
+***************************************************************************/
+
+#include "debugger.h"
 #include "adsp2100.h"
 
 
-/*###################################################################################################
-**  CONSTANTS
-**#################################################################################################*/
+/***************************************************************************
+    CONSTANTS
+***************************************************************************/
 
 #define TRACK_HOTSPOTS		0
 
@@ -106,9 +97,10 @@
 #define CHIP_TYPE_ADSP2181	5
 
 
-/*###################################################################################################
-**  STRUCTURES & TYPEDEFS
-**#################################################################################################*/
+
+/***************************************************************************
+    STRUCTURES & TYPEDEFS
+***************************************************************************/
 
 /* 16-bit registers that can be loaded signed or unsigned */
 typedef union
@@ -222,28 +214,29 @@ typedef struct
 	UINT16		imask;
 	UINT8		icntl;
 	UINT16		ifc;
-    UINT8    	irq_state[8];
-    UINT8    	irq_latch[8];
+    UINT8    	irq_state[9];
+    UINT8    	irq_latch[9];
     INT32		interrupt_cycles;
     int			(*irq_callback)(int irqline);
 
     /* other callbacks */
 	RX_CALLBACK sport_rx_callback;
 	TX_CALLBACK sport_tx_callback;
+	TIMER_CALLBACK timer_callback;
 } adsp2100_Regs;
 
 
 
-/*###################################################################################################
-**  PUBLIC GLOBAL VARIABLES
-**#################################################################################################*/
+/***************************************************************************
+    PUBLIC GLOBAL VARIABLES
+***************************************************************************/
 
 static int	adsp2100_icount;
 
 
-/*###################################################################################################
-**  PRIVATE GLOBAL VARIABLES
-**#################################################################################################*/
+/***************************************************************************
+    PRIVATE GLOBAL VARIABLES
+***************************************************************************/
 
 static adsp2100_Regs adsp2100;
 
@@ -260,17 +253,17 @@ static UINT32 pcbucket[0x4000];
 #endif
 
 
-/*###################################################################################################
-**  PRIVATE FUNCTION PROTOTYPES
-**#################################################################################################*/
+/***************************************************************************
+    PRIVATE FUNCTION PROTOTYPES
+***************************************************************************/
 
 static int create_tables(void);
 static void check_irqs(void);
 
 
-/*###################################################################################################
-**  MEMORY ACCESSORS
-**#################################################################################################*/
+/***************************************************************************
+    MEMORY ACCESSORS
+***************************************************************************/
 
 INLINE UINT16 RWORD_DATA(UINT32 addr)
 {
@@ -307,9 +300,9 @@ INLINE void WWORD_PGM(UINT32 addr, UINT32 data)
 #define CHANGEPC() change_pc(adsp2100.pc << 2)
 
 
-/*###################################################################################################
-**  OTHER INLINES
-**#################################################################################################*/
+/***************************************************************************
+    OTHER INLINES
+***************************************************************************/
 
 #if (HAS_ADSP2100)
 INLINE void set_core_2100(void)
@@ -366,17 +359,17 @@ INLINE void set_core_2181(void)
 #endif
 
 
-/*###################################################################################################
-**  IMPORT CORE UTILITIES
-**#################################################################################################*/
+/***************************************************************************
+    IMPORT CORE UTILITIES
+***************************************************************************/
 
 #include "2100ops.c"
 
 
 
-/*###################################################################################################
-**  IRQ HANDLING
-**#################################################################################################*/
+/***************************************************************************
+    IRQ HANDLING
+***************************************************************************/
 
 INLINE int adsp2100_generate_irq(int which)
 {
@@ -505,6 +498,9 @@ static void check_irqs(void)
 			return;
 
 		/* check timer */
+		check = adsp2100.irq_latch[ADSP2181_TIMER];
+		if (check && adsp2181_generate_irq(ADSP2181_TIMER, 9))
+			return;
 	}
 	else if (chip_type >= CHIP_TYPE_ADSP2101)
 	{
@@ -534,6 +530,9 @@ static void check_irqs(void)
 			return;
 
 		/* check timer */
+		check = adsp2100.irq_latch[ADSP2101_TIMER];
+		if (check && adsp2101_generate_irq(ADSP2101_TIMER, 5))
+			return;
 	}
 	else
 	{
@@ -576,9 +575,9 @@ static void set_irq_line(int irqline, int state)
 
 
 
-/*###################################################################################################
-**  CONTEXT SWITCHING
-**#################################################################################################*/
+/***************************************************************************
+    CONTEXT SWITCHING
+***************************************************************************/
 
 static void adsp2100_get_context(void *dst)
 {
@@ -606,18 +605,106 @@ static void adsp2100_set_context(void *src)
 
 
 
-/*###################################################################################################
-**  INITIALIZATION AND SHUTDOWN
-**#################################################################################################*/
+/***************************************************************************
+    INITIALIZATION AND SHUTDOWN
+***************************************************************************/
 
-static void adsp2100_init(void)
+static void adsp2100_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	/* create the tables */
 	if (!create_tables())
-		osd_die("creating adsp2100 tables failed\n");
+		fatalerror("creating adsp2100 tables failed");
+
+	/* set the IRQ callback */
+	adsp2100.irq_callback = irqcallback;
+
+	/* "core" */
+	state_save_register_item("adsp2100", index, adsp2100.core.ax0.u);
+	state_save_register_item("adsp2100", index, adsp2100.core.ax1.u);
+	state_save_register_item("adsp2100", index, adsp2100.core.ay0.u);
+	state_save_register_item("adsp2100", index, adsp2100.core.ay1.u);
+	state_save_register_item("adsp2100", index, adsp2100.core.ar.u);
+	state_save_register_item("adsp2100", index, adsp2100.core.af.u);
+	state_save_register_item("adsp2100", index, adsp2100.core.mx0.u);
+	state_save_register_item("adsp2100", index, adsp2100.core.mx1.u);
+	state_save_register_item("adsp2100", index, adsp2100.core.my0.u);
+	state_save_register_item("adsp2100", index, adsp2100.core.my1.u);
+	state_save_register_item("adsp2100", index, adsp2100.core.mr.mr);
+	state_save_register_item("adsp2100", index, adsp2100.core.mf.u);
+	state_save_register_item("adsp2100", index, adsp2100.core.si.u);
+	state_save_register_item("adsp2100", index, adsp2100.core.se.u);
+	state_save_register_item("adsp2100", index, adsp2100.core.sb.u);
+	state_save_register_item("adsp2100", index, adsp2100.core.sr.sr);
+	state_save_register_item("adsp2100", index, adsp2100.core.zero.u);
+
+	/* "alt" */
+	state_save_register_item("adsp2100", index, adsp2100.alt.ax0.u);
+	state_save_register_item("adsp2100", index, adsp2100.alt.ax1.u);
+	state_save_register_item("adsp2100", index, adsp2100.alt.ay0.u);
+	state_save_register_item("adsp2100", index, adsp2100.alt.ay1.u);
+	state_save_register_item("adsp2100", index, adsp2100.alt.ar.u);
+	state_save_register_item("adsp2100", index, adsp2100.alt.af.u);
+	state_save_register_item("adsp2100", index, adsp2100.alt.mx0.u);
+	state_save_register_item("adsp2100", index, adsp2100.alt.mx1.u);
+	state_save_register_item("adsp2100", index, adsp2100.alt.my0.u);
+	state_save_register_item("adsp2100", index, adsp2100.alt.my1.u);
+	state_save_register_item("adsp2100", index, adsp2100.alt.mr.mr);
+	state_save_register_item("adsp2100", index, adsp2100.alt.mf.u);
+	state_save_register_item("adsp2100", index, adsp2100.alt.si.u);
+	state_save_register_item("adsp2100", index, adsp2100.alt.se.u);
+	state_save_register_item("adsp2100", index, adsp2100.alt.sb.u);
+	state_save_register_item("adsp2100", index, adsp2100.alt.sr.sr);
+	state_save_register_item("adsp2100", index, adsp2100.alt.zero.u);
+
+	state_save_register_item_array("adsp2100", index, adsp2100.i);
+	state_save_register_item_array("adsp2100", index, adsp2100.m);
+	state_save_register_item_array("adsp2100", index, adsp2100.l);
+	state_save_register_item_array("adsp2100", index, adsp2100.lmask);
+	state_save_register_item_array("adsp2100", index, adsp2100.base);
+	state_save_register_item("adsp2100", index, adsp2100.px);
+
+	state_save_register_item("adsp2100", index, adsp2100.pc);
+	state_save_register_item("adsp2100", index, adsp2100.ppc);
+	state_save_register_item("adsp2100", index, adsp2100.loop);
+	state_save_register_item("adsp2100", index, adsp2100.loop_condition);
+	state_save_register_item("adsp2100", index, adsp2100.cntr);
+	state_save_register_item("adsp2100", index, adsp2100.astat);
+	state_save_register_item("adsp2100", index, adsp2100.sstat);
+	state_save_register_item("adsp2100", index, adsp2100.mstat);
+	state_save_register_item("adsp2100", index, adsp2100.astat_clear);
+	state_save_register_item("adsp2100", index, adsp2100.idle);
+
+	state_save_register_item_array("adsp2100", index, adsp2100.loop_stack);
+	state_save_register_item_array("adsp2100", index, adsp2100.cntr_stack);
+	state_save_register_item_array("adsp2100", index, adsp2100.pc_stack);
+	state_save_register_item_2d_array("adsp2100", index, adsp2100.stat_stack);
+
+	state_save_register_item("adsp2100", index, adsp2100.pc_sp);
+	state_save_register_item("adsp2100", index, adsp2100.cntr_sp);
+	state_save_register_item("adsp2100", index, adsp2100.stat_sp);
+	state_save_register_item("adsp2100", index, adsp2100.loop_sp);
+
+	state_save_register_item("adsp2100", index, adsp2100.flagout);
+	state_save_register_item("adsp2100", index, adsp2100.flagin);
+	state_save_register_item("adsp2100", index, adsp2100.fl0);
+	state_save_register_item("adsp2100", index, adsp2100.fl1);
+	state_save_register_item("adsp2100", index, adsp2100.fl2);
+
+	state_save_register_item("adsp2100", index, adsp2100.idma_addr);
+	state_save_register_item("adsp2100", index, adsp2100.idma_cache);
+	state_save_register_item("adsp2100", index, adsp2100.idma_offs);
+
+	state_save_register_item("adsp2100", index, adsp2100.imask);
+	state_save_register_item("adsp2100", index, adsp2100.icntl);
+	state_save_register_item("adsp2100", index, adsp2100.ifc);
+
+	state_save_register_item_array("adsp2100", index, adsp2100.irq_state);
+	state_save_register_item_array("adsp2100", index, adsp2100.irq_latch);
+	state_save_register_item("adsp2100", index, adsp2100.interrupt_cycles);
 }
 
-static void adsp2100_reset(void *param)
+
+static void adsp2100_reset(void)
 {
 	int irq;
 
@@ -813,9 +900,9 @@ static void adsp2100_exit(void)
 
 
 
-/*###################################################################################################
-**  CORE EXECUTION LOOP
-**#################################################################################################*/
+/***************************************************************************
+    CORE EXECUTION LOOP
+***************************************************************************/
 
 /* execute instructions on this CPU until icount expires */
 static int adsp2100_execute(int cycles)
@@ -1589,9 +1676,9 @@ static int adsp2100_execute(int cycles)
 
 
 
-/*###################################################################################################
-**  DEBUGGER DEFINITIONS
-**#################################################################################################*/
+/***************************************************************************
+    DEBUGGER DEFINITIONS
+***************************************************************************/
 
 static UINT8 adsp21xx_reg_layout[] =
 {
@@ -1745,9 +1832,6 @@ static void adsp21xx_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_REGISTER + ADSP2100_FL0:		adsp2100.fl0 = info->i; 				break;
 		case CPUINFO_INT_REGISTER + ADSP2100_FL1:		adsp2100.fl1 = info->i; 				break;
 		case CPUINFO_INT_REGISTER + ADSP2100_FL2: 		adsp2100.fl2 = info->i; 				break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_IRQ_CALLBACK:					adsp2100.irq_callback = info->irqcallback;	break;
 	}
 }
 
@@ -1892,7 +1976,6 @@ static void adsp21xx_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXECUTE:						info->execute = adsp2100_execute;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = adsp2100_dasm;		break;
-		case CPUINFO_PTR_IRQ_CALLBACK:					info->irqcallback = adsp2100.irq_callback; break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &adsp2100_icount;		break;
 		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = adsp21xx_reg_layout;			break;
 		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = adsp21xx_win_layout;			break;
@@ -2068,10 +2151,10 @@ void adsp2100_get_info(UINT32 state, union cpuinfo *info)
  * ADSP2101 section
  **************************************************************************/
 
-static void adsp2101_reset(void *param)
+static void adsp2101_reset(void)
 {
 	set_core_2101();
-	adsp2100_reset(param);
+	adsp2100_reset();
 }
 
 static void adsp2101_set_context(void *src)
@@ -2100,10 +2183,12 @@ static void adsp2101_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_INPUT_STATE + ADSP2101_IRQ2:	set_irq_line(ADSP2101_IRQ2, info->i);	break;
 		case CPUINFO_INT_INPUT_STATE + ADSP2101_SPORT0_RX:set_irq_line(ADSP2101_SPORT0_RX, info->i); break;
 		case CPUINFO_INT_INPUT_STATE + ADSP2101_SPORT0_TX:set_irq_line(ADSP2101_SPORT0_TX, info->i); break;
+		case CPUINFO_INT_INPUT_STATE + ADSP2101_TIMER:	set_irq_line(ADSP2101_TIMER, info->i);	break;
 
 		/* --- the following bits of info are set as pointers to data or functions --- */
 		case CPUINFO_PTR_ADSP2100_RX_HANDLER:			adsp2100.sport_rx_callback = (RX_CALLBACK)info->f;	break;
 		case CPUINFO_PTR_ADSP2100_TX_HANDLER:			adsp2100.sport_tx_callback = (TX_CALLBACK)info->f;	break;
+		case CPUINFO_PTR_ADSP2100_TIMER_HANDLER:		adsp2100.timer_callback = (TIMER_CALLBACK)info->f;	break;
 
 		default:
 			adsp21xx_set_info(state, info);
@@ -2122,6 +2207,7 @@ void adsp2101_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_INPUT_STATE + ADSP2101_IRQ2:	info->i = adsp2100.irq_state[ADSP2101_IRQ2]; break;
 		case CPUINFO_INT_INPUT_STATE + ADSP2101_SPORT0_RX:info->i = adsp2100.irq_state[ADSP2101_SPORT0_RX]; break;
 		case CPUINFO_INT_INPUT_STATE + ADSP2101_SPORT0_TX:info->i = adsp2100.irq_state[ADSP2101_SPORT0_TX]; break;
+		case CPUINFO_INT_INPUT_STATE + ADSP2101_TIMER:	info->i = adsp2100.irq_state[ADSP2101_TIMER]; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_SET_INFO:						info->setinfo = adsp2101_set_info;		break;
@@ -2130,6 +2216,7 @@ void adsp2101_get_info(UINT32 state, union cpuinfo *info)
 
 		case CPUINFO_PTR_ADSP2100_RX_HANDLER:			info->f = (genf *)adsp2100.sport_rx_callback;	break;
 		case CPUINFO_PTR_ADSP2100_TX_HANDLER:			info->f = (genf *)adsp2100.sport_tx_callback;	break;
+		case CPUINFO_PTR_ADSP2100_TIMER_HANDLER:		info->f = (genf *)adsp2100.timer_callback;		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "ADSP2101"); break;
@@ -2147,10 +2234,10 @@ void adsp2101_get_info(UINT32 state, union cpuinfo *info)
  * ADSP2104 section
  **************************************************************************/
 
-static void adsp2104_reset(void *param)
+static void adsp2104_reset(void)
 {
 	set_core_2104();
-	adsp2100_reset(param);
+	adsp2100_reset();
 }
 
 static void adsp2104_set_context(void *src)
@@ -2191,10 +2278,12 @@ static void adsp2104_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_INPUT_STATE + ADSP2104_IRQ2:	set_irq_line(ADSP2104_IRQ2, info->i);	break;
 		case CPUINFO_INT_INPUT_STATE + ADSP2104_SPORT0_RX:set_irq_line(ADSP2104_SPORT0_RX, info->i); break;
 		case CPUINFO_INT_INPUT_STATE + ADSP2104_SPORT0_TX:set_irq_line(ADSP2104_SPORT0_TX, info->i); break;
+		case CPUINFO_INT_INPUT_STATE + ADSP2104_TIMER:	set_irq_line(ADSP2104_TIMER, info->i);	break;
 
 		/* --- the following bits of info are set as pointers to data or functions --- */
 		case CPUINFO_PTR_ADSP2100_RX_HANDLER:			adsp2100.sport_rx_callback = (RX_CALLBACK)info->f;	break;
 		case CPUINFO_PTR_ADSP2100_TX_HANDLER:			adsp2100.sport_tx_callback = (TX_CALLBACK)info->f;	break;
+		case CPUINFO_PTR_ADSP2100_TIMER_HANDLER:		adsp2100.timer_callback = (TIMER_CALLBACK)info->f;	break;
 
 		default:
 			adsp21xx_set_info(state, info);
@@ -2213,6 +2302,7 @@ void adsp2104_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_INPUT_STATE + ADSP2104_IRQ2:	info->i = adsp2100.irq_state[ADSP2104_IRQ2]; break;
 		case CPUINFO_INT_INPUT_STATE + ADSP2104_SPORT0_RX:info->i = adsp2100.irq_state[ADSP2104_SPORT0_RX]; break;
 		case CPUINFO_INT_INPUT_STATE + ADSP2104_SPORT0_TX:info->i = adsp2100.irq_state[ADSP2104_SPORT0_TX]; break;
+		case CPUINFO_INT_INPUT_STATE + ADSP2104_TIMER:	info->i = adsp2100.irq_state[ADSP2104_TIMER]; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_SET_INFO:						info->setinfo = adsp2104_set_info;		break;
@@ -2221,6 +2311,7 @@ void adsp2104_get_info(UINT32 state, union cpuinfo *info)
 
 		case CPUINFO_PTR_ADSP2100_RX_HANDLER:			info->f = (genf *)adsp2100.sport_rx_callback;	break;
 		case CPUINFO_PTR_ADSP2100_TX_HANDLER:			info->f = (genf *)adsp2100.sport_tx_callback;	break;
+		case CPUINFO_PTR_ADSP2100_TIMER_HANDLER:		info->f = (genf *)adsp2100.timer_callback;		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "ADSP2104"); break;
@@ -2238,10 +2329,10 @@ void adsp2104_get_info(UINT32 state, union cpuinfo *info)
  * ADSP2105 section
  **************************************************************************/
 
-static void adsp2105_reset(void *param)
+static void adsp2105_reset(void)
 {
 	set_core_2105();
-	adsp2100_reset(param);
+	adsp2100_reset();
 }
 
 static void adsp2105_set_context(void *src)
@@ -2277,6 +2368,7 @@ static void adsp2105_set_info(UINT32 state, union cpuinfo *info)
 		/* --- the following bits of info are set as pointers to data or functions --- */
 		case CPUINFO_PTR_ADSP2100_RX_HANDLER:			adsp2100.sport_rx_callback = (RX_CALLBACK)info->f;	break;
 		case CPUINFO_PTR_ADSP2100_TX_HANDLER:			adsp2100.sport_tx_callback = (TX_CALLBACK)info->f;	break;
+		case CPUINFO_PTR_ADSP2100_TIMER_HANDLER:		adsp2100.timer_callback = (TIMER_CALLBACK)info->f;	break;
 
 		default:
 			adsp21xx_set_info(state, info);
@@ -2301,6 +2393,7 @@ void adsp2105_get_info(UINT32 state, union cpuinfo *info)
 
 		case CPUINFO_PTR_ADSP2100_RX_HANDLER:			info->f = (genf *)adsp2100.sport_rx_callback;	break;
 		case CPUINFO_PTR_ADSP2100_TX_HANDLER:			info->f = (genf *)adsp2100.sport_tx_callback;	break;
+		case CPUINFO_PTR_ADSP2100_TIMER_HANDLER:		info->f = (genf *)adsp2100.timer_callback;		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "ADSP2105"); break;
@@ -2318,10 +2411,10 @@ void adsp2105_get_info(UINT32 state, union cpuinfo *info)
  * ADSP2115 section
  **************************************************************************/
 
-static void adsp2115_reset(void *param)
+static void adsp2115_reset(void)
 {
 	set_core_2115();
-	adsp2100_reset(param);
+	adsp2100_reset();
 }
 
 static void adsp2115_set_context(void *src)
@@ -2355,10 +2448,12 @@ static void adsp2115_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_INPUT_STATE + ADSP2115_IRQ2:	set_irq_line(ADSP2115_IRQ2, info->i);	break;
 		case CPUINFO_INT_INPUT_STATE + ADSP2115_SPORT0_RX:set_irq_line(ADSP2115_SPORT0_RX, info->i); break;
 		case CPUINFO_INT_INPUT_STATE + ADSP2115_SPORT0_TX:set_irq_line(ADSP2115_SPORT0_TX, info->i); break;
+		case CPUINFO_INT_INPUT_STATE + ADSP2115_TIMER:	set_irq_line(ADSP2115_TIMER, info->i);	break;
 
 		/* --- the following bits of info are set as pointers to data or functions --- */
 		case CPUINFO_PTR_ADSP2100_RX_HANDLER:			adsp2100.sport_rx_callback = (RX_CALLBACK)info->f;	break;
 		case CPUINFO_PTR_ADSP2100_TX_HANDLER:			adsp2100.sport_tx_callback = (TX_CALLBACK)info->f;	break;
+		case CPUINFO_PTR_ADSP2100_TIMER_HANDLER:		adsp2100.timer_callback = (TIMER_CALLBACK)info->f;	break;
 
 		default:
 			adsp21xx_set_info(state, info);
@@ -2377,6 +2472,7 @@ void adsp2115_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_INPUT_STATE + ADSP2115_IRQ2:	info->i = adsp2100.irq_state[ADSP2115_IRQ2]; break;
 		case CPUINFO_INT_INPUT_STATE + ADSP2115_SPORT0_RX:info->i = adsp2100.irq_state[ADSP2115_SPORT0_RX]; break;
 		case CPUINFO_INT_INPUT_STATE + ADSP2115_SPORT0_TX:info->i = adsp2100.irq_state[ADSP2115_SPORT0_TX]; break;
+		case CPUINFO_INT_INPUT_STATE + ADSP2115_TIMER:	info->i = adsp2100.irq_state[ADSP2115_TIMER]; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_SET_INFO:						info->setinfo = adsp2115_set_info;		break;
@@ -2385,6 +2481,7 @@ void adsp2115_get_info(UINT32 state, union cpuinfo *info)
 
 		case CPUINFO_PTR_ADSP2100_RX_HANDLER:			info->f = (genf *)adsp2100.sport_rx_callback;	break;
 		case CPUINFO_PTR_ADSP2100_TX_HANDLER:			info->f = (genf *)adsp2100.sport_tx_callback;	break;
+		case CPUINFO_PTR_ADSP2100_TIMER_HANDLER:		info->f = (genf *)adsp2100.timer_callback;		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "ADSP2115"); break;
@@ -2402,10 +2499,10 @@ void adsp2115_get_info(UINT32 state, union cpuinfo *info)
  * ADSP2181 section
  **************************************************************************/
 
-static void adsp2181_reset(void *param)
+static void adsp2181_reset(void)
 {
 	set_core_2181();
-	adsp2100_reset(param);
+	adsp2100_reset();
 }
 
 static void adsp2181_set_context(void *src)
@@ -2439,10 +2536,15 @@ static void adsp2181_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_INPUT_STATE + ADSP2181_IRQ2:	set_irq_line(ADSP2181_IRQ2, info->i);	break;
 		case CPUINFO_INT_INPUT_STATE + ADSP2181_SPORT0_RX:set_irq_line(ADSP2181_SPORT0_RX, info->i); break;
 		case CPUINFO_INT_INPUT_STATE + ADSP2181_SPORT0_TX:set_irq_line(ADSP2181_SPORT0_TX, info->i); break;
+		case CPUINFO_INT_INPUT_STATE + ADSP2181_TIMER:	set_irq_line(ADSP2181_TIMER, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + ADSP2181_IRQE:	set_irq_line(ADSP2181_IRQE, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + ADSP2181_IRQL1:	set_irq_line(ADSP2181_IRQL1, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + ADSP2181_IRQL2:	set_irq_line(ADSP2181_IRQL2, info->i);	break;
 
 		/* --- the following bits of info are set as pointers to data or functions --- */
 		case CPUINFO_PTR_ADSP2100_RX_HANDLER:			adsp2100.sport_rx_callback = (RX_CALLBACK)info->f;	break;
 		case CPUINFO_PTR_ADSP2100_TX_HANDLER:			adsp2100.sport_tx_callback = (TX_CALLBACK)info->f;	break;
+		case CPUINFO_PTR_ADSP2100_TIMER_HANDLER:		adsp2100.timer_callback = (TIMER_CALLBACK)info->f;	break;
 
 		default:
 			adsp21xx_set_info(state, info);
@@ -2461,6 +2563,10 @@ void adsp2181_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_INPUT_STATE + ADSP2181_IRQ2:	info->i = adsp2100.irq_state[ADSP2181_IRQ2]; break;
 		case CPUINFO_INT_INPUT_STATE + ADSP2181_SPORT0_RX:info->i = adsp2100.irq_state[ADSP2181_SPORT0_RX]; break;
 		case CPUINFO_INT_INPUT_STATE + ADSP2181_SPORT0_TX:info->i = adsp2100.irq_state[ADSP2181_SPORT0_TX]; break;
+		case CPUINFO_INT_INPUT_STATE + ADSP2181_TIMER:	info->i = adsp2100.irq_state[ADSP2181_TIMER]; break;
+		case CPUINFO_INT_INPUT_STATE + ADSP2181_IRQE:	info->i = adsp2100.irq_state[ADSP2181_IRQE]; break;
+		case CPUINFO_INT_INPUT_STATE + ADSP2181_IRQL1:	info->i = adsp2100.irq_state[ADSP2181_IRQL1]; break;
+		case CPUINFO_INT_INPUT_STATE + ADSP2181_IRQL2:	info->i = adsp2100.irq_state[ADSP2181_IRQL2]; break;
 
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 16;					break;
 		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_IO: 		info->i = 11;					break;
@@ -2473,6 +2579,7 @@ void adsp2181_get_info(UINT32 state, union cpuinfo *info)
 
 		case CPUINFO_PTR_ADSP2100_RX_HANDLER:			info->f = (genf *)adsp2100.sport_rx_callback;	break;
 		case CPUINFO_PTR_ADSP2100_TX_HANDLER:			info->f = (genf *)adsp2100.sport_tx_callback;	break;
+		case CPUINFO_PTR_ADSP2100_TIMER_HANDLER:		info->f = (genf *)adsp2100.timer_callback;		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "ADSP2181"); break;

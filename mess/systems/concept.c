@@ -63,7 +63,7 @@ static MACHINE_DRIVER_START( concept )
 	MDRV_FRAMES_PER_SECOND(60)			/* 50 or 60, jumper-selectable */
 	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
-	MDRV_MACHINE_INIT(concept)
+	MDRV_MACHINE_RESET(concept)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
 	MDRV_SCREEN_SIZE(720, 560)
@@ -236,8 +236,8 @@ ROM_START( concept )
 	ROM_LOAD16_BYTE("bootl17l", 0x010001, 0x1000, CRC(107a3830))
 #elif 1
 	/* version 0 lvl 8 release */
-	ROM_LOAD16_BYTE("bootl08h", 0x010000, 0x1000, CRC(ee479f51))
-	ROM_LOAD16_BYTE("bootl08l", 0x010001, 0x1000, CRC(acaefd07))
+	ROM_LOAD16_BYTE("bootl08h", 0x010000, 0x1000, CRC(ee479f51) SHA1(b20ba18564672196076e46507020c6d69a640a2f))
+	ROM_LOAD16_BYTE("bootl08l", 0x010001, 0x1000, CRC(acaefd07) SHA1(de0c7eaacaf4c0652aa45e523cebce2b2993c437))
 #else
 	/* version $F lvl 8 (development version found on a floppy disk along with */
 	/* the source code) */
@@ -298,18 +298,31 @@ static FLOPPY_OPTIONS_START(concept)
 #endif
 FLOPPY_OPTIONS_END
 
-static void concept_floppy_getinfo(struct IODevice *dev)
+static void concept_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
-	floppy_device_getinfo(dev, floppyoptions_concept);
-	dev->count = 4;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 4; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_concept; break;
+
+		default:										floppy_device_getinfo(devclass, state, info); break;
+	}
 }
 
-static void concept_harddisk_getinfo(struct IODevice *dev)
+static void concept_harddisk_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* Hard Drive */
-	harddisk_device_getinfo(dev);
-	dev->count = 1;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		default:										harddisk_device_getinfo(devclass, state, info); break;
+	}
 }
 
 SYSTEM_CONFIG_START(concept)
