@@ -1,18 +1,20 @@
 
- *********************
- ** XMAME / XMESS **
- *********************
+***
 
- -------------
+## XMAME / XMESS 
 
- Quick Readme by Matt Lowry
+***
+
+## Updates
+  Quick Readme by Matt Lowry
+ 
  Last Updated : 12th April 2001
 
-
- -------------
  Klozz jesus AKA TEAMMEX
- Last updated: 30 april 2016
  
+ Last updated: 30 april 2016
+
+*** 
  
 ### To add a GUI:
 
@@ -25,16 +27,17 @@
 
  -------------
 
-Q: What is xmame?
-Q: What is xmess?
+<b>Q: What is xmame?</b>
+
+<b>Q: What is xmess?</b>
 
 A: Xmame/xmess is the Unix and Unix-like port of the highly esteemed MAME/MESS
    system.
 
 
-Q: What is MAME/MESS?
+<b>Q: What is MAME/MESS?</b>
 
-A: MAME stands for Multi Arcade Machine Emulator. As the name suggests, it is
+<p>A: MAME stands for Multi Arcade Machine Emulator. As the name suggests, it is
     a program that emulates the hardware (and low-level firmware) of a massive
     variety of arcade machines.
    MESS stands for Multi Emulator Super System. It is an emulator for the
@@ -42,80 +45,78 @@ A: MAME stands for Multi Arcade Machine Emulator. As the name suggests, it is
     as well as many different old games-oriented home computers (e.g. C64,
     C128, ZX80, etc.)
    While the two programs are conceptually different, and have different
-    development teams, they share a lot of code and are distributed together.
+    development teams, they share a lot of code and are distributed together.</p>
 
 
-Q: I'm interested! Where can I get more info?
+<b>Q: I'm interested! Where can I get more info?</b>
 
-A: You will find documentation (of sorts) in the doc/ subdirectory.
+<p> A: You will find documentation (of sorts) in the doc/ subdirectory.
    You will probably want to go straight to the xmame/xmess doco:
-     doc/xmame-doc.lyx  -> Source LyX file.
-     doc/xmame-doc.html -> Top level page for HTML version.
-     doc/xmame-doc.sgml -> For those suitably persuaded.
-     doc/xmame-doc.ps   -> Here's some Postscript we prepared earlier ...
-     doc/xmame-doc.txt  -> Plain old boring text.
+   </br>
+     doc/xmame-doc.lyx  -> Source LyX file.</br>
+     doc/xmame-doc.html -> Top level page for HTML version.</br>
+     doc/xmame-doc.sgml -> For those suitably persuaded.</br>
+     doc/xmame-doc.ps   -> Here's some Postscript we prepared earlier ...</br>
+     doc/xmame-doc.txt  -> Plain old boring text.</br>
    Don't be fooled by the name, the above doco is for _both_ xmame and xmess.
-
-   There are also some Unix man pages:
-     doc/xmame.6
-     doc/xmess.6
+</br>
+   There are also some Unix man pages:</br>
+   
+        doc/xmame.6</br>
+        doc/xmess.6</br>
 
    There are various other files in the doc/ directory that contain information
-    you may find interesting or useful.
+    you may find interesting or useful.</br>
+</p>
 
-   Also you can check out the xmame/xmess homepage at:
-                       http://x.mame.net
-    (Deutsche version: http://x.mame.net/german.html)
+<b>Q: How do I compile XMAME/XMESS?</b>
 
-
-Q: How do I compile XMAME/XMESS?
-
-A: The documentation (doc/xmame-doc.*) contains detailed instructions, 
+<p>A: The documentation (doc/xmame-doc.*) contains detailed instructions, 
     including extra notes specific to particular hardware/OS combinations.
    READ THE DOCUMENTATION FIRST!
    Then edit the Makefile (it contains lots of helpful hints).
    Then run make.
    No, there is no configure script. Feel free to write one yourself and
-    contribute it to the project. :)
+    contribute it to the project. :)</p>
 
-Q: What platforms can I run XMAME/XMESS on?
+<b>Q: What platforms can I run XMAME/XMESS on?</b>
 
-A: Lots! :)
-   Currently the following CPU bases are explicitly supported in the Makefile:
-   i386  /  ia64   /  alpha  /  m68k  /  risc (various flavours)
+<p>A: Lots! :)
+   Currently the following CPU bases are explicitly supported in the Makefile:</br>
+   i386  /  ia64   /  alpha  /  m68k  /  risc (various flavours)</br></br>
 
-   The following OSes are also explicitly supported:
+   The following OSes are also explicitly supported:</br></br>
    Linux / FreeBSD / NetBSD / OpenBSD / Solaris / NeXT / MacOS-X / IRIX / AIX
-
-   The following display methods are explicitly supported:
+</br></br>
+   The following display methods are explicitly supported:</br></br>
    X11(R6) / SVGAlib (Linux only) / GGI (only tested on Linux) / 
    XGL (i.e. X with OpenGL) / XFX (i.e. X with 3Dfx) / 
    SVGAfx (i.e. SVGAlib with 3Dfx) / OpenStep / SDL / Photon2
-
+</br>
    If your OS is not listed above, then there is also a "generic unix"
     compilation target that may work for you.
    The display method of choice is X11. If you have an X server on your
     system the xmame/xmess will talk to it. The other display methods are
     aimed at improving the framerate the xmame/xmess runs at, but may not
-    be available on your system.
+    be available on your system.</p>
 
 
-Q: When I tried compiling <xyz> went wrong. Help?
+<b>Q: When I tried compiling <xyz> went wrong. Help?</b></br>
 
 A: Read the documentation. In particular the section of the main documentation
-    that discussed compilation.
+    that discussed compilation.</br>
 
 
-Q: OK, I've got the source and compiled it. How do I run a game?
+<b>Q: OK, I've got the source and compiled it. How do I run a game?</b></br>
 
-A: Xmame/xmess are __emulators__. They make the hardware in front of you
+<p>A: Xmame/xmess are __emulators__. They make the hardware in front of you
     (an X86 box, say) pretend to be the specialist hardware that arcade
     machines contain. In this way the original game code can run on your
     PC. So to play a game you need that original game code as well.
-   The documentation discusses this matter in some detail.
+   The documentation discusses this matter in some detail.</p>
 
 
-Q: I've got more questions!
+<b>Q: I've got more questions!</b></br>
 
 A: Read the documentation. :)
 
