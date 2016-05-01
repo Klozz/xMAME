@@ -293,15 +293,15 @@ endif
 # Intel 8080/8085A
 #-------------------------------------------------
 
-CPUDEFS += -DHAS_8080=$(if $(filter 8080,$(CPUS)),1,0)
-CPUDEFS += -DHAS_8085A=$(if $(filter 8085A,$(CPUS)),1,0)
+#CPUDEFS += -DHAS_8080=$(if $(filter 8080,$(CPUS)),1,0)
+#CPUDEFS += -DHAS_8085A=$(if $(filter 8085A,$(CPUS)),1,0)
 
-ifneq ($(filter 8080 8085A,$(CPUS)),)
-OBJDIRS += $(OBJ)/cpu/i8085
-CPUOBJS += $(OBJ)/cpu/i8085/i8085.o
-DBGOBJS += $(OBJ)/cpu/i8085/8085dasm.o
-$(OBJ)/cpu/i8085/i8085.o: i8085.c i8085.h i8085cpu.h i8085daa.h
-endif
+#ifneq ($(filter 8080 8085A,$(CPUS)),)
+#OBJDIRS += $(OBJ)/cpu/i8085
+#CPUOBJS += $(OBJ)/cpu/i8085/i8085.o
+#DBGOBJS += $(OBJ)/cpu/i8085/8085dasm.o
+#$(OBJ)/cpu/i8085/i8085.o: i8085.c i8085.h i8085cpu.h i8085daa.h
+#endif
 
 
 
