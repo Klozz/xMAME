@@ -12,7 +12,6 @@
 #include <stdarg.h>
 #include "driver.h"
 #include "devices/cassette.h"
-#include "cpu/i8085/i8085.h"
 #include "includes/dai.h"
 #include "machine/pit8253.h"
 #include "machine/8255ppi.h"
@@ -57,7 +56,6 @@ static void dai_update_memory (int dai_rom_bank)
 
 static void dai_bootstrap_callback (int param)
 {
-	cpunum_set_reg(0, I8080_PC, 0xc000);
 }
 
 static UINT8 dai_keyboard_scan_mask = 0;

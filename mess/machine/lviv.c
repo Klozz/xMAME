@@ -13,7 +13,6 @@
 #include "driver.h"
 #include "devices/cassette.h"
 #include "devices/snapquik.h"
-#include "cpu/i8085/i8085.h"
 #include "includes/lviv.h"
 #include "machine/8255ppi.h"
 #include "sound/speaker.h"
@@ -254,22 +253,6 @@ static void lviv_setup_snapshot (UINT8 * data)
 	/* Set registers */
 	lo = data[0x14112] & 0x0ff;
 	hi = data[0x14111] & 0x0ff;
-	cpunum_set_reg(0, I8080_BC, (hi << 8) | lo);
-	lo = data[0x14114] & 0x0ff;
-	hi = data[0x14113] & 0x0ff;
-	cpunum_set_reg(0, I8080_DE, (hi << 8) | lo);
-	lo = data[0x14116] & 0x0ff;
-	hi = data[0x14115] & 0x0ff;
-	cpunum_set_reg(0, I8080_HL, (hi << 8) | lo);
-	lo = data[0x14118] & 0x0ff;
-	hi = data[0x14117] & 0x0ff;
-	cpunum_set_reg(0, I8080_AF, (hi << 8) | lo);
-	lo = data[0x14119] & 0x0ff;
-	hi = data[0x1411a] & 0x0ff;
-	cpunum_set_reg(0, I8080_SP, (hi << 8) | lo);
-	lo = data[0x1411b] & 0x0ff;
-	hi = data[0x1411c] & 0x0ff;
-	cpunum_set_reg(0, I8080_PC, (hi << 8) | lo);
 
 	/* Memory dump */
 	memcpy (mess_ram, data+0x0011, 0xc000);
@@ -285,12 +268,6 @@ static void lviv_setup_snapshot (UINT8 * data)
 
 static void dump_registers(void)
 {
-	logerror("PC   = %04x\n", (unsigned) cpunum_get_reg(0, I8080_PC));
-	logerror("SP   = %04x\n", (unsigned) cpunum_get_reg(0, I8080_SP));
-	logerror("AF   = %04x\n", (unsigned) cpunum_get_reg(0, I8080_AF));
-	logerror("BC   = %04x\n", (unsigned) cpunum_get_reg(0, I8080_BC));
-	logerror("DE   = %04x\n", (unsigned) cpunum_get_reg(0, I8080_DE));
-	logerror("HL   = %04x\n", (unsigned) cpunum_get_reg(0, I8080_HL));
 }
 
 static int lviv_verify_snapshot (UINT8 * data, UINT32 size)
