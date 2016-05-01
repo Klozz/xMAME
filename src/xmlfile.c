@@ -7,7 +7,7 @@
 ***************************************************************************/
 
 #include "xmlfile.h"
-#include "expat.h"
+#include "expat/expat.h"
 
 #define TEMP_BUFFER_SIZE		4096
 
