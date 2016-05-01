@@ -692,7 +692,8 @@ void show_usage(void)
 			"M.A.M.E. - Multiple Arcade Machine Emulator\n"
 			"Copyright (C) 1997-2006 by Nicola Salmoria and the MAME Team\n"
 #endif
-			"%s port maintained by Lawrence Gold\n", NAME);
+			"%s port 0.103 maintained by Lawrence Gold\n"
+			"xMAME maintained by Klozz 'TEAMMEX'\n", NAME);
 }
 
 #ifdef MESS

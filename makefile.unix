@@ -4,6 +4,7 @@
 #                                                                         #
 # Original version by Juan Antonio Martinez and Hans de Goede.            #
 # Current version by Lawrence Gold, with much inspiration from XviD.      #
+# Current version by Carlos Jesús "Klozz"				  #
 # http://x.mame.net                                                       #
 # mailto:gold@aros.net                                                    #
 #                                                                         #
@@ -727,7 +728,7 @@ ARCH  = linux
 # use SDL.
 
 # X11 (including Glide & OpenGL if enabled below)
-#DISPLAY_METHOD = x11
+# DISPLAY_METHOD = x11 this have some glitches and sound problems
 
 # SDL library 
 DISPLAY_METHOD = SDL
