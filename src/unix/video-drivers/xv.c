@@ -10,9 +10,9 @@
 #  include <sys/ipc.h>
 #  include <sys/shm.h>
 #endif
-#include <X11/extensions/XShm.h>
-#include <X11/extensions/Xv.h>
-#include <X11/extensions/Xvlib.h>
+#include "extensions/XShm.h"
+#include "extensions/Xv.h"
+#include "extensions/Xvlib.h"
 #include "effect.h"
 #include "blit/pixel_defs.h"
 #include "sysdep/sysdep_display_priv.h"

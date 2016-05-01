@@ -25,10 +25,6 @@
  1. Download it :D
  2. And have fun
 
-### Build problems?
-
-1. xv.h missing header? try : 			sudo apt-get install xorg-dev libc6-dev
--------------
  -------------
 
 <b>Q: What is xmame?</b>
